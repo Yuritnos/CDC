@@ -494,6 +494,35 @@ details.more[open] > summary { margin-bottom: 14px; }
 .achip.fav-head.has-active { box-shadow: inset 3px 0 0 var(--accent); }
 .favgroup { display: flex; flex-direction: column; gap: 2px; margin: 0 0 4px 12px; padding-left: 8px; border-left: 1px solid var(--line); }
 .favgroup[hidden] { display: none; }
+.albums .side-h { margin: 12px 0 4px 8px; }
+.albums .side-h:first-child { margin-top: 0; }
+
+/* A saved playlist, shown in place of the CD grid */
+.grid.as-list { display: block; }
+.plview { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.plv-head { display: flex; align-items: flex-end; gap: 10px 16px; flex-wrap: wrap; }
+.plv-head h2 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 34px; line-height: 1.1; overflow-wrap: anywhere; }
+.plv-head .meta { margin: 0 auto 4px 0; }
+.plv-actions { display: flex; align-items: center; gap: 14px; }
+.plv-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+.plv-list li { display: grid; grid-template-columns: 26px 32px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--line); }
+.plv-list li:first-child { border-top: 0; }
+.plv-list li.playing { background: var(--accent-soft); }
+.plv-list li.gone { color: var(--muted); }
+.plv-no { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: right; }
+.plv-text { min-width: 0; display: flex; flex-direction: column; }
+.plv-text strong, .plv-text span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plv-text strong { font-weight: 600; font-size: 14.5px; }
+.plv-text span { font-size: 12.5px; color: var(--muted); }
+.plv-len { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.plv-tools { display: flex; gap: 4px; }
+.plv-tools .iconbtn { width: 30px; height: 30px; font-size: 14px; }
+.plv-tools .iconbtn.rm:hover { color: var(--danger); border-color: var(--danger); }
+.plv-tools .iconbtn:disabled { opacity: 0.35; cursor: default; }
+@media (max-width: 640px) {
+  .plv-list li { grid-template-columns: 22px 32px minmax(0, 1fr) auto; }
+  .plv-len { display: none; }
+}
 
 .albums .linkbtn { padding: 6px 8px; font-size: 13px; }
 .setbtn {
@@ -714,6 +743,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 .pa-play:disabled { color: var(--muted); cursor: default; border-color: var(--line); }
 .paudio .iconbtn { width: 32px; height: 32px; font-size: 16px; }
 .paudio .iconbtn:hover { color: var(--danger); border-color: var(--danger); }
+.paudio li { align-items: start; }
+.paudio li > .pa-play, .paudio li > .iconbtn { margin-top: 0; }
+.pa-addpl { padding: 0; font-size: 12.5px; }
+.pa-plmenu { display: flex; flex-direction: column; gap: 2px; padding: 4px; background: var(--field); border: 1px solid var(--line); border-radius: 3px; }
+.pa-plmenu .linkbtn { padding: 6px 10px; font-size: 13px; }
 
 .toast {
   position: fixed;
@@ -1280,9 +1314,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   </button>
   <div class="pl-list" id="pl-list" role="dialog" aria-labelledby="pl-list-h" hidden>
     <div class="pl-list-head">
-      <strong id="pl-list-h" data-i18n="playlist">Playlist</strong>
+      <strong id="pl-list-h" data-i18n="playlist">Play queue</strong>
       <span class="pl-count" id="pl-count"></span>
-      <button type="button" class="linkbtn danger" id="pl-clear" data-i18n="playlistClear">Clear playlist</button>
+      <button type="button" class="linkbtn" id="pl-save" data-i18n="plSaveQueue">Save as playlist</button>
+      <button type="button" class="linkbtn danger" id="pl-clear" data-i18n="playlistClear">Clear queue</button>
     </div>
     <ul class="pl-items" id="pl-items"></ul>
   </div>
@@ -1384,9 +1419,22 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       toastAudioFail: "The audio files could not be added.", audioPlayError: "This audio file can't be played.",
       playerRegion: "Player", playerPlay: "Play", playerPause: "Pause", playerPrev: "Previous track", playerNext: "Next track",
       playerSeek: "Position", playerClose: "Stop and close the player",
-      playlist: "Playlist", playlistClear: "Clear playlist", playlistRemove: "Remove {title} from the playlist",
+      playlist: "Play queue", playlistClear: "Clear queue", playlistRemove: "Remove {title} from the queue",
       "playlistCount.one": "1 track", "playlistCount.other": "{n} tracks",
-      musicNav: "Music", musicPlay: "Play {title}", musicNow: "Now playing", musicPaused: "Paused",
+      libraryHead: "Library", musicHead: "Music",
+      musicNav: "All music", musicPlay: "Play {title}", musicNow: "Now playing", musicPaused: "Paused",
+      plNav: "Playlists", plNew: "+ New playlist", plDlgNew: "New playlist", plEdit: "Edit playlist",
+      plName: "Playlist name", plNamePh: "e.g. Slow movements", plNameErr: "Enter a name for the playlist.",
+      plCreate: "Create playlist", plDelete: "Delete playlist",
+      plDeleteAsk: "Delete “{name}”? The tracks and their audio stay in your collection.",
+      plCreated: "Created playlist “{name}”", plRenamed: "Saved playlist “{name}”", plDeleted: "Deleted playlist “{name}”",
+      "plTracks.one": "1 track", "plTracks.other": "{n} tracks", plPlay: "Play",
+      plEmpty: "This playlist is empty. Add tracks with “+ Playlist” in a CD's Audio section, or save the play queue as a playlist.",
+      plTrackGone: "No longer in your collection", plNotHere: "{disc} · not on this computer",
+      plMoveUp: "Move {title} up", plMoveDown: "Move {title} down", plRemoveTrack: "Remove {title} from {name}",
+      plNothingHere: "None of this playlist's tracks have audio on this computer.",
+      plAdded: "Added to “{name}”", plAlready: "Already in “{name}”", plRemovedFrom: "Removed from “{name}”",
+      plSaveQueue: "Save as playlist", plAddTrack: "+ Playlist", plNewWithTrack: "+ New playlist with this track",
       "musicTracks.one": "1 track", "musicTracks.other": "{n} tracks",
       musicEmpty: "No audio on this computer yet. Open a CD and use “Add audio files” in its profile; it then appears here, and clicking it plays it.",
       pfNick: "Nickname", pfNickPh: "e.g. Music lover",
@@ -1541,9 +1589,22 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       toastAudioFail: "音源ファイルを追加できませんでした。", audioPlayError: "この音源ファイルは再生できません。",
       playerRegion: "プレーヤー", playerPlay: "再生", playerPause: "一時停止", playerPrev: "前のトラック", playerNext: "次のトラック",
       playerSeek: "再生位置", playerClose: "停止してプレーヤーを閉じる",
-      playlist: "プレイリスト", playlistClear: "プレイリストを空にする", playlistRemove: "{title} をプレイリストから削除",
+      playlist: "再生キュー", playlistClear: "キューを空にする", playlistRemove: "{title} をキューから削除",
       "playlistCount.one": "1曲", "playlistCount.other": "{n}曲",
-      musicNav: "音楽", musicPlay: "{title} を再生", musicNow: "再生中", musicPaused: "一時停止中",
+      libraryHead: "ライブラリ", musicHead: "音楽",
+      musicNav: "すべての音楽", musicPlay: "{title} を再生", musicNow: "再生中", musicPaused: "一時停止中",
+      plNav: "プレイリスト", plNew: "+ 新しいプレイリスト", plDlgNew: "新しいプレイリスト", plEdit: "プレイリストを編集",
+      plName: "プレイリスト名", plNamePh: "例：緩徐楽章集", plNameErr: "プレイリスト名を入力してください。",
+      plCreate: "プレイリストを作成", plDelete: "プレイリストを削除",
+      plDeleteAsk: "「{name}」を削除しますか？曲と音源はコレクションに残ります。",
+      plCreated: "プレイリスト「{name}」を作成しました", plRenamed: "プレイリスト「{name}」を保存しました", plDeleted: "プレイリスト「{name}」を削除しました",
+      "plTracks.one": "1曲", "plTracks.other": "{n}曲", plPlay: "再生",
+      plEmpty: "このプレイリストは空です。CDの「音源」欄の「+ プレイリスト」から追加するか、再生キューをプレイリストとして保存してください。",
+      plTrackGone: "コレクションにありません", plNotHere: "{disc} · このパソコンにはありません",
+      plMoveUp: "{title} を上へ", plMoveDown: "{title} を下へ", plRemoveTrack: "{title} を {name} から削除",
+      plNothingHere: "このプレイリストの曲には、このパソコンにある音源がありません。",
+      plAdded: "「{name}」に追加しました", plAlready: "すでに「{name}」にあります", plRemovedFrom: "「{name}」から削除しました",
+      plSaveQueue: "プレイリストとして保存", plAddTrack: "+ プレイリスト", plNewWithTrack: "+ この曲で新しいプレイリスト",
       "musicTracks.one": "1曲", "musicTracks.other": "{n}曲",
       musicEmpty: "このパソコンにはまだ音源がありません。CDのプロフィールで「音源ファイルを追加」すると、ここに表示され、クリックで再生できます。",
       pfNick: "ニックネーム", pfNickPh: "例：音楽好き",
@@ -1698,9 +1759,22 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       toastAudioFail: "无法添加音频文件。", audioPlayError: "无法播放此音频文件。",
       playerRegion: "播放器", playerPlay: "播放", playerPause: "暂停", playerPrev: "上一首", playerNext: "下一首",
       playerSeek: "播放位置", playerClose: "停止并关闭播放器",
-      playlist: "播放列表", playlistClear: "清空播放列表", playlistRemove: "从播放列表中删除 {title}",
+      playlist: "播放队列", playlistClear: "清空队列", playlistRemove: "从队列中删除 {title}",
       "playlistCount.one": "1 首", "playlistCount.other": "{n} 首",
-      musicNav: "音乐", musicPlay: "播放 {title}", musicNow: "正在播放", musicPaused: "已暂停",
+      libraryHead: "资料库", musicHead: "音乐",
+      musicNav: "全部音乐", musicPlay: "播放 {title}", musicNow: "正在播放", musicPaused: "已暂停",
+      plNav: "播放列表", plNew: "+ 新建播放列表", plDlgNew: "新建播放列表", plEdit: "编辑播放列表",
+      plName: "播放列表名称", plNamePh: "例如：慢乐章合集", plNameErr: "请输入播放列表名称。",
+      plCreate: "创建播放列表", plDelete: "删除播放列表",
+      plDeleteAsk: "删除“{name}”？其中的曲目和音频仍保留在你的收藏中。",
+      plCreated: "已创建播放列表“{name}”", plRenamed: "已保存播放列表“{name}”", plDeleted: "已删除播放列表“{name}”",
+      "plTracks.one": "1 首", "plTracks.other": "{n} 首", plPlay: "播放",
+      plEmpty: "这个播放列表是空的。可在CD“音频”部分使用“+ 播放列表”添加，或把播放队列保存为播放列表。",
+      plTrackGone: "已不在你的收藏中", plNotHere: "{disc} · 不在这台电脑上",
+      plMoveUp: "上移 {title}", plMoveDown: "下移 {title}", plRemoveTrack: "从 {name} 中删除 {title}",
+      plNothingHere: "这个播放列表中的曲目在这台电脑上都没有音频。",
+      plAdded: "已添加到“{name}”", plAlready: "已在“{name}”中", plRemovedFrom: "已从“{name}”中删除",
+      plSaveQueue: "保存为播放列表", plAddTrack: "+ 播放列表", plNewWithTrack: "+ 用此曲新建播放列表",
       "musicTracks.one": "1 首", "musicTracks.other": "{n} 首",
       musicEmpty: "这台电脑上还没有音频。在CD的档案中使用“添加音频文件”后，它就会出现在这里，点击即可播放。",
       pfNick: "昵称", pfNickPh: "例如：古典乐迷",
@@ -1824,6 +1898,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   var currentAlbum = "all";
   var favOpen = false;
   try { favOpen = localStorage.getItem("cdc.favopen") === "1"; } catch (e) { /* storage unavailable */ }
+  var plOpen = false;
+  try { plOpen = localStorage.getItem("cdc.plopen") === "1"; } catch (e) { /* storage unavailable */ }
   var detailId = null;
   var detailConfirm = false;
   var photoData = null;
@@ -2406,7 +2482,19 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 
   /* ---------- albums: data ---------- */
   function normMeta(raw) {
-    var m = { albums: [], settings: {} };
+    var m = { albums: [], playlists: [], settings: {} };
+    /* Playlists: saved lists of tracks across CDs, each item { cdId, file } (a file in cd.audio). */
+    if (raw && Array.isArray(raw.playlists)) {
+      raw.playlists.forEach(function (p) {
+        if (!p || !p.id || !p.name) return;
+        m.playlists.push({
+          id: String(p.id),
+          name: String(p.name),
+          items: (Array.isArray(p.items) ? p.items : []).filter(function (x) { return x && x.cdId && x.file; })
+            .map(function (x) { return { cdId: String(x.cdId), file: String(x.file) }; })
+        });
+      });
+    }
     if (raw && Array.isArray(raw.albums)) {
       raw.albums.forEach(function (a) {
         if (a && a.id && a.name) {
@@ -2497,6 +2585,19 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       return { id: a.id, name: a.name, cdIds: want ? a.cdIds.concat(cdId) : a.cdIds.filter(function (x) { return x !== cdId; }) };
     });
     if (changed) commitMeta(function (m) { m.albums = next; });
+  }
+  function findPlaylist(id) {
+    for (var i = 0; i < meta.playlists.length; i++) if (meta.playlists[i].id === id) return meta.playlists[i];
+    return null;
+  }
+  function newPlaylistId() { return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+  /* Take tracks out of every playlist, e.g. when their CD or audio file is removed. */
+  function prunePlaylists(test) {
+    var hit = meta.playlists.some(function (p) { return p.items.some(test); });
+    if (!hit) return;
+    commitMeta(function (m) {
+      m.playlists.forEach(function (p) { p.items = p.items.filter(function (x) { return !test(x); }); });
+    });
   }
   function purgeFromAlbums(cdId) {
     if (!albumsOf(cdId).length) return;
@@ -2856,6 +2957,16 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       normMeta(local).albums.forEach(function (a) {
         if (!byId[a.id]) { out.albums.push(a); return; }
         a.cdIds.forEach(function (id) { if (byId[a.id].cdIds.indexOf(id) === -1) byId[a.id].cdIds.push(id); });
+      });
+      /* Playlists the same way: all of them, each with the tracks either side put in it. */
+      var plById = {};
+      out.playlists.forEach(function (p) { plById[p.id] = p; });
+      normMeta(local).playlists.forEach(function (p) {
+        if (!plById[p.id]) { out.playlists.push(p); return; }
+        p.items.forEach(function (x) {
+          var there = plById[p.id].items.some(function (y) { return y.cdId === x.cdId && y.file === x.file; });
+          if (!there) plById[p.id].items.push(x);
+        });
       });
       return out;
     }
@@ -3286,7 +3397,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var bar = $("albums");
     bar.textContent = "";
     if (!loaded) return;
-    if (currentAlbum === "music" ? !AudioLib.ready : currentAlbum !== "all" && !findAlbum(currentAlbum)) currentAlbum = "all";
+    /* currentAlbum: "all", a favorite's id, "music", or "pl:" + a playlist's id. */
+    var plId = currentPlaylistId();
+    var valid = currentAlbum === "all" || (currentAlbum === "music" && AudioLib.ready) ||
+      (plId ? AudioLib.ready && !!findPlaylist(plId) : !!findAlbum(currentAlbum));
+    if (!valid) { currentAlbum = "all"; plId = null; }
 
     function chip(id, name, count) {
       var b = el("button", "achip");
@@ -3296,34 +3411,43 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       b.appendChild(el("span", "n", String(count)));
       b.addEventListener("click", function () {
         currentAlbum = id;
-        if (id !== "all" && id !== "music" && !favOpen) { favOpen = true; try { localStorage.setItem("cdc.favopen", "1"); } catch (e) { /* storage unavailable */ } }
+        try {
+          if (findAlbum(id) && !favOpen) { favOpen = true; localStorage.setItem("cdc.favopen", "1"); }
+          if (id.indexOf("pl:") === 0 && !plOpen) { plOpen = true; localStorage.setItem("cdc.plopen", "1"); }
+        } catch (e) { /* storage unavailable */ }
         renderAlbums(); renderGrid();
       });
       return b;
     }
+    /* A foldable group: a heading button that opens and closes a list of chips. */
+    function folder(id, label, count, open, active, toggle) {
+      var head = el("button", "achip fav-head" + (active && !open ? " has-active" : ""));
+      head.type = "button";
+      head.id = id + "-head";
+      head.setAttribute("aria-expanded", open ? "true" : "false");
+      head.setAttribute("aria-controls", id + "-group");
+      var lead = el("span", "nm");
+      lead.appendChild(el("span", "chev", open ? "▾" : "▸"));
+      lead.appendChild(document.createTextNode(" " + label));
+      head.appendChild(lead);
+      head.appendChild(el("span", "n", String(count)));
+      head.addEventListener("click", function () {
+        toggle();
+        renderAlbums();
+        $(id + "-head").focus({ preventScroll: true });
+      });
+      return head;
+    }
+    var withMusic = AudioLib.ready;
+    if (withMusic) bar.appendChild(el("p", "side-h", t("libraryHead")));
     bar.appendChild(chip("all", t("allCds"), cds.length));
-    /* Music: the CDs with audio on this computer; clicking one plays it (desktop app only). */
-    if (AudioLib.ready) bar.appendChild(chip("music", "♪ " + t("musicNav"), musicCds().length));
 
-    var activeFav = currentAlbum !== "all" && currentAlbum !== "music";
+    var activeFav = !!findAlbum(currentAlbum);
     var open = favOpen;
-    var head = el("button", "achip fav-head" + (activeFav && !open ? " has-active" : ""));
-    head.type = "button";
-    head.id = "fav-head";
-    head.setAttribute("aria-expanded", open ? "true" : "false");
-    head.setAttribute("aria-controls", "fav-group");
-    var lead = el("span", "nm");
-    lead.appendChild(el("span", "chev", open ? "\u25BE" : "\u25B8"));
-    lead.appendChild(document.createTextNode(" " + t("albumsBar")));
-    head.appendChild(lead);
-    head.appendChild(el("span", "n", String(meta.albums.length)));
-    head.addEventListener("click", function () {
+    bar.appendChild(folder("fav", t("albumsBar"), meta.albums.length, open, activeFav, function () {
       favOpen = !favOpen;
       try { localStorage.setItem("cdc.favopen", favOpen ? "1" : "0"); } catch (e) { /* storage unavailable */ }
-      renderAlbums();
-      $("fav-head").focus({ preventScroll: true });
-    });
-    bar.appendChild(head);
+    }));
 
     var group = el("div", "favgroup");
     group.id = "fav-group";
@@ -3345,6 +3469,29 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       group.appendChild(ea);
     }
     bar.appendChild(group);
+
+    /* Music (desktop app only): all CDs with audio here, and the saved playlists. */
+    if (!withMusic) return;
+    bar.appendChild(el("p", "side-h", t("musicHead")));
+    bar.appendChild(chip("music", "♪ " + t("musicNav"), musicCds().length));
+    var plOpenNow = plOpen;
+    bar.appendChild(folder("pl", t("plNav"), meta.playlists.length, plOpenNow, !!plId, function () {
+      plOpen = !plOpen;
+      try { localStorage.setItem("cdc.plopen", plOpen ? "1" : "0"); } catch (e) { /* storage unavailable */ }
+    }));
+    var plGroup = el("div", "favgroup");
+    plGroup.id = "pl-group";
+    plGroup.hidden = !plOpenNow;
+    meta.playlists.forEach(function (p) { plGroup.appendChild(chip("pl:" + p.id, p.name, p.items.length)); });
+    var np = el("button", "linkbtn", t("plNew"));
+    np.type = "button";
+    np.addEventListener("click", function () { openAlbumDlg("new", null, "playlist"); });
+    plGroup.appendChild(np);
+    bar.appendChild(plGroup);
+  }
+  /* The id of the playlist being shown, or null. */
+  function currentPlaylistId() {
+    return typeof currentAlbum === "string" && currentAlbum.indexOf("pl:") === 0 ? currentAlbum.slice(3) : null;
   }
 
   function renderGrid() {
@@ -3362,6 +3509,15 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       search.hidden = true;
       sortWrap.hidden = true;
       grid.appendChild(el("p", "msg", t("loading")));
+      return;
+    }
+    var pl = currentPlaylistId() && findPlaylist(currentPlaylistId());
+    grid.classList.toggle("as-list", !!pl);
+    if (pl) {
+      search.hidden = true;
+      sortWrap.hidden = true;
+      count.textContent = "";
+      grid.appendChild(playlistView(pl));
       return;
     }
     if (!cds.length) {
@@ -3949,26 +4105,57 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   $("export-csv").addEventListener("click", function () { doExport("csv"); });
 
   /* ---------- album window ---------- */
-  var albumDlg = { mode: "new", id: null };
-  function openAlbumDlg(mode, id) {
-    albumDlg = { mode: mode, id: id };
-    var a = id ? findAlbum(id) : null;
-    $("album-h").textContent = mode === "new" ? t("albumDlgNew") : t("editAlbum");
+  /* The same window names favorites and playlists: kind is "favorite" (default) or "playlist".
+     A new playlist can start with items, e.g. the play queue or one track. */
+  var albumDlg = { mode: "new", id: null, kind: "favorite", items: null };
+  function openAlbumDlg(mode, id, kind, items) {
+    kind = kind || "favorite";
+    albumDlg = { mode: mode, id: id, kind: kind, items: items || null };
+    var pl = kind === "playlist";
+    var a = id ? (pl ? findPlaylist(id) : findAlbum(id)) : null;
+    $("album-h").textContent = mode === "new" ? t(pl ? "plDlgNew" : "albumDlgNew") : t(pl ? "plEdit" : "editAlbum");
+    document.querySelector('label[for="album-name"]').textContent = t(pl ? "plName" : "albumName");
+    $("album-name").placeholder = t(pl ? "plNamePh" : "albumNamePh");
     $("album-name").value = a ? a.name : "";
     setErr("album-name", "");
-    $("album-save").textContent = mode === "new" ? t("createAlbum") : t("saveChanges");
+    $("album-save").textContent = mode === "new" ? t(pl ? "plCreate" : "createAlbum") : t("saveChanges");
+    $("album-delete").textContent = t(pl ? "plDelete" : "deleteAlbum");
+    $("album-del-yes").textContent = t(pl ? "plDelete" : "deleteAlbum");
     $("album-delete").hidden = mode === "new";
     $("album-del-ask").hidden = true;
     openWin("album");
   }
   function resetAlbumDlg() {
-    albumDlg = { mode: "new", id: null };
+    albumDlg = { mode: "new", id: null, kind: "favorite", items: null };
     $("album-del-ask").hidden = true;
   }
   $("album-form").addEventListener("submit", function (e) {
     e.preventDefault();
     var name = $("album-name").value.trim();
-    if (!name) { setErr("album-name", t("albumNameErr")); $("album-name").focus(); return; }
+    var pl = albumDlg.kind === "playlist";
+    if (!name) { setErr("album-name", t(pl ? "plNameErr" : "albumNameErr")); $("album-name").focus(); return; }
+    if (pl && albumDlg.mode === "new") {
+      var pid = newPlaylistId();
+      var start = (albumDlg.items || []).map(function (x) { return { cdId: x.cdId, file: x.file }; });
+      commitMeta(function (m) { m.playlists.push({ id: pid, name: name, items: start }); });
+      /* Show the new playlist, unless it was made from a CD's profile (then stay there). */
+      if (!start.length || albumDlg.items.length > 1) {
+        currentAlbum = "pl:" + pid;
+        plOpen = true;
+        try { localStorage.setItem("cdc.plopen", "1"); } catch (err) { /* storage unavailable */ }
+      }
+      closeWin("album");
+      renderAll();
+      toast(t("plCreated", { name: name }));
+      return;
+    }
+    if (pl) {
+      var pTarget = albumDlg.id;
+      changePlaylist(pTarget, function (p) { p.name = name; });
+      closeWin("album");
+      toast(t("plRenamed", { name: name }));
+      return;
+    }
     if (albumDlg.mode === "new") {
       var id = "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
       commitMeta(function (m) { m.albums.push({ id: id, name: name, cdIds: [] }); });
@@ -3985,9 +4172,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
   });
   $("album-delete").addEventListener("click", function () {
-    var a = findAlbum(albumDlg.id);
+    var pl = albumDlg.kind === "playlist";
+    var a = pl ? findPlaylist(albumDlg.id) : findAlbum(albumDlg.id);
     if (!a) return;
-    $("album-del-text").textContent = t("deleteAlbumAsk", { name: a.name });
+    $("album-del-text").textContent = t(pl ? "plDeleteAsk" : "deleteAlbumAsk", { name: a.name });
     $("album-del-ask").hidden = false;
     $("album-delete").hidden = true;
   });
@@ -3996,6 +4184,17 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("album-delete").hidden = false;
   });
   $("album-del-yes").addEventListener("click", function () {
+    if (albumDlg.kind === "playlist") {
+      var p = findPlaylist(albumDlg.id);
+      if (!p) { closeWin("album"); return; }
+      var pName = p.name, pTarget = p.id;
+      commitMeta(function (m) { m.playlists = m.playlists.filter(function (x) { return x.id !== pTarget; }); });
+      if (currentAlbum === "pl:" + pTarget) currentAlbum = "music";
+      closeWin("album");
+      renderAll();
+      toast(t("plDeleted", { name: pName }));
+      return;
+    }
     var a = findAlbum(albumDlg.id);
     if (!a) { closeWin("album"); return; }
     var name = a.name, target = a.id;
@@ -4708,10 +4907,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         AudioLib.checking = false;
         if (detailId && !$("win-detail").hidden) renderDetail();
         renderAlbums();
-        if (currentAlbum === "music") renderGrid();
+        if (currentAlbum === "music" || currentPlaylistId()) renderGrid();
       });
     }
   };
+  var plPick = null; /* the audio file whose "+ Playlist" list is open in the profile */
   /* The disc's tracks in order, numbered across the whole disc. */
   function discTracks(cd) {
     var out = [];
@@ -4762,6 +4962,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   async function removeAudio(cd, file) {
     dropEntries(function (e) { return e.cdId === cd.id && e.file === file; });
+    prunePlaylists(function (x) { return x.cdId === cd.id && x.file === file; });
     try { await AudioLib.call("remove_audio", { files: [file] }); } catch (e) { /* the list still drops it */ }
     delete AudioLib.present[file];
     var list = (cd.audio || []).filter(function (a) { return a.file !== file; });
@@ -4832,6 +5033,46 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var missing = AudioLib.ready && a.file in AudioLib.present && !here;
       if (missing) main.appendChild(el("span", "pa-file missing", t("audioMissing", { name: a.name })));
       else if (!a.track) main.appendChild(el("span", "pa-file", a.name));
+      /* "+ Playlist": a short list of playlists to add this track to, or a new one. */
+      if (AudioLib.ready) {
+        var picking = plPick === a.file;
+        var addPl = el("button", "linkbtn pa-addpl", t("plAddTrack"));
+        addPl.type = "button";
+        addPl.id = "audio-pl-" + i;
+        addPl.setAttribute("aria-expanded", picking ? "true" : "false");
+        addPl.addEventListener("click", function () { plPick = picking ? null : a.file; renderDetail(); });
+        main.appendChild(addPl);
+        if (picking) {
+          var menu = el("div", "pa-plmenu");
+          meta.playlists.forEach(function (p, k) {
+            var inIt = p.items.some(function (x) { return x.cdId === cd.id && x.file === a.file; });
+            var b = el("button", "favitem");
+            b.type = "button";
+            b.id = "audio-pl-" + i + "-" + k;
+            b.setAttribute("aria-pressed", inIt ? "true" : "false");
+            b.appendChild(el("span", "tick", inIt ? "✓" : ""));
+            b.appendChild(el("span", "nm", p.name));
+            b.addEventListener("click", function () {
+              if (inIt) {
+                changePlaylist(p.id, function (q) { q.items = q.items.filter(function (x) { return !(x.cdId === cd.id && x.file === a.file); }); });
+                toast(t("plRemovedFrom", { name: p.name }));
+              } else {
+                addToPlaylist(p.id, { cdId: cd.id, file: a.file });
+              }
+            });
+            menu.appendChild(b);
+          });
+          var mk = el("button", "linkbtn", t("plNewWithTrack"));
+          mk.type = "button";
+          mk.id = "audio-pl-" + i + "-new";
+          mk.addEventListener("click", function () {
+            plPick = null;
+            openAlbumDlg("new", null, "playlist", [{ cdId: cd.id, file: a.file }]);
+          });
+          menu.appendChild(mk);
+          main.appendChild(menu);
+        }
+      }
       li.appendChild(play);
       li.appendChild(main);
       if (AudioLib.ready) {
@@ -4988,7 +5229,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       if (!$("pl-list").hidden) renderPlaylist();
     }
     if (detailId && !$("win-detail").hidden) renderDetail();
-    if (currentAlbum === "music") renderGrid();
+    if (currentAlbum === "music" || currentPlaylistId()) renderGrid();
   }
 
   /* The playlist panel, opened by the playlist button in the player bar. */
@@ -5041,12 +5282,140 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   $("pl-list-btn").addEventListener("click", function () { togglePlaylist(); });
   $("pl-clear").addEventListener("click", function () { closePlayer(); $("open-add").focus(); });
+  $("pl-save").addEventListener("click", function () {
+    var items = player.queue.slice();
+    togglePlaylist(false);
+    openAlbumDlg("new", null, "playlist", items);
+  });
   document.addEventListener("mousedown", function (e) {
     if (!$("pl-list").hidden && !e.target.closest("#pl-list") && !e.target.closest("#pl-list-btn")) togglePlaylist(false);
   });
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && !$("pl-list").hidden && !stack.length) { e.preventDefault(); togglePlaylist(false); $("pl-list-btn").focus(); }
   });
+  /* ---------- saved playlists ----------
+     Named lists of tracks across CDs (meta.playlists, synced with favorites). Playing a playlist
+     replaces the play queue with its tracks that are on this computer. */
+  function plItemPlayable(x) {
+    var cd = cdById(x.cdId);
+    return !!cd && (cd.audio || []).some(function (a) { return a.file === x.file; }) && !!AudioLib.present[x.file];
+  }
+  async function playPlaylist(pl, start) {
+    try { await AudioLib.rootDir(); } catch (e) { toast(t("audioPlayError")); return; }
+    var startItem = pl.items[start || 0];
+    var queue = pl.items.filter(plItemPlayable).map(function (x) { return { cdId: x.cdId, file: x.file }; });
+    if (!queue.length) { toast(t("plNothingHere")); return; }
+    player.queue = queue;
+    player.index = 0;
+    if (startItem) {
+      var i = queue.map(function (e) { return e.cdId + "/" + e.file; }).indexOf(startItem.cdId + "/" + startItem.file);
+      if (i !== -1) player.index = i;
+    }
+    loadTrack(true);
+  }
+  function changePlaylist(id, change) {
+    commitMeta(function (m) { m.playlists.forEach(function (p) { if (p.id === id) change(p); }); });
+  }
+  /* Add a track to a playlist (once). */
+  function addToPlaylist(id, item) {
+    var pl = findPlaylist(id);
+    if (!pl) return;
+    var there = pl.items.some(function (x) { return x.cdId === item.cdId && x.file === item.file; });
+    if (there) { toast(t("plAlready", { name: pl.name })); return; }
+    changePlaylist(id, function (p) { p.items.push({ cdId: item.cdId, file: item.file }); });
+    toast(t("plAdded", { name: pl.name }));
+  }
+  function playlistView(pl) {
+    var box = el("section", "plview");
+    var files = pl.items.map(function (x) { return x.file; });
+    AudioLib.check(files);
+    var head = el("div", "plv-head");
+    var h = el("h2", null, pl.name);
+    h.id = "plv-title";
+    head.appendChild(h);
+    var secs = 0;
+    pl.items.forEach(function (x) {
+      var info = entryText(x);
+      var a = ((info.cd && info.cd.audio) || []).filter(function (y) { return y.file === x.file; })[0];
+      var tr = a && discTracks(info.cd)[(a.track || 0) - 1];
+      if (tr && DURATION.test(tr.duration)) secs += toSeconds(tr.duration);
+    });
+    head.appendChild(el("p", "meta", tn("plTracks", pl.items.length) + (secs ? " · " + fmtSeconds(secs) : "")));
+    var acts = el("div", "plv-actions");
+    var playable = pl.items.some(plItemPlayable);
+    if (playable) {
+      var go = el("button", "btn small", "▶ " + t("plPlay"));
+      go.type = "button";
+      go.id = "plv-play";
+      go.addEventListener("click", function () { playPlaylist(pl, 0); });
+      acts.appendChild(go);
+    }
+    var ed = el("button", "linkbtn", t("plEdit"));
+    ed.type = "button";
+    ed.id = "plv-edit";
+    ed.addEventListener("click", function () { openAlbumDlg("edit", pl.id, "playlist"); });
+    acts.appendChild(ed);
+    head.appendChild(acts);
+    box.appendChild(head);
+    if (!pl.items.length) {
+      box.appendChild(el("p", "msg", t("plEmpty")));
+      return box;
+    }
+    var ul = el("ol", "plv-list");
+    pl.items.forEach(function (x, i) {
+      var info = entryText(x);
+      var ok = plItemPlayable(x);
+      var known = x.file in AudioLib.present || !cdById(x.cdId);
+      var cur = isCurrent(x.cdId, x.file);
+      var li = el("li", (cur ? "playing" : "") + (ok || !known ? "" : " gone"));
+      li.appendChild(el("span", "plv-no", String(i + 1)));
+      var play = el("button", "pa-play");
+      play.type = "button";
+      play.id = "plv-play-" + i;
+      play.disabled = !ok;
+      play.setAttribute("aria-label", t("audioPlay", { title: info.title }));
+      play.innerHTML = cur && !audioEl.paused
+        ? '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>'
+        : '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M7 4v16l13-8z"/></svg>';
+      play.addEventListener("click", function () { if (cur) togglePlay(); else playPlaylist(pl, i); });
+      li.appendChild(play);
+      var txt = el("span", "plv-text");
+      txt.appendChild(el("strong", null, info.title || t("plTrackGone")));
+      txt.appendChild(el("span", null, !cdById(x.cdId) ? t("plTrackGone") : known && !ok ? t("plNotHere", { disc: info.sub || info.title }) : info.sub));
+      li.appendChild(txt);
+      var a = ((info.cd && info.cd.audio) || []).filter(function (y) { return y.file === x.file; })[0];
+      var tr = a && discTracks(info.cd)[(a.track || 0) - 1];
+      li.appendChild(el("span", "plv-len", tr ? tr.duration : ""));
+      var tools = el("span", "plv-tools");
+      function tool(id, label, text, cls, disabled, action) {
+        var b = el("button", "iconbtn" + (cls ? " " + cls : ""), text);
+        b.type = "button";
+        b.id = id;
+        b.disabled = disabled;
+        b.setAttribute("aria-label", label);
+        b.addEventListener("click", action);
+        tools.appendChild(b);
+      }
+      tool("plv-up-" + i, t("plMoveUp", { title: info.title }), "↑", "", i === 0, function () {
+        changePlaylist(pl.id, function (p) { var it = p.items.splice(i, 1)[0]; p.items.splice(i - 1, 0, it); });
+        if ($("plv-up-" + (i - 1))) $("plv-up-" + (i - 1)).focus({ preventScroll: true });
+      });
+      tool("plv-down-" + i, t("plMoveDown", { title: info.title }), "↓", "", i === pl.items.length - 1, function () {
+        changePlaylist(pl.id, function (p) { var it = p.items.splice(i, 1)[0]; p.items.splice(i + 1, 0, it); });
+        if ($("plv-down-" + (i + 1))) $("plv-down-" + (i + 1)).focus({ preventScroll: true });
+      });
+      tool("plv-rm-" + i, t("plRemoveTrack", { title: info.title, name: pl.name }), "×", "rm", false, function () {
+        changePlaylist(pl.id, function (p) { p.items.splice(i, 1); });
+        var next = $("plv-rm-" + Math.min(i, pl.items.length - 2));
+        if (next) next.focus({ preventScroll: true });
+      });
+      li.appendChild(tools);
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+    return box;
+  }
+
   /* Bring back the playlist from last time, paused, once the collection has loaded. */
   var playlistRestored = false;
   async function restorePlaylist() {
@@ -5225,6 +5594,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           await backend.remove(cd.id);
           purgeFromAlbums(cd.id);
           dropEntries(function (e) { return e.cdId === cd.id; });
+          prunePlaylists(function (x) { return x.cdId === cd.id; });
           if (AudioLib.ready) AudioLib.call("remove_cd_audio", { cdId: cd.id }).catch(function () {});
           closeWin("detail");
           toast(t("toastRemoved", { title: cd.title }));
@@ -5261,6 +5631,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     detailId = id;
     detailConfirm = false;
     detailFav.open = false;
+    plPick = null;
     renderDetail();
     openWin("detail");
   }
