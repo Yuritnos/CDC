@@ -361,6 +361,22 @@ details.more[open] > summary { margin-bottom: 14px; }
 .acct-card > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .acct-name { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 26px; line-height: 1.15; overflow-wrap: anywhere; }
 .btnrow { display: flex; gap: 10px; flex-wrap: wrap; }
+.seg { display: flex; }
+.seg button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 38px;
+  padding: 0 8px;
+  background: var(--field);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 14px;
+}
+.seg button + button { border-left: 0; }
+.seg button:first-child { border-radius: 3px 0 0 3px; }
+.seg button:last-child { border-radius: 0 3px 3px 0; }
+.seg button:hover { color: var(--accent); }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .range { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
 .range input { flex: 1; min-width: 0; accent-color: var(--accent); height: 28px; margin: 0; cursor: pointer; }
 .check:has(input:disabled) { opacity: 0.5; cursor: default; }
@@ -448,11 +464,14 @@ details.more[open] > summary { margin-bottom: 14px; }
 .sort span { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); }
 .sort select.input { width: auto; max-width: 100%; }
 /* Card width comes from the Card size slider in Settings; small cards get tighter type. */
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min, 210px), 100%), 1fr)); gap: 20px; }
-.grid.compact { gap: 14px; }
-.grid.compact .card h3 { font-size: 19px; }
-.grid.compact .composer { font-size: 16px; }
-.grid.compact .card-body { padding: 10px 10px 12px; gap: 8px; }
+/* Cards are exactly --card-w wide (never wider than the shelf), so the slider resizes them smoothly
+   instead of only when the number of columns changes. Spacing and type scale with the width. */
+.grid {
+  --card-w: 210px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, min(var(--card-w), 100%));
+  gap: clamp(12px, calc(var(--card-w) * 0.095), 20px);
+}
 .card {
   min-width: 0;
   display: flex;
@@ -486,6 +505,13 @@ details.more[open] > summary { margin-bottom: 14px; }
 }
 .composer { margin: -4px 0 0; font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: 18px; color: var(--muted); overflow-wrap: anywhere; }
 :root:lang(ja) .composer, :root:lang(zh) .composer { font-style: normal; font-weight: 600; font-size: 16px; }
+.grid .card-body {
+  padding: clamp(10px, calc(var(--card-w) * 0.067), 14px) clamp(10px, calc(var(--card-w) * 0.067), 14px) clamp(12px, calc(var(--card-w) * 0.076), 16px);
+  gap: clamp(8px, calc(var(--card-w) * 0.048), 10px);
+}
+.grid .card h3 { font-size: clamp(17px, calc(var(--card-w) * 0.11), 23px); }
+.grid .card .composer { font-size: clamp(15px, calc(var(--card-w) * 0.086), 18px); }
+:root:lang(ja) .grid .card .composer, :root:lang(zh) .grid .card .composer { font-size: clamp(14px, calc(var(--card-w) * 0.076), 16px); }
 .perfs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .perfs li { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: 14px; }
 .perfs .role { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); overflow-wrap: anywhere; }
@@ -797,13 +823,12 @@ details.more[open] > summary { margin-bottom: 14px; }
               <input class="input" id="ifpiMould" type="text" autocomplete="off" data-i18n-ph="ifpiMouldPh" placeholder="e.g. IFPI 0110">
             </div>
           </div>
+          <div class="field">
+            <label class="lbl" for="notes" data-i18n="notes">Notes</label>
+            <textarea class="input" id="notes" rows="4" data-i18n-ph="notesPh" placeholder="Anything you want to remember about this disc"></textarea>
+          </div>
         </div>
       </details>
-
-      <div class="field">
-        <label class="lbl" for="notes" data-i18n="notes">Notes</label>
-        <textarea class="input" id="notes" rows="4" data-i18n-ph="notesPh" placeholder="Anything you want to remember about this disc"></textarea>
-      </div>
 
       <fieldset id="cardshow-set">
         <legend data-i18n="cardOwn">Show on this card</legend>
@@ -842,10 +867,16 @@ details.more[open] > summary { margin-bottom: 14px; }
 
     <div class="sect">
       <h3 data-i18n="displaySection">Display</h3>
+      <span class="hint" id="theme-h" data-i18n="theme">Theme</span>
+      <div class="seg" role="group" aria-labelledby="theme-h">
+        <button type="button" id="theme-system" aria-pressed="true" data-i18n="theme.system">Match system</button>
+        <button type="button" id="theme-light" aria-pressed="false" data-i18n="theme.light">Light</button>
+        <button type="button" id="theme-dark" aria-pressed="false" data-i18n="theme.dark">Dark</button>
+      </div>
       <label class="hint" for="card-size" data-i18n="cardSize">Card size</label>
       <div class="range">
         <span aria-hidden="true" data-i18n="sizeSmaller">Smaller</span>
-        <input type="range" id="card-size" min="140" max="320" step="5" value="210">
+        <input type="range" id="card-size" min="140" max="320" step="1" value="210">
         <span aria-hidden="true" data-i18n="sizeLarger">Larger</span>
       </div>
       <span class="hint" data-i18n="cardDetails">Show on cards by default</span>
@@ -970,6 +1001,7 @@ details.more[open] > summary { margin-bottom: 14px; }
       acctNote: "Your account comes from your Claude sign-in. To switch accounts, sign in to Claude with another one.", acctNoteDesktop: "This is your Windows user. Each Windows user has their own collection.",
       langSection: "Language", displaySection: "Display", cardSize: "Card size",
       sizeSmaller: "Smaller", sizeLarger: "Larger",
+      theme: "Theme", "theme.system": "Match system", "theme.light": "Light", "theme.dark": "Dark",
       dataSection: "Your data", exportJson: "Export everything (JSON)", exportCsv: "Export list (CSV)",
       exportNote: "JSON includes cover images and favorites. CSV is a plain list for spreadsheets.",
       exportEmpty: "Add a CD first, then you can export.", toastExported: "Export saved.",
@@ -1054,6 +1086,7 @@ details.more[open] > summary { margin-bottom: 14px; }
       acctNote: "アカウントはClaudeのサインイン情報から取得しています。切り替えるには、別のアカウントでClaudeにサインインしてください。", acctNoteDesktop: "これはWindowsのユーザーです。Windowsユーザーごとに別のコレクションになります。",
       langSection: "言語", displaySection: "表示", cardSize: "カードのサイズ",
       sizeSmaller: "小さく", sizeLarger: "大きく",
+      theme: "テーマ", "theme.system": "システムに合わせる", "theme.light": "ライト", "theme.dark": "ダーク",
       dataSection: "データ", exportJson: "すべてを書き出す（JSON）", exportCsv: "一覧を書き出す（CSV）",
       exportNote: "JSONにはカバー画像とお気に入りが含まれます。CSVは表計算ソフト向けの一覧です。",
       exportEmpty: "先にCDを追加すると書き出せます。", toastExported: "書き出しを保存しました。",
@@ -1138,6 +1171,7 @@ details.more[open] > summary { margin-bottom: 14px; }
       acctNote: "账户信息来自你的 Claude 登录。如需切换账户，请使用另一个账户登录 Claude。", acctNoteDesktop: "这是你的 Windows 用户。每个 Windows 用户拥有各自的收藏。",
       langSection: "语言", displaySection: "显示", cardSize: "卡片大小",
       sizeSmaller: "更小", sizeLarger: "更大",
+      theme: "主题", "theme.system": "跟随系统", "theme.light": "浅色", "theme.dark": "深色",
       dataSection: "数据", exportJson: "导出全部（JSON）", exportCsv: "导出列表（CSV）",
       exportNote: "JSON 包含封面图片和收藏夹；CSV 是适用于电子表格的纯列表。",
       exportEmpty: "请先添加CD，然后才能导出。", toastExported: "导出已保存。",
@@ -1645,15 +1679,31 @@ details.more[open] > summary { margin-bottom: 14px; }
   function fieldsFor(cd) {
     return Array.isArray(cd.cardFields) ? cd.cardFields.slice(0, CARD_FIELD_MAX) : cardFields();
   }
-  /* Smallest card width in pixels. Older settings had "comfortable" (210) and "compact" (150). */
+  /* Card width in pixels. Older settings had "comfortable" (210) and "compact" (150). */
   function cardWidth() {
     var w = parseInt(meta.settings.cardWidth, 10);
     if (w >= 140 && w <= 320) return w;
     return meta.settings.size === "compact" ? 150 : 210;
   }
+  /* Theme: "light", "dark", or unset to match the system. It is saved with the collection and also
+     kept in this browser, so the page starts in the right theme before the collection has loaded. */
+  var cachedTheme = null;
+  try { cachedTheme = localStorage.getItem("cdc.theme"); } catch (e) { /* storage unavailable */ }
+  function currentTheme() {
+    var v = meta.settings.theme;
+    if (v === undefined && !loaded) v = cachedTheme;
+    return v === "light" || v === "dark" ? v : "system";
+  }
+  function applyTheme(v) {
+    if (v === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", v);
+    try { localStorage.setItem("cdc.theme", v); } catch (e) { /* storage unavailable */ }
+    ["system", "light", "dark"].forEach(function (k) {
+      $("theme-" + k).setAttribute("aria-pressed", k === v ? "true" : "false");
+    });
+  }
   function applyCardWidth(w) {
-    $("grid").style.setProperty("--card-min", w + "px");
-    $("grid").classList.toggle("compact", w < 180);
+    $("grid").style.setProperty("--card-w", w + "px");
   }
   function findAlbum(id) {
     for (var i = 0; i < meta.albums.length; i++) if (meta.albums[i].id === id) return meta.albums[i];
@@ -2185,6 +2235,7 @@ details.more[open] > summary { margin-bottom: 14px; }
   }
 
   function renderAccount() {
+    applyTheme(currentTheme());
     var name = acct.loading ? "" : acct.name;
     var initial = name ? Array.from(name)[0].toUpperCase() : "";
     $("acct-label").textContent = name || t("acctSection");
@@ -2313,6 +2364,11 @@ details.more[open] > summary { margin-bottom: 14px; }
     if (!$("acct-pop").hidden && !e.target.closest(".acct-wrap")) closeAccount();
   });
   /* Cards resize live while the slider moves; the size is saved when it is let go. */
+  ["system", "light", "dark"].forEach(function (k) {
+    $("theme-" + k).addEventListener("click", function () {
+      commitMeta(function (m) { if (k === "system") delete m.settings.theme; else m.settings.theme = k; });
+    });
+  });
   $("card-size").addEventListener("input", function (e) { applyCardWidth(parseInt(e.target.value, 10)); });
   $("card-size").addEventListener("change", function (e) {
     var w = parseInt(e.target.value, 10);
@@ -2597,7 +2653,7 @@ details.more[open] > summary { margin-bottom: 14px; }
     $("recordingYear").value = cd.recordingYear || "";
     $("releaseYear").value = cd.releaseYear || cd.year || "";
     DETAIL_FIELDS.forEach(function (f) { $(f).value = cd[f] || ""; });
-    $("more-details").open = ["label", "issuer", "recordingYear", "releaseYear", "year"].concat(DETAIL_FIELDS)
+    $("more-details").open = ["label", "issuer", "recordingYear", "releaseYear", "year", "notes"].concat(DETAIL_FIELDS)
       .some(function (f) { return !!cd[f]; });
     $("notes").value = cd.notes || "";
     resetWorks(cd.works);
@@ -2709,24 +2765,17 @@ details.more[open] > summary { margin-bottom: 14px; }
     var spec = el("dl", "facts");
     [["label", cd.label], ["issuer", cd.issuer], ["recYear", cd.recordingYear], ["relYear", cd.releaseYear || cd.year],
      ["catalogNo", cd.catalogNo], ["manufacturer", cd.manufacturer], ["madeIn", cd.madeIn], ["venue", cd.recordingVenue],
-     ["spars", cd.spars], ["barcode", cd.barcode], ["ifpiMastering", cd.ifpiMastering], ["ifpiMould", cd.ifpiMould]].forEach(function (pair) {
+     ["spars", cd.spars], ["barcode", cd.barcode], ["ifpiMastering", cd.ifpiMastering], ["ifpiMould", cd.ifpiMould],
+     ["notes", cd.notes]].forEach(function (pair) {
       if (!pair[1]) return;
       spec.appendChild(el("dt", null, t(pair[0])));
-      spec.appendChild(el("dd", null, pair[1]));
+      spec.appendChild(el("dd", pair[0] === "notes" ? "pnotes" : null, pair[1]));
     });
     if (spec.children.length) {
       var specBox = el("section", "psect");
       specBox.appendChild(el("h3", null, t("discDetails")));
       specBox.appendChild(spec);
       main.appendChild(specBox);
-    }
-
-    /* Notes are written in the edit form; here they are only shown */
-    if (cd.notes) {
-      var notesBox = el("section", "psect");
-      notesBox.appendChild(el("h3", null, t("notes")));
-      notesBox.appendChild(el("p", "pnotes", cd.notes));
-      main.appendChild(notesBox);
     }
 
     var actions = el("div", "profile-actions");

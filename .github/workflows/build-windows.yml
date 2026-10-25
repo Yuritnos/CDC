@@ -41,7 +41,7 @@ jobs:
           releaseDraft: true
 
       - name: Keep the installers with this run
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: CDC-windows
           path: |
