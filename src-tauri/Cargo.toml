@@ -13,7 +13,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# protocol-asset lets the page play files from the audio library (scope set in tauri.conf.json).
+tauri = { version = "2", features = ["protocol-asset"] }
+# The file picker for adding audio files to a CD.
+tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Downloads cover pictures that the page itself is not allowed to load (see fetch_cover in lib.rs).

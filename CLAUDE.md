@@ -75,6 +75,13 @@ Internally, favorites are still called `albums`, in code, ids and translation ke
 - Cropping (`makeCropper`) is shared by the profile photo (round frame) and CD covers (square frame in the CD form): drag to move, zoom by slider, mouse wheel or +/−, arrow keys move. Only the framed part is saved. A chosen cover file is cropped from its full-size original; covers are only re-encoded when the frame was moved or zoomed (`coverForSaving`, at most ~170 KB). Signed out in the desktop app, the corner shows just "User" (ユーザー / 用户) with the ♪ placeholder, never the Windows user name. The user ID example is "user_id".
 - Tested on 2026-10-25 with two local stand-ins for the desktop app (a PowerShell server serving `src/index.html` with `window.CDC_DESKTOP = true` and `/api/data` backed by a JSON file, on two ports so each has its own localStorage): first-sign-in merge, add/edit/remove both ways, newer-edit-wins, sign-out keeps the collection. Not yet tried in the installed Tauri app.
 
+## Audio
+
+- Owner's choices: people add their own audio files per CD; CDC **copies** them into its library on this computer (`<app data dir>/audio/<CD id>/`). Audio is not uploaded to the account (Supabase free storage is 1 GB for the whole project); only the list syncs, so other computers show those files as "on another computer". Reading or ripping a CD from a drive was discussed and postponed.
+- `cd.audio`: `[{ file ("<CD id>/<file name>" inside the library), name (original file name), size, track (disc track number, 0 = none) }]`. New files are assigned to free tracks in file-name order; each file has a track menu (choosing a taken track swaps).
+- Rust (`lib.rs`): `audio_root_dir`, `add_audio` (native file picker via tauri-plugin-dialog, then copy), `audio_present`, `remove_audio`, `remove_cd_audio`. Every library path is checked to stay inside the audio folder. The page plays files through the asset protocol (`convertFileSrc`), enabled in `tauri.conf.json` for `$APPDATA/audio/**` only (Cargo feature `protocol-asset`).
+- Page: the CD profile's "Audio" section (`audioSection`) and the bottom player bar (`player`, `playAudio`): plays a CD's files in track order, continues to the next, and keeps playing while browsing; media keys via `mediaSession`. Editing a CD keeps `audio`; removing a CD (here, or on another computer via sync) deletes its copies.
+
 ## Roadmap
 
 1. Get the first Windows build passing on GitHub Actions, then publish v0.1.0.
