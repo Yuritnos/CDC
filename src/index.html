@@ -290,6 +290,26 @@ legend { margin-bottom: 8px; }
 .work .linkbtn { padding: 2px 0; font-size: 13.5px; }
 textarea.input { height: auto; min-height: 96px; padding: 10px 12px; line-height: 1.5; resize: vertical; font: inherit; font-size: 16px; color: inherit; }
 
+/* Finding a CD online, at the top of the CD form */
+.lookup { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--accent-soft); border-radius: 3px; }
+.lookup-row { display: flex; gap: 8px; }
+.lookup-row .input { flex: 1; min-width: 0; }
+.lookup-row .btn { height: 42px; }
+.lookup-tools { display: flex; gap: 4px 18px; flex-wrap: wrap; }
+.lookup-tools .linkbtn { padding: 2px 0; font-size: 13.5px; }
+.lookup .hint:empty { display: none; }
+.scan-cam { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.scan-cam[hidden] { display: none; }
+.scan-cam video { width: 100%; max-height: 260px; background: #000; border-radius: 3px; object-fit: cover; }
+.lookup-results { display: flex; flex-direction: column; gap: 6px; }
+.lookup-results:empty { display: none; }
+.lres { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 8px 10px; background: var(--field); border: 1px solid var(--line); border-radius: 3px; }
+.lres strong { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+.lres span { grid-column: 1; font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.lres .btn { grid-column: 2; grid-row: 1 / span 2; }
+.input.filled { background: var(--accent-soft); border-color: var(--accent); }
+.drop.filled { border: 2px solid var(--accent); }
+
 /* Fold-out disc details in the CD form */
 details.more { border-top: 1px solid var(--line); padding-top: 14px; }
 details.more > summary {
@@ -709,6 +729,26 @@ details.more[open] > summary { margin-bottom: 14px; }
       <button type="button" class="iconbtn" id="close-cd" data-i18n-aria="close" aria-label="Close">×</button>
     </div>
     <form id="cd-form" novalidate>
+      <section class="lookup" id="lookup">
+        <label class="lbl" for="lookup-q" data-i18n="lookupHead">Find this CD online</label>
+        <div class="lookup-row">
+          <input class="input" id="lookup-q" type="text" autocomplete="off" data-i18n-ph="lookupPh" placeholder="Barcode, catalogue or matrix number">
+          <button type="button" class="btn small" id="lookup-go" data-i18n="lookupGo">Search</button>
+        </div>
+        <div class="lookup-tools">
+          <button type="button" class="linkbtn" id="scan-photo" data-i18n="scanPhoto">Scan a barcode from a photo</button>
+          <button type="button" class="linkbtn" id="scan-camera" data-i18n="scanCamera">Scan with the camera</button>
+          <input class="sr" type="file" id="scan-file" accept="image/*" tabindex="-1" aria-hidden="true">
+        </div>
+        <div class="scan-cam" id="scan-cam" hidden>
+          <video id="scan-video" playsinline muted></video>
+          <button type="button" class="btn small quiet" id="scan-stop" data-i18n="scanStop">Stop camera</button>
+        </div>
+        <p class="hint" id="lookup-status" role="status" aria-live="polite"></p>
+        <div class="lookup-results" id="lookup-results"></div>
+        <p class="hint" data-i18n="lookupNote">Details come from Discogs, an online music database. The release you choose replaces the details it has; nothing is saved until you add the CD.</p>
+      </section>
+
       <div class="field">
         <div class="photo">
           <label class="drop" id="drop" for="photo">
@@ -1001,6 +1041,24 @@ details.more[open] > summary { margin-bottom: 14px; }
       acctNote: "Your account comes from your Claude sign-in. To switch accounts, sign in to Claude with another one.", acctNoteDesktop: "This is your Windows user. Each Windows user has their own collection.",
       langSection: "Language", displaySection: "Display", cardSize: "Card size",
       sizeSmaller: "Smaller", sizeLarger: "Larger",
+      lookupHead: "Find this CD online", lookupPh: "Barcode, catalogue or matrix number", lookupGo: "Search",
+      scanPhoto: "Scan a barcode from a photo", scanCamera: "Scan with the camera", scanStop: "Stop camera",
+      lookupNote: "Details come from Discogs, an online music database. The release you choose replaces the details it has; nothing is saved until you add the CD.",
+      lookupEmptyQ: "Type or scan a barcode, catalogue number or matrix first.", lookupSearching: "Searching Discogs…",
+      lookupNone: "Nothing found for “{q}”. Check the number, try another code from the disc, or fill in the details yourself.",
+      lookupOne: "1 match. Choose it if it is your disc.", lookupMany: "{n} matches. Choose the one that is your disc.",
+      lookupUse: "Use this", lookupLoading: "Getting the details…",
+      lookupFilled: "Filled in {n} fields from {source}. They are highlighted; check them before adding the CD.",
+      lookupNothing: "That release had nothing to add to the fields you left empty.",
+      lookupFail: "Could not reach Discogs. Check your internet connection and try again.",
+      lookupBusy: "Discogs is busy. Wait a minute and try again.",
+      coverSearching: "Looking for a cover…", coverFound: "Added a cover from the Cover Art Archive; it may show another issue of this release.",
+      coverFoundExact: "Added this release's cover from Discogs.", lookupInUse: "In use",
+      coverNone: "No cover was found online.",
+      scanReading: "Looking for a barcode…", scanFound: "Found barcode {code}.",
+      scanNone: "No barcode found in that picture. Try a sharp, straight-on photo of the barcode, or type the number.",
+      cameraFail: "The camera could not be opened. Scan a photo instead, or type the number.",
+      cameraHint: "Hold the barcode flat and still in front of the camera.",
       theme: "Theme", "theme.system": "Match system", "theme.light": "Light", "theme.dark": "Dark",
       dataSection: "Your data", exportJson: "Export everything (JSON)", exportCsv: "Export list (CSV)",
       exportNote: "JSON includes cover images and favorites. CSV is a plain list for spreadsheets.",
@@ -1086,6 +1144,24 @@ details.more[open] > summary { margin-bottom: 14px; }
       acctNote: "アカウントはClaudeのサインイン情報から取得しています。切り替えるには、別のアカウントでClaudeにサインインしてください。", acctNoteDesktop: "これはWindowsのユーザーです。Windowsユーザーごとに別のコレクションになります。",
       langSection: "言語", displaySection: "表示", cardSize: "カードのサイズ",
       sizeSmaller: "小さく", sizeLarger: "大きく",
+      lookupHead: "オンラインでCDを探す", lookupPh: "バーコード、規格品番、マトリクス番号", lookupGo: "検索",
+      scanPhoto: "写真からバーコードを読み取る", scanCamera: "カメラで読み取る", scanStop: "カメラを止める",
+      lookupNote: "情報はオンラインの音楽データベース Discogs から取得します。選んだリリースにある項目は置き換えられます。CDを追加するまで保存されません。",
+      lookupEmptyQ: "先にバーコード、規格品番またはマトリクス番号を入力するか、読み取ってください。", lookupSearching: "Discogs を検索中…",
+      lookupNone: "「{q}」は見つかりませんでした。番号を確認するか、ディスクの別の番号で試すか、手で入力してください。",
+      lookupOne: "1件見つかりました。お持ちのディスクであれば選んでください。", lookupMany: "{n}件見つかりました。お持ちのディスクを選んでください。",
+      lookupUse: "これを使う", lookupLoading: "詳細を取得中…",
+      lookupFilled: "{source} から {n} 項目を入力しました。色の付いた項目を確認してからCDを追加してください。",
+      lookupNothing: "このリリースには、空欄に入れられる情報がありませんでした。",
+      lookupFail: "Discogs に接続できませんでした。インターネット接続を確認して、もう一度お試しください。",
+      lookupBusy: "Discogs が混み合っています。1分ほど待ってから、もう一度お試しください。",
+      coverSearching: "カバー画像を探しています…", coverFound: "Cover Art Archive からカバー画像を追加しました。同じリリースの別の版の画像の場合があります。",
+      coverFoundExact: "Discogs からこのリリースのカバー画像を追加しました。", lookupInUse: "使用中",
+      coverNone: "オンラインではカバー画像が見つかりませんでした。",
+      scanReading: "バーコードを探しています…", scanFound: "バーコード {code} を読み取りました。",
+      scanNone: "この写真からバーコードが見つかりませんでした。バーコードを正面からはっきり撮った写真を使うか、番号を入力してください。",
+      cameraFail: "カメラを起動できませんでした。写真から読み取るか、番号を入力してください。",
+      cameraHint: "バーコードをカメラの前に平らにして、動かさずに持ってください。",
       theme: "テーマ", "theme.system": "システムに合わせる", "theme.light": "ライト", "theme.dark": "ダーク",
       dataSection: "データ", exportJson: "すべてを書き出す（JSON）", exportCsv: "一覧を書き出す（CSV）",
       exportNote: "JSONにはカバー画像とお気に入りが含まれます。CSVは表計算ソフト向けの一覧です。",
@@ -1171,6 +1247,24 @@ details.more[open] > summary { margin-bottom: 14px; }
       acctNote: "账户信息来自你的 Claude 登录。如需切换账户，请使用另一个账户登录 Claude。", acctNoteDesktop: "这是你的 Windows 用户。每个 Windows 用户拥有各自的收藏。",
       langSection: "语言", displaySection: "显示", cardSize: "卡片大小",
       sizeSmaller: "更小", sizeLarger: "更大",
+      lookupHead: "在线查找这张CD", lookupPh: "条形码、目录编号或矩阵码", lookupGo: "搜索",
+      scanPhoto: "从照片识别条形码", scanCamera: "用摄像头扫描", scanStop: "关闭摄像头",
+      lookupNote: "信息来自在线音乐数据库 Discogs。所选版本中有的信息会替换现有内容；添加CD之前不会保存。",
+      lookupEmptyQ: "请先输入或扫描条形码、目录编号或矩阵码。", lookupSearching: "正在搜索 Discogs…",
+      lookupNone: "没有找到“{q}”。请检查编号，尝试光盘上的其他编号，或自行填写。",
+      lookupOne: "找到 1 条结果。如果是你的CD，请选择它。", lookupMany: "找到 {n} 条结果。请选择你的那张CD。",
+      lookupUse: "使用此结果", lookupLoading: "正在获取详细信息…",
+      lookupFilled: "已从 {source} 填写 {n} 项，并以颜色标出。添加CD前请核对。",
+      lookupNothing: "该版本没有可填入空白项目的信息。",
+      lookupFail: "无法连接 Discogs。请检查网络连接后重试。",
+      lookupBusy: "Discogs 当前繁忙。请稍等一分钟后重试。",
+      coverSearching: "正在查找封面…", coverFound: "已从 Cover Art Archive 添加封面，图片可能来自同一专辑的其他版本。",
+      coverFoundExact: "已从 Discogs 添加这一版本的封面。", lookupInUse: "使用中",
+      coverNone: "未在网上找到封面。",
+      scanReading: "正在查找条形码…", scanFound: "已识别条形码 {code}。",
+      scanNone: "未在这张图片中找到条形码。请使用正面拍摄、清晰的条形码照片，或直接输入编号。",
+      cameraFail: "无法打开摄像头。请改用照片识别，或直接输入编号。",
+      cameraHint: "请将条形码平放在摄像头前并保持不动。",
       theme: "主题", "theme.system": "跟随系统", "theme.light": "浅色", "theme.dark": "深色",
       dataSection: "数据", exportJson: "导出全部（JSON）", exportCsv: "导出列表（CSV）",
       exportNote: "JSON 包含封面图片和收藏夹；CSV 是适用于电子表格的纯列表。",
@@ -1346,6 +1440,7 @@ details.more[open] > summary { margin-bottom: 14px; }
   function closeWin(id) {
     var ov = $("win-" + id);
     if (ov.hidden) return;
+    if (id === "cd") stopCamera();
     if (id === "cd" && editingId) { clearForm(); renderAll(); }
     if (id === "album") resetAlbumDlg();
     if (id === "detail") { detailId = null; detailConfirm = false; }
@@ -1405,7 +1500,10 @@ details.more[open] > summary { margin-bottom: 14px; }
   }
   async function prepareCover(file) {
     if (!file.type || file.type.indexOf("image/") !== 0) throw new Error("not_image");
-    var img = await loadImage(await fileToDataUrl(file));
+    return imageToCover(await loadImage(await fileToDataUrl(file)));
+  }
+  /* Shrink a loaded image to a JPEG data URL of at most about 170 KB. */
+  function imageToCover(img) {
     var longest = Math.max(img.naturalWidth, img.naturalHeight);
     if (!longest) throw new Error("decode");
     var maxSide = 800;
@@ -1444,6 +1542,7 @@ details.more[open] > summary { margin-bottom: 14px; }
   async function handleFile(file) {
     if (!file) return;
     $("photo-err").textContent = "";
+    $("drop").classList.remove("filled");
     try {
       photoData = await prepareCover(file);
     } catch (e) {
@@ -1469,7 +1568,7 @@ details.more[open] > summary { margin-bottom: 14px; }
     handleFile(f);
   });
   $("photo-replace").addEventListener("click", function () { $("photo").click(); });
-  $("photo-remove").addEventListener("click", function () { photoData = null; showPhoto(); });
+  $("photo-remove").addEventListener("click", function () { photoData = null; $("drop").classList.remove("filled"); showPhoto(); });
 
   /* ---------- performer rows ---------- */
   function addRow(role, name) {
@@ -1513,6 +1612,173 @@ details.more[open] > summary { margin-bottom: 14px; }
       if (name) out.push({ role: role, name: name });
     });
     return out;
+  }
+
+  /* ---------- reading a barcode from a picture ----------
+     CDs carry EAN-13 or UPC-A barcodes (UPC-A is EAN-13 with a leading 0). Browsers on Windows have no
+     built-in barcode reader, so this scans many lines across the picture, across and down, in both
+     directions, and keeps the number that reads with a correct check digit most often. */
+  var EAN_WIDTHS = ["3211", "2221", "2122", "1411", "1132", "1231", "1114", "1312", "1213", "3112"];
+  var EAN_FIRST = ["LLLLLL", "LLGLGG", "LLGGLG", "LLGGGL", "LGLLGG", "LGGLLG", "LGGGLL", "LGLGLG", "LGLGGL", "LGGLGL"];
+  var EAN_SETS = [];
+  EAN_WIDTHS.forEach(function (p, d) {
+    var w = p.split("").map(Number);
+    EAN_SETS.push({ d: d, set: "L", w: w });
+    EAN_SETS.push({ d: d, set: "G", w: w.slice().reverse() });
+  });
+  /* The best-matching digit for four bar/space widths, or null if none is close. */
+  function eanDigit(runs, at, rightHalf) {
+    var sum = runs[at] + runs[at + 1] + runs[at + 2] + runs[at + 3];
+    var best = null, bestErr = 1.6;
+    EAN_SETS.forEach(function (p) {
+      if (rightHalf && p.set === "G") return;
+      var err = 0;
+      for (var i = 0; i < 4; i++) err += Math.abs(runs[at + i] * 7 / sum - p.w[i]);
+      if (err < bestErr) { bestErr = err; best = p; }
+    });
+    return best;
+  }
+  /* Decode 59 runs starting at a dark run: guard, 6 digits, middle guard, 6 digits, guard. */
+  function eanAt(runs, s) {
+    if (s < 1 || s + 59 > runs.length) return null;
+    var total = 0;
+    for (var i = 0; i < 59; i++) total += runs[s + i];
+    var m = total / 95;
+    function guard(from, n) {
+      for (var k = 0; k < n; k++) { var r = runs[from + k] / m; if (r < 0.4 || r > 1.8) return false; }
+      return true;
+    }
+    if (runs[s - 1] < m * 2.5 || !guard(s, 3) || !guard(s + 27, 5) || !guard(s + 56, 3)) return null;
+    var digits = [], parity = "";
+    for (var k = 0; k < 12; k++) {
+      var right = k >= 6;
+      var p = eanDigit(runs, s + 3 + k * 4 + (right ? 5 : 0), right);
+      if (!p) return null;
+      digits.push(p.d);
+      if (!right) parity += p.set;
+    }
+    var first = EAN_FIRST.indexOf(parity);
+    if (first === -1) return null;
+    var code = [first].concat(digits);
+    var check = 0;
+    for (var j = 0; j < 12; j++) check += code[j] * (j % 2 ? 3 : 1);
+    if ((10 - check % 10) % 10 !== code[12]) return null;
+    return code.join("");
+  }
+  /* Turn one line of brightness values into alternating dark/light run widths, using a local average
+     as the threshold so uneven lighting does not matter. Edges are placed between pixels where the
+     brightness crosses the threshold, so blurred thin bars keep their true width. Returns the runs
+     and whether run 0 is dark. */
+  function lineRuns(lum) {
+    var n = lum.length, win = Math.max(8, Math.round(n / 40));
+    var pre = [0];
+    for (var i = 0; i < n; i++) pre.push(pre[i] + lum[i]);
+    var thr = new Float32Array(n);
+    for (var x = 0; x < n; x++) {
+      var a = Math.max(0, x - win), b = Math.min(n, x + win + 1);
+      thr[x] = (pre[b] - pre[a]) / (b - a);
+    }
+    var runs = [], firstDark = lum[0] < thr[0], cur = firstDark, edge = 0;
+    for (var k = 1; k < n; k++) {
+      var dark = lum[k] < thr[k];
+      if (dark === cur) continue;
+      var d0 = lum[k - 1] - thr[k - 1], d1 = lum[k] - thr[k];
+      var at = k - 1 + (d0 === d1 ? 0.5 : d0 / (d0 - d1));
+      runs.push(at - edge);
+      edge = at;
+      cur = dark;
+    }
+    runs.push(n - edge);
+    return { runs: runs, firstDark: firstDark };
+  }
+  /* A second way to find bars, for blurry photos: every dip in brightness is a bar and every rise a
+     space, even when blur has made a thin space greyer than the average. Small wiggles (noise) are
+     ignored; each edge sits halfway between a peak and the next dip. */
+  function peakRuns(lum) {
+    var n = lum.length;
+    var sorted = Array.prototype.slice.call(lum).sort(function (a, b) { return a - b; });
+    var D = Math.max(12, (sorted[Math.floor(n * 0.95)] - sorted[Math.floor(n * 0.05)]) * 0.2);
+    var ext = [], look = 0;
+    var maxV = lum[0], maxI = 0, minV = lum[0], minI = 0;
+    for (var x = 1; x < n; x++) {
+      var v = lum[x];
+      if (v > maxV) { maxV = v; maxI = x; }
+      if (v < minV) { minV = v; minI = x; }
+      if (look !== -1 && v < maxV - D) {
+        ext.push({ i: maxI, v: maxV, dark: false });
+        look = -1; minV = v; minI = x;
+      } else if (look !== 1 && v > minV + D) {
+        ext.push({ i: minI, v: minV, dark: true });
+        look = 1; maxV = v; maxI = x;
+      }
+    }
+    if (look === 1) ext.push({ i: maxI, v: maxV, dark: false });
+    else if (look === -1) ext.push({ i: minI, v: minV, dark: true });
+    if (ext.length < 2) return { runs: [n], firstDark: false };
+    var runs = [], edge = 0;
+    for (var j = 0; j + 1 < ext.length; j++) {
+      var level = (ext[j].v + ext[j + 1].v) / 2, at = (ext[j].i + ext[j + 1].i) / 2;
+      for (var k = ext[j].i; k < ext[j + 1].i; k++) {
+        var d0 = lum[k] - level, d1 = lum[k + 1] - level;
+        if ((d0 <= 0) !== (d1 <= 0)) { at = k + (d0 === d1 ? 0.5 : d0 / (d0 - d1)); break; }
+      }
+      runs.push(at - edge);
+      edge = at;
+    }
+    runs.push(n - edge);
+    return { runs: runs, firstDark: ext[0].dark };
+  }
+  function scanLine(lum, votes) {
+    scanRuns(lineRuns(lum), votes);
+    scanRuns(peakRuns(lum), votes);
+  }
+  function scanRuns(line, votes) {
+    [false, true].forEach(function (backwards) {
+      var runs = backwards ? line.runs.slice().reverse() : line.runs;
+      var lastDark = (line.runs.length - 1) % 2 === 0 ? line.firstDark : !line.firstDark;
+      var dark0 = backwards ? lastDark : line.firstDark;
+      for (var s = dark0 ? 2 : 1; s + 59 <= runs.length; s += 2) {
+        var code = eanAt(runs, s);
+        if (code) { votes[code] = (votes[code] || 0) + 1; s += 58; }
+      }
+    });
+  }
+  /* Read a barcode from a canvas. Returns the 13-digit number (12 digits for UPC-A) or null. */
+  function readBarcode(canvas) {
+    var w = canvas.width, h = canvas.height;
+    var px = canvas.getContext("2d").getImageData(0, 0, w, h).data;
+    var lum = new Float32Array(w * h);
+    for (var i = 0, j = 0; i < lum.length; i++, j += 4) lum[i] = 0.299 * px[j] + 0.587 * px[j + 1] + 0.114 * px[j + 2];
+    var votes = {};
+    var steps = 70;
+    for (var r = 1; r < steps; r++) {
+      var y = Math.round(h * r / steps), row = new Float32Array(w);
+      for (var x = 0; x < w; x++) row[x] = (lum[(y - 1) * w + x] + lum[y * w + x] + lum[Math.min(h - 1, y + 1) * w + x]) / 3;
+      scanLine(row, votes);
+      var xc = Math.round(w * r / steps), col = new Float32Array(h);
+      for (var yy = 0; yy < h; yy++) col[yy] = (lum[yy * w + xc - 1] + lum[yy * w + xc] + lum[yy * w + Math.min(w - 1, xc + 1)]) / 3;
+      scanLine(col, votes);
+    }
+    var best = null;
+    Object.keys(votes).forEach(function (c) { if (!best || votes[c] > votes[best]) best = c; });
+    if (!best) return null;
+    return best.charAt(0) === "0" ? best.slice(1) : best;
+  }
+  /* Read a barcode from an image file, trying a couple of sizes. */
+  async function barcodeFromFile(file) {
+    var img = await loadImage(await fileToDataUrl(file));
+    var sizes = [1600, 1000, 2400];
+    for (var i = 0; i < sizes.length; i++) {
+      var s = Math.min(1, sizes[i] / Math.max(img.naturalWidth, img.naturalHeight));
+      var c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(img.naturalWidth * s));
+      c.height = Math.max(1, Math.round(img.naturalHeight * s));
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      var code = readBarcode(c);
+      if (code) return code;
+      if (s === 1) break;
+    }
+    return null;
   }
 
   /* ---------- works and their tracks ----------
@@ -2622,6 +2888,8 @@ details.more[open] > summary { margin-bottom: 14px; }
     ["title", "recordingYear", "releaseYear", "works"].forEach(function (f) { setErr(f, ""); });
     $("photo-err").textContent = "";
     $("more-details").open = false;
+    qsa("#cd-form .filled").forEach(function (n) { n.classList.remove("filled"); });
+    resetLookup();
     showPhoto();
     resetRows();
     resetWorks();
@@ -2671,6 +2939,486 @@ details.more[open] > summary { margin-bottom: 14px; }
     renderGrid();
     applyMode();
     openWin("cd");
+  }
+
+  /* ---------- finding a CD online ----------
+     The user types or scans a barcode, catalogue number or matrix, picks the matching release, and its
+     details fill the empty parts of the form. Each source in LOOKUP_SOURCES turns a query into a list
+     of candidates, and a candidate into CD fields in CDC's own shape (title, composer, performers,
+     works, label, catalogNo, barcode, years, madeIn, manufacturer, recordingVenue, spars, IFPI codes).
+     Another database, or reading the cover photo with AI, can be added as one more source. */
+  function dgClean(s) {
+    var c = String(s || "").replace(/\s\(\d+\)$/, "").replace(/\*(?=\s|$|,)/g, "").trim();
+    return /^[\-–—.·•\s]*$/.test(c) ? "" : c;
+  }
+  /* Names that are clearly an orchestra, or a choir or chamber group, in several languages. */
+  var ORCHESTRA_NAME = /(orchest|orkest|orkiest|orquest|philharm|filharm|filarm|symphon|symfon|sinfon|kapelle|camerata|gewandhaus|concertgebouw|оркестр|管弦|交響|交响|楽団|乐团)/i;
+  var CHOIR_NAME = /(choir|chor|coro|chœur|choeur|kór|ensemble|consort|quartet|quartett|quatuor|trio|singers|хор|合唱)/i;
+  function codeKey(s) { return String(s || "").toUpperCase().replace(/[^0-9A-Z]/g, ""); }
+  async function dgGet(path, params) {
+    var url = "https://api.discogs.com/" + path + (params ? "?" + new URLSearchParams(params) : "");
+    var r;
+    try { r = await fetch(url, { headers: { Accept: "application/json" } }); } catch (e) { throw { code: "offline" }; }
+    if (r.status === 429) throw { code: "busy" };
+    if (!r.ok) throw { code: "http" };
+    return r.json();
+  }
+  /* Discogs credit roles to CDC's performer roles; null for people who did not perform. */
+  function dgRole(role) {
+    var parts = String(role || "").replace(/\[[^\]]*\]/g, "").split(",");
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i].trim().toLowerCase();
+      if (!p) continue;
+      if (/^conduct/.test(p)) return "Conductor";
+      if (/orchestra/.test(p)) return "Orchestra";
+      if (/^(ensemble|choir|chorus|band|quartet|trio|chamber)/.test(p)) return "Ensemble";
+      if (/(vocals|voice|soprano|mezzo|alto|tenor|baritone|countertenor|treble)/.test(p)) return "Singer";
+      if (/^(piano|fortepiano)/.test(p)) return "Pianist";
+      if (/^violin/.test(p)) return "Violinist";
+      if (/^(cello|violoncello)/.test(p)) return "Cellist";
+      if (/^(organ|harpsichord|cembalo|guitar|lute|harp|flute|oboe|clarinet|bassoon|horn|french horn|trumpet|trombone|tuba|viola|double bass|bass|percussion|timpani|recorder|saxophone|accordion|keyboards|soloist|performer|leader|concertmaster)/.test(p)) return "Other";
+    }
+    return null;
+  }
+  function dgComposers(credits) {
+    var out = [];
+    (credits || []).forEach(function (a) {
+      if (/^(composed by|composer|written-by|music by)/i.test(a.role || "")) {
+        var n = dgClean(a.name);
+        if (n && out.indexOf(n) === -1) out.push(n);
+      }
+    });
+    return out;
+  }
+  /* Discogs track lists use "index" entries (a work with movements as sub-tracks), "heading" entries
+     (a work title before its tracks), or plain tracks titled "Work: Movement". All become CDC works. */
+  function dgWorks(tracklist, composers) {
+    /* A track's main artist is often its composer; trust that only for names credited as composers. */
+    function trackComposer(t) {
+      var byCredit = dgComposers(t.extraartists)[0];
+      if (byCredit) return byCredit;
+      var names = (t.artists || []).map(function (a) { return dgClean(a.name); });
+      for (var i = 0; i < names.length; i++) if ((composers || []).indexOf(names[i]) !== -1) return names[i];
+      return "";
+    }
+    var works = [], cur = null;
+    function work(title, credits) {
+      cur = { title: dgClean(title), composer: dgComposers(credits)[0] || "", tracks: [] };
+      works.push(cur);
+      return cur;
+    }
+    function track(t, into) {
+      /* CDC numbers tracks itself, so drop a leading "1. " (Roman movement numbers stay). */
+      into.tracks.push({ title: dgClean(t.title).replace(/^\d+\.\s+/, ""), duration: DURATION.test(t.duration || "") ? t.duration : "" });
+      if (!into.composer) into.composer = trackComposer(t);
+    }
+    (tracklist || []).forEach(function (t) {
+      if (t.type_ === "index") {
+        var w = work(t.title, t.extraartists);
+        (t.sub_tracks || []).forEach(function (s) { track(s, w); });
+        cur = null;
+      } else if (t.type_ === "heading") {
+        work(t.title, t.extraartists);
+      } else if (t.type_ === "track" || !t.type_) {
+        var title = String(t.title || "");
+        var cut = title.indexOf(": ");
+        if (!cur && cut > 0) {
+          var head = title.slice(0, cut);
+          var last = works[works.length - 1];
+          var into = last && last.split && last.title === dgClean(head) ? last : work(head, null);
+          into.split = true;
+          track({ title: title.slice(cut + 2), duration: t.duration, extraartists: t.extraartists, artists: t.artists }, into);
+          cur = null;
+        } else {
+          if (!cur) { cur = work("", null); }
+          track(t, cur);
+        }
+      }
+    });
+    return works.filter(function (w) { delete w.split; return w.title || w.tracks.length; });
+  }
+  var discogsSource = {
+    name: "Discogs",
+    /* Barcodes search the barcode field. Other text is tried as a catalogue number, then against the
+       codes printed or engraved on the disc (Discogs lists matrix numbers there too), and finally as a
+       catalogue number without its last part, since matrices often add a suffix like "01". */
+    search: async function (q) {
+      var raw = q.trim(), compact = raw.replace(/[\s.\-]/g, "");
+      var base = { type: "release", format: "CD", per_page: 20 };
+      function find(extra) { return dgGet("database/search", Object.assign({}, base, extra)).then(function (j) { return j.results || []; }); }
+      /* Discogs matches loosely, so keep only releases whose own numbers really are the one typed. */
+      function catnoIs(x, key) {
+        return String(x.catno || "").split(",").some(function (c) { return codeKey(c) === key; });
+      }
+      function codesHave(x, test) { return (x.barcode || []).some(function (b) { return test(codeKey(b)); }); }
+      var found = [];
+      if (/^\d{12,14}$/.test(compact)) {
+        var digits = compact.replace(/^0+/, "");
+        found = (await find({ barcode: compact })).filter(function (x) {
+          return codesHave(x, function (k) { return k.replace(/^0+/, "") === digits; });
+        });
+      } else {
+        var key = codeKey(raw);
+        found = (await find({ catno: raw })).filter(function (x) { return catnoIs(x, key); });
+        if (!found.length) {
+          found = (await find({ barcode: raw })).filter(function (x) {
+            return codesHave(x, function (k) { return k === key || k.indexOf(key) === 0; });
+          });
+        }
+        if (!found.length && /\s\S+$/.test(raw)) {
+          var shorter = raw.replace(/\s\S+$/, "");
+          found = (await find({ catno: shorter })).filter(function (x) { return catnoIs(x, codeKey(shorter)); });
+        }
+      }
+      return found.slice(0, 12).map(function (x) {
+        return {
+          source: discogsSource,
+          id: x.id,
+          title: dgClean(x.title),
+          line: [x.country, x.year, [(x.label || [])[0], x.catno].filter(Boolean).join(" "), (x.format || []).join(", ")]
+            .filter(Boolean).join(" · ")
+        };
+      });
+    },
+    details: async function (item, query) {
+      var d = await dgGet("releases/" + item.id);
+      var out = { title: dgClean(d.title) };
+      /* Credits can sit on the release or on single tracks and works; gather them all. */
+      var credits = (d.extraartists || []).slice();
+      (d.tracklist || []).forEach(function (tr) {
+        [tr].concat(tr.sub_tracks || []).forEach(function (x) { credits = credits.concat(x.extraartists || []); });
+      });
+      var composers = dgComposers(credits);
+      out.works = dgWorks(d.tracklist, composers);
+      out.works.forEach(function (w) { if (w.composer && composers.indexOf(w.composer) === -1) composers.push(w.composer); });
+      if (composers.length === 1) {
+        out.composer = composers[0];
+        out.works.forEach(function (w) { if (w.composer === out.composer) w.composer = ""; });
+      }
+      var seen = {};
+      out.performers = [];
+      credits.forEach(function (a) {
+        var role = dgRole(a.role), name = dgClean(a.name);
+        if (!role || !name || seen[name]) return;
+        seen[name] = role;
+        out.performers.push({ role: role, name: name });
+      });
+      /* Some releases only list names without roles. Then the name tells orchestras and choirs apart,
+         and the order does the rest: Discogs lists classical credits as soloists, orchestra, conductor,
+         so a person named after an orchestra is taken as its conductor. */
+      var named = [];
+      (d.artists || []).forEach(function (a) { named.push(a); });
+      (d.tracklist || []).forEach(function (tr) {
+        [tr].concat(tr.sub_tracks || []).forEach(function (x) { (x.artists || []).forEach(function (a) { named.push(a); }); });
+      });
+      var afterOrchestra = false;
+      named.forEach(function (a) {
+        var name = dgClean(a.name);
+        if (!name || composers.indexOf(name) !== -1 || /^various$/i.test(name)) return;
+        var role = seen[name] || (ORCHESTRA_NAME.test(name) ? "Orchestra" : CHOIR_NAME.test(name) ? "Ensemble" : afterOrchestra ? "Conductor" : "Other");
+        afterOrchestra = role === "Orchestra";
+        if (seen[name]) return;
+        seen[name] = role;
+        out.performers.push({ role: role, name: name });
+      });
+      out.performers = out.performers.slice(0, 8);
+      var lab = (d.labels || [])[0];
+      if (lab) {
+        out.label = dgClean(lab.name);
+        if (lab.catno && !/^none$/i.test(lab.catno)) out.catalogNo = out.releaseCatno = lab.catno;
+      }
+      /* Keep the number the user typed when it was a catalogue or matrix number: it is what is on their disc. */
+      if (query && !/^\d{12,14}$/.test(query.replace(/[\s.\-]/g, ""))) out.catalogNo = query.trim();
+      var pic = (d.images || []).filter(function (im) { return im.type === "primary"; })[0] || (d.images || [])[0];
+      if (pic && pic.uri) out.coverUrl = pic.uri;
+      out.artistLine = (d.artists || []).map(function (a) { return dgClean(a.name); }).filter(Boolean)[0] || "";
+      if (d.year && d.year >= 1980) out.releaseYear = String(d.year);
+      if (d.country) out.madeIn = d.country;
+      (d.companies || []).forEach(function (c) {
+        var type = c.entity_type_name || "";
+        if (!out.manufacturer && /^(manufactured by|pressed by|made by)/i.test(type)) out.manufacturer = dgClean(c.name);
+        if (!out.recordingVenue && /^recorded at/i.test(type)) out.recordingVenue = dgClean(c.name);
+      });
+      (d.identifiers || []).forEach(function (i) {
+        var type = i.type || "", v = String(i.value || "").trim();
+        if (!v) return;
+        if (!out.barcode && type === "Barcode" && /^[\d\s]{12,17}$/.test(v)) out.barcode = v.replace(/\s/g, "");
+        if (!out.spars && type === "SPARS Code" && /^(DDD|ADD|AAD)$/i.test(v)) out.spars = v.toUpperCase();
+        if (!out.ifpiMastering && type === "Mastering SID Code") out.ifpiMastering = v;
+        if (!out.ifpiMould && type === "Mould SID Code") out.ifpiMould = v;
+      });
+      return out;
+    }
+  };
+  var LOOKUP_SOURCES = [discogsSource];
+
+  /* Covers, best first. Returns { data: JPEG data URL, exact: true if it is this very release } or null.
+     1. The release's own picture on Discogs. Discogs does not let web pages load its pictures, so the
+        desktop app downloads it (fetch_cover in lib.rs); outside the app this step is skipped.
+     2. The Cover Art Archive (run with MusicBrainz, and open to web pages): first this release found by
+        barcode or catalogue number, then any edition of the same album, then a search by title and
+        artist. These may show another issue of the album. */
+  async function findCover(p) {
+    if (IS_TAURI && p.coverUrl) {
+      try {
+        var buf = await window.__TAURI__.core.invoke("fetch_cover", { url: p.coverUrl });
+        var blobUrl = URL.createObjectURL(new Blob([buf]));
+        try { return { data: imageToCover(await loadImage(blobUrl)), exact: true }; }
+        finally { URL.revokeObjectURL(blobUrl); }
+      } catch (e) { /* fall back to the Cover Art Archive */ }
+    }
+    var data = await coverArtArchive(p);
+    return data ? { data: data, exact: false } : null;
+  }
+  function crossImage(url) {
+    return new Promise(function (resolve, reject) {
+      var im = new Image();
+      im.crossOrigin = "anonymous";
+      im.onload = function () { resolve(im); };
+      im.onerror = function () { reject(new Error("image")); };
+      im.src = url;
+    });
+  }
+  /* MusicBrainz asks for at most one request a second. */
+  var mbLast = 0;
+  async function mbReleases(query) {
+    var gap = mbLast + 1100 - Date.now();
+    if (gap > 0) await new Promise(function (r) { setTimeout(r, gap); });
+    mbLast = Date.now();
+    var r = await fetch("https://musicbrainz.org/ws/2/release/?fmt=json&limit=8&query=" + encodeURIComponent(query));
+    return r.ok ? (await r.json()).releases || [] : [];
+  }
+  async function caaFront(kind, id) {
+    try {
+      var ca = await fetch("https://coverartarchive.org/" + kind + "/" + id);
+      if (!ca.ok) return null;
+      var front = ((await ca.json()).images || []).filter(function (im) { return im.front; })[0];
+      if (!front) return null;
+      var th = front.thumbnails || {};
+      var url = String(th["500"] || th.large || front.image || "").replace(/^http:/, "https:");
+      return url ? imageToCover(await crossImage(url)) : null;
+    } catch (e) { return null; }
+  }
+  async function coverArtArchive(p) {
+    var quote = function (s) { return '"' + String(s).replace(/["\\]/g, " ") + '"'; };
+    var queries = [];
+    if (p.barcode) queries.push("barcode:" + p.barcode);
+    if (p.releaseCatno) queries.push("catno:" + quote(p.releaseCatno));
+    var groups = [];
+    try {
+      for (var i = 0; i < queries.length; i++) {
+        var list = await mbReleases(queries[i]);
+        for (var j = 0; j < list.length && j < 4; j++) {
+          var got = await caaFront("release", list[j].id);
+          if (got) return got;
+          var g = list[j]["release-group"] && list[j]["release-group"].id;
+          if (g && groups.indexOf(g) === -1) groups.push(g);
+        }
+      }
+      for (var k = 0; k < groups.length && k < 3; k++) {
+        var any = await caaFront("release-group", groups[k]);
+        if (any) return any;
+      }
+      if (p.title) {
+        var who = p.artistLine || p.composer || "";
+        var byName = await mbReleases("release:" + quote(p.title) + (who ? " AND artist:" + quote(who) : ""));
+        var seen = [];
+        for (var n = 0; n < byName.length && seen.length < 3; n++) {
+          var g2 = byName[n]["release-group"] && byName[n]["release-group"].id;
+          if (!g2 || seen.indexOf(g2) !== -1) continue;
+          seen.push(g2);
+          var named = await caaFront("release-group", g2);
+          if (named) return named;
+        }
+      }
+    } catch (e) { /* offline or refused: no cover */ }
+    return null;
+  }
+
+  /* Put a lookup result into the form. Whatever the result has replaces what is in the form. A field
+     the result has nothing for is emptied if an earlier result filled it (still highlighted), so
+     choosing another disc leaves nothing behind from the first, but is kept if the user typed it.
+     Returns how many fields were filled. */
+  function fillFromLookup(p) {
+    var n = 0;
+    function put(id, v) {
+      var inp = $(id);
+      if (v) {
+        inp.value = v;
+        inp.classList.add("filled");
+        n++;
+      } else if (inp.classList.contains("filled")) {
+        inp.value = "";
+        inp.classList.remove("filled");
+      }
+    }
+    /* Performer rows and works are replaced as a whole, or emptied when only a lookup filled them. */
+    function onlyFilled(sel) {
+      var inputs = qsa(sel).filter(function (i) { return !!i.value.trim(); });
+      return inputs.every(function (i) { return i.classList.contains("filled"); });
+    }
+    put("title", p.title);
+    put("composer", p.composer);
+    if (p.performers && p.performers.length) {
+      $("perf-rows").textContent = "";
+      p.performers.forEach(function (x) { addRow(x.role, x.name).classList.add("filled"); });
+      n += p.performers.length;
+    } else if (onlyFilled(".prow input")) {
+      resetRows();
+    }
+    if (p.works && p.works.length) {
+      resetWorks(p.works);
+      qsa("#work-list input").forEach(function (i) { if (i.value) i.classList.add("filled"); });
+      p.works.forEach(function (w) { n += (w.title ? 1 : 0) + w.tracks.length; });
+    } else if (onlyFilled("#work-list input")) {
+      resetWorks();
+    }
+    var before = n;
+    ["label", "issuer", "catalogNo", "manufacturer", "madeIn", "recordingVenue", "barcode", "ifpiMastering", "ifpiMould"].forEach(function (f) { put(f, p[f]); });
+    put("recordingYear", p.recordingYear && /^(19|20)\d{2}$/.test(p.recordingYear) ? p.recordingYear : "");
+    put("releaseYear", p.releaseYear && /^(19[89]\d|20\d{2})$/.test(p.releaseYear) ? p.releaseYear : "");
+    put("spars", p.spars || "");
+    if (n > before) $("more-details").open = true;
+    return n;
+  }
+  $("cd-form").addEventListener("input", function (e) { e.target.classList.remove("filled"); });
+  $("cd-form").addEventListener("change", function (e) { if (e.target.classList) e.target.classList.remove("filled"); });
+
+  function lookupStatus(msg) { $("lookup-status").textContent = msg || ""; }
+  function lookupError(e) {
+    var code = e && e.code;
+    lookupStatus(t(code === "busy" ? "lookupBusy" : "lookupFail"));
+  }
+  var lookupRun = 0;
+  async function runLookup() {
+    var q = $("lookup-q").value.trim();
+    var box = $("lookup-results");
+    box.textContent = "";
+    if (!q) { lookupStatus(t("lookupEmptyQ")); $("lookup-q").focus(); return; }
+    var run = ++lookupRun;
+    lookupStatus(t("lookupSearching"));
+    $("lookup-go").disabled = true;
+    try {
+      var items = [];
+      for (var i = 0; i < LOOKUP_SOURCES.length && !items.length; i++) items = await LOOKUP_SOURCES[i].search(q);
+      if (run !== lookupRun) return;
+      if (!items.length) { lookupStatus(t("lookupNone", { q: q })); return; }
+      lookupStatus(t(items.length === 1 ? "lookupOne" : "lookupMany", { n: items.length }));
+      items.forEach(function (it, idx) {
+        var row = el("div", "lres");
+        row.appendChild(el("strong", null, it.title));
+        row.appendChild(el("span", null, it.line));
+        var use = el("button", "btn small", t("lookupUse"));
+        use.type = "button";
+        use.id = "lookup-use-" + idx;
+        use.addEventListener("click", function () { useLookup(it, q, use); });
+        row.appendChild(use);
+        box.appendChild(row);
+      });
+    } catch (e) {
+      if (run === lookupRun) lookupError(e);
+    } finally {
+      $("lookup-go").disabled = false;
+    }
+  }
+  async function useLookup(item, q, btn) {
+    btn.disabled = true;
+    lookupStatus(t("lookupLoading"));
+    var p;
+    try {
+      p = await item.source.details(item, q);
+    } catch (e) {
+      btn.disabled = false;
+      lookupError(e);
+      return;
+    }
+    var run = ++lookupRun;
+    var n = fillFromLookup(p);
+    /* Keep the list so another result can be chosen; mark the one in use. */
+    qsa("#lookup-results .btn").forEach(function (b) { b.disabled = false; b.textContent = t("lookupUse"); });
+    btn.disabled = true;
+    btn.textContent = t("lookupInUse");
+    var done = n ? t("lookupFilled", { n: n, source: item.source.name }) : t("lookupNothing");
+    /* A cover the user chose stays; one from an earlier lookup is replaced. */
+    var ownCover = photoData && !$("drop").classList.contains("filled");
+    if (ownCover) { lookupStatus(done); return; }
+    if (photoData) { photoData = null; $("drop").classList.remove("filled"); showPhoto(); }
+    lookupStatus(done + " " + t("coverSearching"));
+    var cover = await findCover(p);
+    if (run !== lookupRun) return;
+    if (cover && !photoData) {
+      photoData = cover.data;
+      showPhoto();
+      $("drop").classList.add("filled");
+      lookupStatus(done + " " + t(cover.exact ? "coverFoundExact" : "coverFound"));
+    } else {
+      lookupStatus(done + " " + t("coverNone"));
+    }
+  }
+  $("lookup-go").addEventListener("click", runLookup);
+  $("lookup-q").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); runLookup(); }
+  });
+
+  /* Scanning: from a photo, or live from a camera. A found barcode goes into the box and is searched. */
+  function foundBarcode(code) {
+    $("lookup-q").value = code;
+    lookupStatus(t("scanFound", { code: code }));
+    runLookup();
+  }
+  $("scan-photo").addEventListener("click", function () { $("scan-file").click(); });
+  $("scan-file").addEventListener("change", async function (e) {
+    var f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    $("lookup-results").textContent = "";
+    lookupStatus(t("scanReading"));
+    var code = null;
+    try { code = await barcodeFromFile(f); } catch (err) { code = null; }
+    if (code) foundBarcode(code); else lookupStatus(t("scanNone"));
+  });
+  var camera = { stream: null, timer: null };
+  function stopCamera() {
+    if (camera.timer) clearInterval(camera.timer);
+    if (camera.stream) camera.stream.getTracks().forEach(function (tr) { tr.stop(); });
+    camera = { stream: null, timer: null };
+    $("scan-video").srcObject = null;
+    $("scan-cam").hidden = true;
+  }
+  $("scan-stop").addEventListener("click", function () { stopCamera(); lookupStatus(""); $("scan-camera").focus(); });
+  $("scan-camera").addEventListener("click", async function () {
+    if (camera.stream) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { lookupStatus(t("cameraFail")); return; }
+    try {
+      camera.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } });
+    } catch (e) {
+      camera.stream = null;
+      lookupStatus(t("cameraFail"));
+      return;
+    }
+    var video = $("scan-video");
+    video.srcObject = camera.stream;
+    $("scan-cam").hidden = false;
+    try { await video.play(); } catch (e) { /* playback starts once the stream is ready */ }
+    lookupStatus(t("cameraHint"));
+    var frame = document.createElement("canvas");
+    camera.timer = setInterval(function () {
+      if (!video.videoWidth) return;
+      var s = Math.min(1, 1280 / video.videoWidth);
+      frame.width = Math.round(video.videoWidth * s);
+      frame.height = Math.round(video.videoHeight * s);
+      frame.getContext("2d").drawImage(video, 0, 0, frame.width, frame.height);
+      var code = readBarcode(frame);
+      if (code) { stopCamera(); foundBarcode(code); }
+    }, 400);
+  });
+  function resetLookup() {
+    stopCamera();
+    lookupRun++;
+    $("lookup-q").value = "";
+    $("lookup-results").textContent = "";
+    $("lookup-go").disabled = false;
+    lookupStatus("");
   }
 
   /* ---------- CD profile window ---------- */

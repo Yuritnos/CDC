@@ -54,6 +54,15 @@ Internally, favorites are still called `albums`, in code, ids and translation ke
 - The form's fold-out "Disc details" section holds label, issuing corporation, both years, one "Catalogue / matrix number" field, manufacturer, country, venue, SPARS, barcode and IFPI codes. The profile shows them under the same heading.
 - "Notes" is free text and is the last field of "Disc details", in the form and in the profile. It is written only in the edit form (no separate edit button in the profile).
 
+## Finding a CD online
+
+- The top of the CD form has "Find this CD online": type, or scan from a photo or the camera, a barcode, catalogue number or matrix, pick a release, and its details **replace** what is in the form (highlighted with `.filled` until edited). A field the release lacks is emptied if an earlier lookup filled it, but kept if the user typed it. The result list stays open so another release can be chosen. Nothing is saved until the CD is added.
+- Source: Discogs (`discogsSource`), called directly from the page without a key (`api.discogs.com` allows it, about 25 requests a minute). Its loose search results are filtered so only releases whose catalogue number, barcode or matrix really match are shown.
+- Performer roles come from Discogs credits on the release **and** on single tracks/works. When a release only lists names, orchestras and choirs are recognised by name (several languages, `ORCHESTRA_NAME`/`CHOIR_NAME`) and a person listed right after an orchestra is taken as its conductor.
+- Covers (`findCover`), best first: (1) in the desktop app, the release's own Discogs picture, downloaded by the Rust command `fetch_cover` (reqwest; only `https://i.discogs.com` / `img.discogs.com`, at most 5 MB) because Discogs doesn't let web pages load its pictures; (2) the Cover Art Archive via MusicBrainz: the release by barcode/catalogue number, then any edition of the same release group, then a title + artist search. Tested coverage of (2) alone on classical CDs was poor (about 2 in 12), which is why (1) exists. A cover the user chose is never replaced; one from an earlier lookup is.
+- `LOOKUP_SOURCES` is the extension point: a source has `search(q)` → candidates and `details(item, q)` → CD fields in CDC's shape. Planned later: an AI source that reads the cover photo, and MusicBrainz as another database.
+- Barcodes are read by our own EAN-13/UPC-A reader (`readBarcode`), because Windows browsers have no `BarcodeDetector`. It scans lines across and down in both directions with two edge finders (local-average threshold and peak/dip) and votes on check-digit-valid results.
+
 ## Roadmap
 
 1. Get the first Windows build passing on GitHub Actions, then publish v0.1.0.
