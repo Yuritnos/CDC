@@ -20,9 +20,16 @@ CDC is an app for cataloguing the CDs a person owns. It started as a single-page
 
 ```
 { cds: [ { id, title, composer, performers: [{ role, name }], label, issuer,
-           recordingYear, releaseYear, photo (JPEG data URL, at most ~170 KB), addedAt } ],
+           recordingYear, releaseYear, photo (JPEG data URL, at most ~170 KB), addedAt,
+           works: [ { title, composer, tracks: [ { title, duration ("m:ss" or "h:mm:ss") } ] } ],
+           catalogNo (catalogue or matrix number), barcode, manufacturer, madeIn, recordingVenue,
+           spars ("DDD" | "ADD" | "AAD"), ifpiMastering, ifpiMould, notes,
+           cardFields: [field keys, at most 6] (only when this disc chose its own) } ],
+           // everything after addedAt is optional and only saved when filled in
   meta: { albums: [ { id, name, cdIds: [] } ],      // shown to users as "Favorites"
-          settings: { lang, size, show_performers, show_publisher, show_years } } }
+          settings: { lang, cardWidth (140–320 px), cardFields: [field keys, at most 6] } } }
+          // older files may still have size ("comfortable"/"compact") and show_performers/show_publisher/show_years;
+          // cardWidth() and cardFields() read those when the new keys are missing
 ```
 
 Internally, favorites are still called `albums`, in code, ids and translation keys. Users only ever see "Favorites" (お気に入り / 收藏夹).
@@ -37,7 +44,14 @@ Internally, favorites are still called `albums`, in code, ids and translation ke
 - "Add to favorites" opens a list of favorites to toggle, plus a field to create a new favorite.
 - The left column (about 188 px) holds "All CDs", then a collapsible "Favorites" section, with the Settings button at the bottom.
 - The account sits at the top right as a popover. Settings holds language, card size, which details show on cards, and exports.
+- Card size is a continuous slider (cards resize live, the value saves on release). Below 180 px cards use tighter type.
+- "Show on cards" lists every CD field (`CARD_FIELDS`), composer included; only the title always shows, and at most 6 more can be ticked (`CARD_FIELD_MAX`) so the shelf doesn't get crowded. Older settings without `cardFields` get composer plus their old ticks. The tick boxes stay folded behind a summary line and a "Change" button.
+- The Settings choice is the default. Each CD's form has "Show on this card": a disc that never changes it follows the default (including later changes to it); once changed, it keeps its own `cardFields` until "Use the default" is pressed. Opening "Add a CD" always starts from the default, even after an unsaved form changed it.
+- Catalogue number examples use the form "410 084-2" / "410 084-2 01".
 - Composer sort uses the surname: the last word, or the text before a comma.
+- A disc holds works, each with its own tracks; track numbers run on across the whole disc, as printed on back covers. A work's composer is optional; when the disc has no composer, cards show the works' composers.
+- The form's fold-out "Disc details" section holds label, issuing corporation, both years, one "Catalogue / matrix number" field, manufacturer, country, venue, SPARS, barcode and IFPI codes. The profile shows them under the same heading.
+- "Notes" is free text, written only in the edit form; the profile just displays it (no separate edit button).
 
 ## Roadmap
 

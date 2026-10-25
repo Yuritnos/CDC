@@ -68,7 +68,7 @@ body {
   font-size: 15px;
   line-height: 1.5;
 }
-button, input, select { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .shell {
@@ -279,6 +279,33 @@ legend { margin-bottom: 8px; }
 }
 .iconbtn:hover { color: var(--accent); border-color: var(--accent); }
 .prow .iconbtn:hover { color: var(--danger); border-color: var(--danger); }
+/* Works on the disc, each with its numbered tracks */
+.work { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--field); border: 1px solid var(--line); border-radius: 3px; }
+.work-head { display: grid; grid-template-columns: minmax(0, 1fr) 38px; gap: 8px; }
+.work-head .iconbtn:hover, .trow .iconbtn:hover { color: var(--danger); border-color: var(--danger); }
+.trow { display: grid; grid-template-columns: 26px minmax(0, 1fr) 76px 38px; gap: 8px; align-items: center; }
+.trow .no { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: right; }
+.trow .input { height: 38px; font-size: 15px; }
+.trow .iconbtn { height: 38px; }
+.work .linkbtn { padding: 2px 0; font-size: 13.5px; }
+textarea.input { height: auto; min-height: 96px; padding: 10px 12px; line-height: 1.5; resize: vertical; font: inherit; font-size: 16px; color: inherit; }
+
+/* Fold-out disc details in the CD form */
+details.more { border-top: 1px solid var(--line); padding-top: 14px; }
+details.more > summary {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+  color: var(--muted);
+  list-style-position: outside;
+  margin-left: 14px;
+}
+details.more > summary:hover { color: var(--accent); }
+details.more[open] > summary { margin-bottom: 14px; }
+.more-body { display: flex; flex-direction: column; gap: 14px; }
+
 .linkbtn {
   background: none;
   border: 0;
@@ -333,20 +360,17 @@ legend { margin-bottom: 8px; }
 .acct-card { display: flex; align-items: center; gap: 14px; }
 .acct-card > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .acct-name { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 26px; line-height: 1.15; overflow-wrap: anywhere; }
-.seg { display: flex; gap: 0; }
-.seg button {
-  flex: 1 1 0;
-  height: 38px;
-  background: var(--field);
-  border: 1px solid var(--line);
-  cursor: pointer;
-  font-size: 14px;
-}
-.seg button + button { border-left: 0; }
-.seg button:first-child { border-radius: 3px 0 0 3px; }
-.seg button:last-child { border-radius: 0 3px 3px 0; }
-.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .btnrow { display: flex; gap: 10px; flex-wrap: wrap; }
+.range { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
+.range input { flex: 1; min-width: 0; accent-color: var(--accent); height: 28px; margin: 0; cursor: pointer; }
+.check:has(input:disabled) { opacity: 0.5; cursor: default; }
+.fpick { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.fpick .favrow { align-items: baseline; gap: 4px 12px; }
+.fsum { font-size: 14px; overflow-wrap: anywhere; }
+.fpick .linkbtn { padding: 2px 0; font-size: 13.5px; }
+.fpick-list { display: flex; flex-direction: column; gap: 8px; }
+.fpick-list[hidden] { display: none; }
+.card .notes-line { margin: 0; font-size: 13.5px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* Albums bar and collection */
 /* Left column: albums, then the settings button pinned to the bottom */
@@ -423,8 +447,9 @@ legend { margin-bottom: 8px; }
 .sort { display: flex; align-items: center; gap: 8px; }
 .sort span { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); }
 .sort select.input { width: auto; max-width: 100%; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 20px; }
-.grid.compact { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+/* Card width comes from the Card size slider in Settings; small cards get tighter type. */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min, 210px), 100%), 1fr)); gap: 20px; }
+.grid.compact { gap: 14px; }
 .grid.compact .card h3 { font-size: 19px; }
 .grid.compact .composer { font-size: 16px; }
 .grid.compact .card-body { padding: 10px 10px 12px; gap: 8px; }
@@ -465,6 +490,7 @@ legend { margin-bottom: 8px; }
 .perfs li { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: 14px; }
 .perfs .role { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); overflow-wrap: anywhere; }
 .perfs .name { overflow-wrap: anywhere; }
+.perfs.codes li { display: flex; flex-direction: column; gap: 0; }
 .meta { margin: 0; font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .card-actions { margin-top: auto; padding-top: 6px; display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; font-size: 13px; }
@@ -546,6 +572,19 @@ legend { margin-bottom: 8px; }
 .profile-albums { display: flex; flex-direction: column; gap: 8px; }
 .profile-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding-top: 14px; border-top: 1px solid var(--line); }
 .profile-actions .ask { flex-basis: 100%; margin: 0; }
+.psect { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+.psect h3 { margin: 0; font-family: var(--font-mono); font-size: 11px; font-weight: 400; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); }
+.pwork { display: flex; flex-direction: column; gap: 4px; }
+.pwork + .pwork { margin-top: 8px; }
+.pwork-title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 20px; line-height: 1.25; overflow-wrap: anywhere; }
+.pwork .composer { margin: 0; font-size: 16px; }
+.ptracks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.ptracks li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; font-size: 14px; }
+.ptracks .no, .ptracks .len, .ptotal { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.ptracks .no { text-align: right; }
+.ptracks .nm { overflow-wrap: anywhere; }
+.ptotal { margin: 4px 0 0; text-align: right; }
+.pnotes { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 640px) {
   .profile-body { grid-template-columns: minmax(0, 1fr); }
   .profile-cover { max-width: 260px; }
@@ -675,34 +714,101 @@ legend { margin-bottom: 8px; }
         <datalist id="composers"></datalist>
       </div>
 
+      <fieldset id="works-set">
+        <legend data-i18n="works">Works on this disc</legend>
+        <p class="hint" data-i18n="worksHint">Add each piece on the disc with its tracks. Track numbers run on across the whole disc.</p>
+        <div id="work-list" style="display:flex;flex-direction:column;gap:10px"></div>
+        <button type="button" class="linkbtn" id="add-work" data-i18n="addWork">+ Add work</button>
+        <p class="err" id="works-err" role="alert"></p>
+      </fieldset>
+
       <fieldset id="perf-set">
         <legend data-i18n="performers">Performers</legend>
         <div id="perf-rows" style="display:flex;flex-direction:column;gap:8px"></div>
         <button type="button" class="linkbtn" id="add-perf" data-i18n="addPerformer">+ Add performer</button>
       </fieldset>
 
-      <div class="field">
-        <label class="lbl" for="label" data-i18n="label">Label</label>
-        <input class="input" id="label" name="label" type="text" autocomplete="off" data-i18n-ph="labelPh" placeholder="e.g. Deutsche Grammophon">
-      </div>
+      <details class="more" id="more-details">
+        <summary data-i18n="discDetails">Disc details</summary>
+        <div class="more-body">
+          <div class="two">
+            <div class="field">
+              <label class="lbl" for="label" data-i18n="label">Label</label>
+              <input class="input" id="label" name="label" type="text" autocomplete="off" data-i18n-ph="labelPh" placeholder="e.g. Deutsche Grammophon">
+            </div>
+            <div class="field">
+              <label class="lbl" for="issuer" data-i18n="issuer">Issuing corporation</label>
+              <input class="input" id="issuer" name="issuer" type="text" autocomplete="off" data-i18n-ph="issuerPh" placeholder="e.g. Universal Music Group">
+            </div>
+          </div>
+          <div class="two">
+            <div class="field">
+              <label class="lbl" for="recordingYear" data-i18n="recYear">Recording year</label>
+              <input class="input" id="recordingYear" name="recordingYear" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="1985">
+              <p class="err" id="recordingYear-err" role="alert"></p>
+            </div>
+            <div class="field">
+              <label class="lbl" for="releaseYear" data-i18n="relYear">CD release year</label>
+              <input class="input" id="releaseYear" name="releaseYear" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="1998">
+              <p class="err" id="releaseYear-err" role="alert"></p>
+            </div>
+          </div>
+          <div class="field">
+            <label class="lbl" for="catalogNo" data-i18n="catalogNo">Catalogue / matrix number</label>
+            <input class="input" id="catalogNo" type="text" autocomplete="off" data-i18n-ph="catalogNoPh" placeholder="e.g. 410 084-2 or 410 084-2 01">
+          </div>
+          <div class="two">
+            <div class="field">
+              <label class="lbl" for="manufacturer" data-i18n="manufacturer">Manufactured by</label>
+              <input class="input" id="manufacturer" type="text" autocomplete="off" data-i18n-ph="manufacturerPh" placeholder="e.g. Polydor K.K.">
+            </div>
+            <div class="field">
+              <label class="lbl" for="madeIn" data-i18n="madeIn">Country of manufacture</label>
+              <input class="input" id="madeIn" type="text" autocomplete="off" data-i18n-ph="madeInPh" placeholder="e.g. Japan">
+            </div>
+          </div>
+          <div class="field">
+            <label class="lbl" for="recordingVenue" data-i18n="venue">Recording venue</label>
+            <input class="input" id="recordingVenue" type="text" autocomplete="off" data-i18n-ph="venuePh" placeholder="e.g. Musikverein, Vienna">
+          </div>
+          <div class="two">
+            <div class="field">
+              <label class="lbl" for="spars" data-i18n="spars">Recording technique</label>
+              <select class="input" id="spars">
+                <option value="" data-i18n="sparsNone">Not stated</option>
+                <option value="DDD">DDD</option>
+                <option value="ADD">ADD</option>
+                <option value="AAD">AAD</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="lbl" for="barcode" data-i18n="barcode">Barcode</label>
+              <input class="input" id="barcode" type="text" inputmode="numeric" autocomplete="off" data-i18n-ph="barcodePh" placeholder="12 or 13 digits under the bars">
+            </div>
+          </div>
+          <p class="hint" data-i18n="sparsHint">DDD: digital recording, mixing and mastering. ADD: analogue recording, then digital. AAD: analogue until the digital master.</p>
+          <div class="two">
+            <div class="field">
+              <label class="lbl" for="ifpiMastering" data-i18n="ifpiMastering">IFPI mastering code</label>
+              <input class="input" id="ifpiMastering" type="text" autocomplete="off" data-i18n-ph="ifpiMasteringPh" placeholder="e.g. IFPI L041">
+            </div>
+            <div class="field">
+              <label class="lbl" for="ifpiMould" data-i18n="ifpiMould">IFPI mould code</label>
+              <input class="input" id="ifpiMould" type="text" autocomplete="off" data-i18n-ph="ifpiMouldPh" placeholder="e.g. IFPI 0110">
+            </div>
+          </div>
+        </div>
+      </details>
 
       <div class="field">
-        <label class="lbl" for="issuer" data-i18n="issuer">Issuing corporation</label>
-        <input class="input" id="issuer" name="issuer" type="text" autocomplete="off" data-i18n-ph="issuerPh" placeholder="e.g. Universal Music Group">
+        <label class="lbl" for="notes" data-i18n="notes">Notes</label>
+        <textarea class="input" id="notes" rows="4" data-i18n-ph="notesPh" placeholder="Anything you want to remember about this disc"></textarea>
       </div>
 
-      <div class="two">
-        <div class="field">
-          <label class="lbl" for="recordingYear" data-i18n="recYear">Recording year</label>
-          <input class="input" id="recordingYear" name="recordingYear" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="1985">
-          <p class="err" id="recordingYear-err" role="alert"></p>
-        </div>
-        <div class="field">
-          <label class="lbl" for="releaseYear" data-i18n="relYear">CD release year</label>
-          <input class="input" id="releaseYear" name="releaseYear" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="1998">
-          <p class="err" id="releaseYear-err" role="alert"></p>
-        </div>
-      </div>
+      <fieldset id="cardshow-set">
+        <legend data-i18n="cardOwn">Show on this card</legend>
+        <div id="form-card-fields"></div>
+      </fieldset>
 
       <fieldset id="albums-set">
         <legend data-i18n="albumsField">Favorites</legend>
@@ -736,17 +842,15 @@ legend { margin-bottom: 8px; }
 
     <div class="sect">
       <h3 data-i18n="displaySection">Display</h3>
-      <span class="hint" data-i18n="cardSize">Card size</span>
-      <div class="seg" role="group" data-i18n-aria="cardSize" aria-label="Card size">
-        <button type="button" id="size-comfortable" aria-pressed="true" data-i18n="size.comfortable">Comfortable</button>
-        <button type="button" id="size-compact" aria-pressed="false" data-i18n="size.compact">Compact</button>
+      <label class="hint" for="card-size" data-i18n="cardSize">Card size</label>
+      <div class="range">
+        <span aria-hidden="true" data-i18n="sizeSmaller">Smaller</span>
+        <input type="range" id="card-size" min="140" max="320" step="5" value="210">
+        <span aria-hidden="true" data-i18n="sizeLarger">Larger</span>
       </div>
-      <span class="hint" data-i18n="cardDetails">Show on cards</span>
-      <div class="checks">
-        <label class="check"><input type="checkbox" id="det-performers"><span data-i18n="performers">Performers</span></label>
-        <label class="check"><input type="checkbox" id="det-publisher"><span data-i18n="detPublisher">Label and issuing corporation</span></label>
-        <label class="check"><input type="checkbox" id="det-years"><span data-i18n="detYears">Recording and release years</span></label>
-      </div>
+      <span class="hint" data-i18n="cardDetails">Show on cards by default</span>
+      <div id="card-fields"></div>
+      <p class="hint" data-i18n="cardDefaultHint">New CDs use this. Each CD can choose its own when you edit it.</p>
     </div>
 
     <div class="sect" id="data-sect">
@@ -865,14 +969,37 @@ legend { margin-bottom: 8px; }
       acctStats: "{cds} CDs · {albums} favorites",
       acctNote: "Your account comes from your Claude sign-in. To switch accounts, sign in to Claude with another one.", acctNoteDesktop: "This is your Windows user. Each Windows user has their own collection.",
       langSection: "Language", displaySection: "Display", cardSize: "Card size",
-      "size.comfortable": "Comfortable", "size.compact": "Compact",
+      sizeSmaller: "Smaller", sizeLarger: "Larger",
       dataSection: "Your data", exportJson: "Export everything (JSON)", exportCsv: "Export list (CSV)",
       exportNote: "JSON includes cover images and favorites. CSV is a plain list for spreadsheets.",
       exportEmpty: "Add a CD first, then you can export.", toastExported: "Export saved.",
       toastExportFail: "The export could not be saved here.", done: "Done",
       openProfile: "Open {title}", profileHead: "CD profile", noAlbumsYet: "No favorites yet. Create one from the left column.", addToFavorites: "Add to favorites", newFavPh: "New favorite name", create: "Create", navLabel: "Browse",
-      settingsBtn: "Settings", cardDetails: "Show on cards",
-      detPublisher: "Label and issuing corporation", detYears: "Recording and release years"
+      settingsBtn: "Settings", cardDetails: "Show on cards by default",
+      cardDefaultHint: "New CDs use this. Each CD can choose its own when you edit it.",
+      cardFieldsNone: "Title only", changeFields: "Change", hideFields: "Hide choices",
+      cardOwn: "Show on this card", cardOwnDefault: "Following the default from Settings.",
+      cardOwnCustom: "Chosen for this CD only.", useDefault: "Use the default",
+      cardFieldsNote: "The title is always shown. Choose up to {max} more ({n} chosen).",
+      totalTimeName: "Total time", moreWorks: "+ {n} more",
+      works: "Works on this disc", worksHint: "Add each piece on the disc with its tracks. Track numbers run on across the whole disc.",
+      addWork: "+ Add work", removeWork: "Remove this work",
+      workTitlePh: "Work, e.g. Symphony No. 4 in E minor, Op. 98", workTitleAria: "Work title",
+      workComposerPh: "Composer of this work, if different from the CD", workComposerAria: "Composer of this work",
+      addTrack: "+ Add track", removeTrack: "Remove this track",
+      trackTitlePh: "Track or movement", trackTitleAria: "Track title", durationPh: "13:17", durationAria: "Length (minutes:seconds)",
+      errDuration: "Write each length as minutes:seconds, like 13:17.", totalTime: "Total time {x}",
+      discDetails: "Disc details",
+      catalogNo: "Catalogue / matrix number", catalogNoPh: "e.g. 410 084-2 or 410 084-2 01",
+      manufacturer: "Manufactured by", manufacturerPh: "e.g. Polydor K.K.",
+      madeIn: "Country of manufacture", madeInPh: "e.g. Japan",
+      venue: "Recording venue", venuePh: "e.g. Musikverein, Vienna",
+      spars: "Recording technique", sparsNone: "Not stated",
+      sparsHint: "DDD: digital recording, mixing and mastering. ADD: analogue recording, then digital. AAD: analogue until the digital master.",
+      barcode: "Barcode", barcodePh: "12 or 13 digits under the bars",
+      ifpiMastering: "IFPI mastering code", ifpiMasteringPh: "e.g. IFPI L041",
+      ifpiMould: "IFPI mould code", ifpiMouldPh: "e.g. IFPI 0110",
+      notes: "Notes", notesPh: "Anything you want to remember about this disc"
     },
     ja: {
       tagline: "棚のCDをカタログにしましょう。", trial: "試用版", langLabel: "言語",
@@ -926,14 +1053,37 @@ legend { margin-bottom: 8px; }
       acctStats: "CD {cds}枚 · お気に入り {albums}件",
       acctNote: "アカウントはClaudeのサインイン情報から取得しています。切り替えるには、別のアカウントでClaudeにサインインしてください。", acctNoteDesktop: "これはWindowsのユーザーです。Windowsユーザーごとに別のコレクションになります。",
       langSection: "言語", displaySection: "表示", cardSize: "カードのサイズ",
-      "size.comfortable": "標準", "size.compact": "コンパクト",
+      sizeSmaller: "小さく", sizeLarger: "大きく",
       dataSection: "データ", exportJson: "すべてを書き出す（JSON）", exportCsv: "一覧を書き出す（CSV）",
       exportNote: "JSONにはカバー画像とお気に入りが含まれます。CSVは表計算ソフト向けの一覧です。",
       exportEmpty: "先にCDを追加すると書き出せます。", toastExported: "書き出しを保存しました。",
       toastExportFail: "この環境では書き出しを保存できませんでした。", done: "完了",
       openProfile: "「{title}」を開く", profileHead: "CDのプロフィール", noAlbumsYet: "お気に入りはまだありません。左の列から作成できます。", addToFavorites: "お気に入りに追加", newFavPh: "新しいお気に入りの名前", create: "作成", navLabel: "閲覧",
-      settingsBtn: "設定", cardDetails: "カードに表示する項目",
-      detPublisher: "レーベルと発売元", detYears: "録音年と発売年"
+      settingsBtn: "設定", cardDetails: "カードに表示する項目（既定）",
+      cardDefaultHint: "新しいCDにはこの設定が使われます。CDごとに、編集画面で個別に選ぶこともできます。",
+      cardFieldsNone: "タイトルのみ", changeFields: "変更", hideFields: "閉じる",
+      cardOwn: "このカードに表示する項目", cardOwnDefault: "設定の既定に従っています。",
+      cardOwnCustom: "このCDだけの設定です。", useDefault: "既定に戻す",
+      cardFieldsNote: "タイトルは常に表示されます。ほかに{max}項目まで選べます（{n}項目選択中）。",
+      totalTimeName: "総演奏時間", moreWorks: "ほか{n}作品",
+      works: "収録曲", worksHint: "ディスクに収録された作品を、トラックと一緒に追加してください。トラック番号はディスク全体で通し番号になります。",
+      addWork: "+ 作品を追加", removeWork: "この作品を削除",
+      workTitlePh: "作品名　例：交響曲第4番 ホ短調 作品98", workTitleAria: "作品名",
+      workComposerPh: "この作品の作曲家（CDと異なる場合）", workComposerAria: "この作品の作曲家",
+      addTrack: "+ トラックを追加", removeTrack: "このトラックを削除",
+      trackTitlePh: "トラック・楽章名", trackTitleAria: "トラック名", durationPh: "13:17", durationAria: "演奏時間（分:秒）",
+      errDuration: "演奏時間は「分:秒」の形式で入力してください（例：13:17）。", totalTime: "総演奏時間 {x}",
+      discDetails: "ディスクの詳細",
+      catalogNo: "規格品番・マトリクス番号", catalogNoPh: "例：410 084-2、410 084-2 01",
+      manufacturer: "製造元", manufacturerPh: "例：ポリドール株式会社",
+      madeIn: "製造国", madeInPh: "例：日本",
+      venue: "録音場所", venuePh: "例：ウィーン、ムジークフェラインザール",
+      spars: "録音方式", sparsNone: "記載なし",
+      sparsHint: "DDD：録音・ミキシング・マスタリングすべてデジタル。ADD：アナログ録音、以降デジタル。AAD：デジタルマスターまでアナログ。",
+      barcode: "バーコード", barcodePh: "バーコード下の12〜13桁の数字",
+      ifpiMastering: "IFPIマスタリングコード", ifpiMasteringPh: "例：IFPI L041",
+      ifpiMould: "IFPIモールドコード", ifpiMouldPh: "例：IFPI 0110",
+      notes: "メモ", notesPh: "このディスクについて自由に書き留めてください"
     },
     zh: {
       tagline: "为架上的每一张CD建立目录。", trial: "试用版", langLabel: "语言",
@@ -987,14 +1137,37 @@ legend { margin-bottom: 8px; }
       acctStats: "{cds} 张CD · {albums} 个收藏夹",
       acctNote: "账户信息来自你的 Claude 登录。如需切换账户，请使用另一个账户登录 Claude。", acctNoteDesktop: "这是你的 Windows 用户。每个 Windows 用户拥有各自的收藏。",
       langSection: "语言", displaySection: "显示", cardSize: "卡片大小",
-      "size.comfortable": "标准", "size.compact": "紧凑",
+      sizeSmaller: "更小", sizeLarger: "更大",
       dataSection: "数据", exportJson: "导出全部（JSON）", exportCsv: "导出列表（CSV）",
       exportNote: "JSON 包含封面图片和收藏夹；CSV 是适用于电子表格的纯列表。",
       exportEmpty: "请先添加CD，然后才能导出。", toastExported: "导出已保存。",
       toastExportFail: "此处无法保存导出文件。", done: "完成",
       openProfile: "打开《{title}》", profileHead: "CD档案", noAlbumsYet: "还没有收藏夹。可在左侧栏中创建。", addToFavorites: "添加到收藏夹", newFavPh: "新收藏夹名称", create: "创建", navLabel: "浏览",
-      settingsBtn: "设置", cardDetails: "卡片上显示",
-      detPublisher: "厂牌与发行公司", detYears: "录音与发行年份"
+      settingsBtn: "设置", cardDetails: "卡片上默认显示",
+      cardDefaultHint: "新添加的CD使用此设置。编辑每张CD时，也可以单独选择。",
+      cardFieldsNone: "仅标题", changeFields: "更改", hideFields: "收起",
+      cardOwn: "此卡片上显示", cardOwnDefault: "正在使用设置中的默认选项。",
+      cardOwnCustom: "仅适用于这张CD。", useDefault: "恢复默认",
+      cardFieldsNote: "标题始终显示。另外最多可选 {max} 项（已选 {n} 项）。",
+      totalTimeName: "总时长", moreWorks: "另有 {n} 部作品",
+      works: "收录作品", worksHint: "添加这张CD上的每部作品及其音轨。音轨编号在整张CD中连续编号。",
+      addWork: "+ 添加作品", removeWork: "删除此作品",
+      workTitlePh: "作品，例如：e小调第四交响曲，作品98", workTitleAria: "作品名称",
+      workComposerPh: "此作品的作曲家（如与CD不同）", workComposerAria: "此作品的作曲家",
+      addTrack: "+ 添加音轨", removeTrack: "删除此音轨",
+      trackTitlePh: "音轨或乐章", trackTitleAria: "音轨名称", durationPh: "13:17", durationAria: "时长（分:秒）",
+      errDuration: "请按“分:秒”格式填写时长，例如 13:17。", totalTime: "总时长 {x}",
+      discDetails: "唱片详情",
+      catalogNo: "目录编号 / 矩阵码", catalogNoPh: "例如：410 084-2 或 410 084-2 01",
+      manufacturer: "制造商", manufacturerPh: "例如：Polydor K.K.",
+      madeIn: "制造国家/地区", madeInPh: "例如：日本",
+      venue: "录音地点", venuePh: "例如：维也纳金色大厅",
+      spars: "录音方式", sparsNone: "未注明",
+      sparsHint: "DDD：录音、混音、母带均为数字。ADD：模拟录音，之后为数字。AAD：直到数字母带前均为模拟。",
+      barcode: "条形码", barcodePh: "条形码下方的12或13位数字",
+      ifpiMastering: "IFPI 母带码", ifpiMasteringPh: "例如：IFPI L041",
+      ifpiMould: "IFPI 模具码", ifpiMouldPh: "例如：IFPI 0110",
+      notes: "备注", notesPh: "关于这张CD，想记下的任何内容"
     }
   };
   var LANGS = {
@@ -1113,7 +1286,7 @@ legend { margin-bottom: 8px; }
     applyI18n();
     fillComposers();
     refreshRows();
-    ["title", "recordingYear", "releaseYear"].forEach(function (f) { setErr(f, ""); });
+    ["title", "recordingYear", "releaseYear", "works"].forEach(function (f) { setErr(f, ""); });
     $("photo-err").textContent = "";
     applyMode();
     showPhoto();
@@ -1164,7 +1337,7 @@ legend { margin-bottom: 8px; }
     var id = stack[stack.length - 1];
     if (e.key === "Escape") { e.preventDefault(); closeWin(id); return; }
     if (e.key !== "Tab") return;
-    var nodes = qsa("button, input, select, a[href]", $("win-" + id)).filter(function (n) {
+    var nodes = qsa("button, input, select, textarea, summary, a[href]", $("win-" + id)).filter(function (n) {
       return (!n.disabled && !n.hidden && n.offsetParent !== null) || n === document.activeElement;
     });
     if (!nodes.length) return;
@@ -1308,6 +1481,127 @@ legend { margin-bottom: 8px; }
     return out;
   }
 
+  /* ---------- works and their tracks ----------
+     A disc holds works (a symphony, an overture...), and each work holds tracks. Track numbers
+     run on across the whole disc, as printed on the back cover. Labels come from data-i18n-ph and
+     data-i18n-aria, so changing the language relabels these rows too. */
+  var workCounter = 0;
+  function i18nAttrs(n, ph, aria) {
+    if (ph) { n.setAttribute("data-i18n-ph", ph); n.placeholder = t(ph); }
+    if (aria) { n.setAttribute("data-i18n-aria", aria); n.setAttribute("aria-label", t(aria)); }
+  }
+  function textInput(cls, value, ph, aria) {
+    var inp = el("input", cls);
+    inp.type = "text";
+    inp.autocomplete = "off";
+    if (value) inp.value = value;
+    i18nAttrs(inp, ph, aria);
+    return inp;
+  }
+  function renumberTracks() {
+    qsa("#work-list .trow .no").forEach(function (n, i) { n.textContent = String(i + 1); });
+  }
+  function addTrack(work, title, duration) {
+    var n = ++workCounter;
+    var row = el("div", "trow");
+    row.appendChild(el("span", "no"));
+    var nm = textInput("input t-title", title, "trackTitlePh", "trackTitleAria");
+    nm.id = "track-title-" + n;
+    var len = textInput("input t-len", duration, "durationPh", "durationAria");
+    len.id = "track-len-" + n;
+    len.maxLength = 8;
+    var rm = el("button", "iconbtn", "×");
+    rm.type = "button";
+    i18nAttrs(rm, null, "removeTrack");
+    rm.addEventListener("click", function () { row.remove(); renumberTracks(); });
+    row.appendChild(nm); row.appendChild(len); row.appendChild(rm);
+    work.querySelector(".tracks").appendChild(row);
+    renumberTracks();
+    return nm;
+  }
+  function addWork(w) {
+    w = w || {};
+    var n = ++workCounter;
+    var box = el("div", "work");
+    var head = el("div", "work-head");
+    var title = textInput("input w-title", w.title, "workTitlePh", "workTitleAria");
+    title.id = "work-title-" + n;
+    var rm = el("button", "iconbtn", "×");
+    rm.type = "button";
+    i18nAttrs(rm, null, "removeWork");
+    rm.addEventListener("click", function () { box.remove(); renumberTracks(); });
+    head.appendChild(title); head.appendChild(rm);
+    box.appendChild(head);
+    var comp = textInput("input w-composer", w.composer, "workComposerPh", "workComposerAria");
+    comp.id = "work-composer-" + n;
+    comp.setAttribute("list", "composers");
+    box.appendChild(comp);
+    box.appendChild(el("div", "tracks"));
+    var more = el("button", "linkbtn", t("addTrack"));
+    more.type = "button";
+    more.setAttribute("data-i18n", "addTrack");
+    more.addEventListener("click", function () { addTrack(box).focus(); });
+    box.appendChild(more);
+    $("work-list").appendChild(box);
+    var tracks = w.tracks && w.tracks.length ? w.tracks : [{}];
+    tracks.forEach(function (tr) { addTrack(box, tr.title, tr.duration); });
+    return title;
+  }
+  $("add-work").addEventListener("click", function () { addWork().focus(); });
+  function resetWorks(list) {
+    $("work-list").textContent = "";
+    (list && list.length ? list : [{}]).forEach(addWork);
+  }
+  /* Lengths are minutes:seconds (13:17) or hours:minutes:seconds. */
+  var DURATION = /^(\d{1,2}:[0-5]\d|\d{1,3}):[0-5]\d$/;
+  function toSeconds(d) {
+    return String(d).split(":").reduce(function (sum, p) { return sum * 60 + parseInt(p, 10); }, 0);
+  }
+  function fmtSeconds(s) {
+    var h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = s % 60;
+    var pad = function (x) { return (x < 10 ? "0" : "") + x; };
+    return h ? h + ":" + pad(m) + ":" + pad(sec) : m + ":" + pad(sec);
+  }
+  /* Returns the works, skipping empty rows, or { bad: input } for the first unreadable length. */
+  function readWorks() {
+    var out = [];
+    var bad = null;
+    qsa("#work-list .work").forEach(function (box) {
+      var tracks = [];
+      qsa(".trow", box).forEach(function (row) {
+        var title = row.querySelector(".t-title").value.trim();
+        var lenInput = row.querySelector(".t-len");
+        var duration = lenInput.value.trim().replace(/[：.']/g, ":");
+        lenInput.setAttribute("aria-invalid", "false");
+        if (duration && !DURATION.test(duration)) {
+          lenInput.setAttribute("aria-invalid", "true");
+          bad = bad || lenInput;
+        }
+        if (title || duration) tracks.push({ title: title, duration: duration });
+      });
+      var title = box.querySelector(".w-title").value.trim();
+      var composer = box.querySelector(".w-composer").value.trim();
+      if (title || composer || tracks.length) out.push({ title: title, composer: composer, tracks: tracks });
+    });
+    return bad ? { bad: bad } : out;
+  }
+  /* The composer to show for a disc: its own, or else the composers of its works. */
+  function discComposer(cd) {
+    if (cd.composer) return cd.composer;
+    var seen = [];
+    (cd.works || []).forEach(function (w) { if (w.composer && seen.indexOf(w.composer) === -1) seen.push(w.composer); });
+    return seen.join(" / ");
+  }
+  function totalSeconds(cd) {
+    var s = 0;
+    (cd.works || []).forEach(function (w) {
+      (w.tracks || []).forEach(function (tr) { if (tr.duration && DURATION.test(tr.duration)) s += toSeconds(tr.duration); });
+    });
+    return s;
+  }
+  /* Optional fields in the form's "Disc details" section, besides label, issuer and the years. */
+  var DETAIL_FIELDS = ["catalogNo", "manufacturer", "madeIn", "recordingVenue", "spars", "barcode", "ifpiMastering", "ifpiMould"];
+
   /* ---------- albums: data ---------- */
   function normMeta(raw) {
     var m = { albums: [], settings: {} };
@@ -1325,9 +1619,41 @@ legend { margin-bottom: 8px; }
     if (raw && raw.settings && typeof raw.settings === "object") m.settings = Object.assign({}, raw.settings);
     return m;
   }
-  function showOpt(key) {
-    var v = meta.settings["show_" + key];
-    return v !== false;
+  /* What cards show besides the title. Any CD field can be picked, but only up to
+     CARD_FIELD_MAX of them, so the shelf stays readable. Listed in the order they appear on a card;
+     the value is the translation key for its name. */
+  var CARD_FIELDS = [
+    ["composer", "composer"], ["performers", "performers"], ["works", "works"], ["totalTime", "totalTimeName"],
+    ["label", "label"], ["issuer", "issuer"], ["recordingYear", "recYear"], ["releaseYear", "relYear"],
+    ["catalogNo", "catalogNo"], ["manufacturer", "manufacturer"], ["madeIn", "madeIn"], ["recordingVenue", "venue"],
+    ["spars", "spars"], ["barcode", "barcode"], ["ifpiMastering", "ifpiMastering"], ["ifpiMould", "ifpiMould"],
+    ["notes", "notes"]
+  ];
+  var CARD_FIELD_MAX = 6;
+  function cardFields() {
+    var s = meta.settings;
+    if (Array.isArray(s.cardFields)) return s.cardFields.slice(0, CARD_FIELD_MAX);
+    /* Older settings had three tick boxes, all on unless turned off. */
+    var out = ["composer"];
+    if (s.show_performers !== false) out.push("performers");
+    if (s.show_publisher !== false) out.push("label", "issuer");
+    if (s.show_years !== false) out.push("recordingYear", "releaseYear");
+    return out;
+  }
+  /* A disc can choose its own card fields; one that has not follows the default in Settings,
+     including later changes to that default. */
+  function fieldsFor(cd) {
+    return Array.isArray(cd.cardFields) ? cd.cardFields.slice(0, CARD_FIELD_MAX) : cardFields();
+  }
+  /* Smallest card width in pixels. Older settings had "comfortable" (210) and "compact" (150). */
+  function cardWidth() {
+    var w = parseInt(meta.settings.cardWidth, 10);
+    if (w >= 140 && w <= 320) return w;
+    return meta.settings.size === "compact" ? 150 : 210;
+  }
+  function applyCardWidth(w) {
+    $("grid").style.setProperty("--card-min", w + "px");
+    $("grid").classList.toggle("compact", w < 180);
   }
   function findAlbum(id) {
     for (var i = 0; i < meta.albums.length; i++) if (meta.albums[i].id === id) return meta.albums[i];
@@ -1647,19 +1973,52 @@ legend { margin-bottom: 8px; }
     }
     var body = el("div", "card-body");
     body.appendChild(el("h3", null, cd.title));
-    if (cd.composer) body.appendChild(el("p", "composer", cd.composer));
-    if (showOpt("performers") && cd.performers && cd.performers.length) body.appendChild(perfList(cd.performers));
-    if (showOpt("publisher")) {
-      if (cd.label) body.appendChild(el("p", "meta", cd.label));
-      if (cd.issuer) body.appendChild(el("p", "meta", t("issuedBy", { x: cd.issuer })));
-    }
-    if (showOpt("years")) {
-      var years = [];
-      var rel = cd.releaseYear || cd.year;
-      if (cd.recordingYear) years.push(t("recorded", { y: cd.recordingYear }));
-      if (rel) years.push(t("released", { y: rel }));
-      if (years.length) body.appendChild(el("p", "meta", years.join(" · ")));
-    }
+    var picked = {};
+    fieldsFor(cd).forEach(function (f) { picked[f] = true; });
+    var shownComposer = picked.composer ? discComposer(cd) : "";
+    if (shownComposer) body.appendChild(el("p", "composer", shownComposer));
+    var codes = [];
+    CARD_FIELDS.forEach(function (pair) {
+      var f = pair[0];
+      if (!picked[f]) return;
+      if (f === "composer") {
+        return;
+      } else if (f === "performers") {
+        if (cd.performers && cd.performers.length) body.appendChild(perfList(cd.performers));
+      } else if (f === "works") {
+        var titles = (cd.works || []).map(function (w) { return w.title; }).filter(Boolean);
+        if (titles.length > 3) titles = titles.slice(0, 3).concat(t("moreWorks", { n: titles.length - 3 }));
+        titles.forEach(function (x) { body.appendChild(el("p", "meta", x)); });
+      } else if (f === "totalTime") {
+        var secs = totalSeconds(cd);
+        if (secs) body.appendChild(el("p", "meta", t("totalTime", { x: fmtSeconds(secs) })));
+      } else if (f === "label") {
+        if (cd.label) body.appendChild(el("p", "meta", cd.label));
+      } else if (f === "issuer") {
+        if (cd.issuer) body.appendChild(el("p", "meta", t("issuedBy", { x: cd.issuer })));
+      } else if (f === "recordingYear" || f === "releaseYear") {
+        /* Both years share one line, placed where the first of them is listed. */
+        if (f === "releaseYear" && picked.recordingYear) return;
+        var years = [];
+        var rel = cd.releaseYear || cd.year;
+        if (picked.recordingYear && cd.recordingYear) years.push(t("recorded", { y: cd.recordingYear }));
+        if (picked.releaseYear && rel) years.push(t("released", { y: rel }));
+        if (years.length) body.appendChild(el("p", "meta", years.join(" · ")));
+      } else if (f === "notes") {
+        if (cd.notes) body.appendChild(el("p", "notes-line", cd.notes));
+      } else if (cd[f]) {
+        /* Codes and pressing details: name and value, laid out like the performer list. */
+        if (!codes.length) {
+          codes.list = el("ul", "perfs codes");
+          body.appendChild(codes.list);
+        }
+        codes.push(f);
+        var li = el("li");
+        li.appendChild(el("span", "role", t(pair[1])));
+        li.appendChild(el("span", "name", cd[f]));
+        codes.list.appendChild(li);
+      }
+    });
 
     var mine = albumsOf(cd.id);
     if (mine.length) {
@@ -1674,8 +2033,12 @@ legend { margin-bottom: 8px; }
   }
 
   function matches(cd, q) {
-    var hay = [cd.title, cd.composer, cd.label, cd.issuer, cd.recordingYear, cd.releaseYear, cd.year]
+    var hay = [cd.title, cd.composer, cd.label, cd.issuer, cd.recordingYear, cd.releaseYear, cd.year, cd.notes]
+      .concat(DETAIL_FIELDS.map(function (f) { return cd[f]; }))
       .concat((cd.performers || []).map(function (p) { return p.name + " " + t("role." + p.role); }))
+      .concat((cd.works || []).map(function (w) {
+        return [w.title, w.composer].concat((w.tracks || []).map(function (tr) { return tr.title; })).join(" ");
+      }))
       .join(" ").toLowerCase();
     return hay.indexOf(q) !== -1;
   }
@@ -1695,9 +2058,10 @@ legend { margin-bottom: 8px; }
     var out = list.slice();
     out.sort(function (a, b) {
       if (sortKey === "composer") {
-        var ka = surnameKey(a.composer), kb = surnameKey(b.composer);
+        var ca = discComposer(a).split(" / ")[0], cb = discComposer(b).split(" / ")[0];
+        var ka = surnameKey(ca), kb = surnameKey(cb);
         if (!ka !== !kb) return ka ? -1 : 1;
-        return cmpText(ka, kb) || cmpText(a.composer || "", b.composer || "") || cmpText(a.title || "", b.title || "");
+        return cmpText(ka, kb) || cmpText(ca, cb) || cmpText(a.title || "", b.title || "");
       }
       if (sortKey === "title") return cmpText(a.title || "", b.title || "");
       if (sortKey === "release") {
@@ -1785,7 +2149,7 @@ legend { margin-bottom: 8px; }
   function renderGrid() {
     var grid = $("grid");
     grid.textContent = "";
-    grid.classList.toggle("compact", meta.settings.size === "compact");
+    applyCardWidth(cardWidth());
     var search = $("search");
     var count = $("count");
     var emptyNote = $("empty-note");
@@ -1827,22 +2191,82 @@ legend { margin-bottom: 8px; }
     $("acct-initial").textContent = initial;
     $("set-initial").textContent = initial;
     [$("acct-initial"), $("set-initial")].forEach(function (n) { n.style.borderColor = acct.color || ""; });
-    $("det-performers").checked = showOpt("performers");
-    $("det-publisher").checked = showOpt("publisher");
-    $("det-years").checked = showOpt("years");
     $("set-name").textContent = acct.loading ? t("acctLoading") : (name || t("acctName"));
     if (window.CDC_DESKTOP) $("acct-note").textContent = t("acctNoteDesktop");
     $("set-storage").textContent = !backend ? "" : t(backend.kind === "db" ? "acctStorageDb" : backend.kind === "desktop" ? "acctStorageDesktop" : "acctStorageLocal");
     $("set-stats").textContent = loaded ? t("acctStats", { cds: cds.length, albums: meta.albums.length }) : "";
-    var size = meta.settings.size === "compact" ? "compact" : "comfortable";
-    $("size-comfortable").setAttribute("aria-pressed", size === "comfortable" ? "true" : "false");
-    $("size-compact").setAttribute("aria-pressed", size === "compact" ? "true" : "false");
+    if (document.activeElement !== $("card-size")) $("card-size").value = cardWidth();
+    renderCardFields();
+  }
+
+  /* Picker for what a card shows: a one-line summary with a Change button that unfolds the tick boxes.
+     Once CARD_FIELD_MAX are ticked, the rest wait until one is unticked. `extra` goes under the boxes. */
+  function fieldName(f) {
+    for (var i = 0; i < CARD_FIELDS.length; i++) if (CARD_FIELDS[i][0] === f) return t(CARD_FIELDS[i][1]);
+    return f;
+  }
+  function fieldPicker(box, idBase, chosen, state, onChange, extra) {
+    var keep = box.contains(document.activeElement) ? document.activeElement.id : "";
+    var full = chosen.length >= CARD_FIELD_MAX;
+    box.textContent = "";
+    var wrap = el("div", "fpick");
+    var row = el("div", "favrow");
+    var ordered = CARD_FIELDS.filter(function (p) { return chosen.indexOf(p[0]) !== -1; }).map(function (p) { return fieldName(p[0]); });
+    row.appendChild(el("span", "fsum", ordered.length ? ordered.join(" · ") : t("cardFieldsNone")));
+    var btn = el("button", "linkbtn", t(state.open ? "hideFields" : "changeFields"));
+    btn.type = "button";
+    btn.id = idBase + "-toggle";
+    btn.setAttribute("aria-expanded", state.open ? "true" : "false");
+    btn.setAttribute("aria-controls", idBase + "-list");
+    row.appendChild(btn);
+    wrap.appendChild(row);
+    var list = el("div", "fpick-list");
+    list.id = idBase + "-list";
+    list.hidden = !state.open;
+    list.appendChild(el("p", "hint", t("cardFieldsNote", { n: chosen.length, max: CARD_FIELD_MAX })));
+    var checks = el("div", "checks");
+    CARD_FIELDS.forEach(function (pair) {
+      var on = chosen.indexOf(pair[0]) !== -1;
+      var lab = el("label", "check");
+      var cb = el("input");
+      cb.type = "checkbox";
+      cb.id = idBase + "-" + pair[0];
+      cb.checked = on;
+      cb.disabled = full && !on;
+      cb.addEventListener("change", function () {
+        var next = chosen.filter(function (f) { return f !== pair[0]; });
+        if (cb.checked) next.push(pair[0]);
+        onChange(next.slice(0, CARD_FIELD_MAX));
+      });
+      lab.appendChild(cb);
+      lab.appendChild(el("span", null, t(pair[1])));
+      checks.appendChild(lab);
+    });
+    list.appendChild(checks);
+    if (extra) list.appendChild(extra);
+    wrap.appendChild(list);
+    btn.addEventListener("click", function () {
+      state.open = !state.open;
+      list.hidden = !state.open;
+      btn.textContent = t(state.open ? "hideFields" : "changeFields");
+      btn.setAttribute("aria-expanded", state.open ? "true" : "false");
+    });
+    box.appendChild(wrap);
+    if (keep && $(keep)) $(keep).focus({ preventScroll: true });
+  }
+  /* Settings: the default for discs that have not chosen their own. */
+  var settingsFields = { open: false };
+  function renderCardFields() {
+    fieldPicker($("card-fields"), "cf", cardFields(), settingsFields, function (next) {
+      commitMeta(function (m) { m.settings.cardFields = next; });
+    });
   }
 
   function renderAll() {
     renderAlbums();
     renderGrid();
     renderAccount();
+    renderFormCard();
     if (detailId && !$("win-detail").hidden) renderDetail();
     $("lang-set").value = lang;
   }
@@ -1856,7 +2280,12 @@ legend { margin-bottom: 8px; }
   });
 
   /* ---------- settings window ---------- */
-  $("open-settings").addEventListener("click", function () { closeAccount(); renderAccount(); openWin("settings"); });
+  $("open-settings").addEventListener("click", function () {
+    closeAccount();
+    settingsFields.open = false;
+    renderAccount();
+    openWin("settings");
+  });
 
   /* Account popover in the top right corner */
   function closeAccount(refocus) {
@@ -1883,14 +2312,11 @@ legend { margin-bottom: 8px; }
   document.addEventListener("focusin", function (e) {
     if (!$("acct-pop").hidden && !e.target.closest(".acct-wrap")) closeAccount();
   });
-  $("size-comfortable").addEventListener("click", function () { commitMeta(function (m) { m.settings.size = "comfortable"; }); });
-  $("size-compact").addEventListener("click", function () { commitMeta(function (m) { m.settings.size = "compact"; }); });
-
-  [["performers", "det-performers"], ["publisher", "det-publisher"], ["years", "det-years"]].forEach(function (pair) {
-    $(pair[1]).addEventListener("change", function (e) {
-      var on = e.target.checked;
-      commitMeta(function (m) { m.settings["show_" + pair[0]] = on; });
-    });
+  /* Cards resize live while the slider moves; the size is saved when it is let go. */
+  $("card-size").addEventListener("input", function (e) { applyCardWidth(parseInt(e.target.value, 10)); });
+  $("card-size").addEventListener("change", function (e) {
+    var w = parseInt(e.target.value, 10);
+    commitMeta(function (m) { m.settings.cardWidth = w; delete m.settings.size; });
   });
 
   function csvCell(v) {
@@ -1911,19 +2337,23 @@ legend { margin-bottom: 8px; }
       }, null, 2);
       name = "cdc-collection.json";
     } else {
-      var head = ["cdTitle", "composer", "performers", "label", "issuer", "recYear", "relYear", "albumsField"]
+      var head = ["cdTitle", "composer", "works", "performers", "label", "issuer", "recYear", "relYear"]
+        .concat(DETAIL_FIELDS.map(function (f) { return f === "recordingVenue" ? "venue" : f; }), ["notes", "albumsField"])
         .map(function (k) { return csvCell(t(k)); }).join(",");
       var rows = sortList(cds).map(function (c) {
         return [
           c.title,
-          c.composer,
+          discComposer(c),
+          (c.works || []).map(function (w) { return w.title; }).filter(Boolean).join("; "),
           (c.performers || []).map(function (p) { return t("role." + p.role) + ": " + p.name; }).join("; "),
           c.label,
           c.issuer,
           c.recordingYear,
-          c.releaseYear || c.year,
+          c.releaseYear || c.year
+        ].concat(DETAIL_FIELDS.map(function (f) { return c[f]; }), [
+          c.notes,
           albumsOf(c.id).map(function (a) { return a.name; }).join("; ")
-        ].map(csvCell).join(",");
+        ]).map(csvCell).join(",");
       });
       data = "﻿" + [head].concat(rows).join("\r\n");
       name = "cdc-collection.csv";
@@ -2068,6 +2498,28 @@ legend { margin-bottom: 8px; }
     return { btn: btn, chips: chips, list: list };
   }
   var formFav = { open: false, ids: [] };
+  /* Card fields in the CD form. own is null while the disc follows the default from Settings. */
+  var formCard = { open: false, own: null };
+  function renderFormCard() {
+    var custom = Array.isArray(formCard.own);
+    var foot = el("div", "favrow");
+    foot.appendChild(el("span", "hint", t(custom ? "cardOwnCustom" : "cardOwnDefault")));
+    if (custom) {
+      var reset = el("button", "linkbtn", t("useDefault"));
+      reset.type = "button";
+      reset.id = "ff-default";
+      reset.addEventListener("click", function () {
+        formCard.own = null;
+        renderFormCard();
+        $("ff-toggle").focus({ preventScroll: true });
+      });
+      foot.appendChild(reset);
+    }
+    fieldPicker($("form-card-fields"), "ff", custom ? formCard.own : cardFields(), formCard, function (next) {
+      formCard.own = next;
+      renderFormCard();
+    }, foot);
+  }
   var detailFav = { open: false };
   function renderAlbumChecks(selected) {
     if (selected) { formFav.ids = selected.slice(); formFav.open = false; }
@@ -2111,10 +2563,14 @@ legend { margin-bottom: 8px; }
     photoData = null;
     editingId = null;
     editingAddedAt = null;
-    ["title", "recordingYear", "releaseYear"].forEach(function (f) { setErr(f, ""); });
+    ["title", "recordingYear", "releaseYear", "works"].forEach(function (f) { setErr(f, ""); });
     $("photo-err").textContent = "";
+    $("more-details").open = false;
     showPhoto();
     resetRows();
+    resetWorks();
+    formCard = { open: false, own: null };
+    renderFormCard();
     renderAlbumChecks([]);
     applyMode();
   }
@@ -2123,6 +2579,9 @@ legend { margin-bottom: 8px; }
       var prev = readChecked();
       if (currentAlbum !== "all" && prev.indexOf(currentAlbum) === -1 && findAlbum(currentAlbum)) prev.push(currentAlbum);
       renderAlbumChecks(prev);
+      /* A new CD always starts from the Settings default, even if an unsaved form changed it. */
+      formCard = { open: false, own: null };
+      renderFormCard();
     }
     applyMode();
     openWin("cd");
@@ -2137,6 +2596,11 @@ legend { margin-bottom: 8px; }
     $("issuer").value = cd.issuer || "";
     $("recordingYear").value = cd.recordingYear || "";
     $("releaseYear").value = cd.releaseYear || cd.year || "";
+    DETAIL_FIELDS.forEach(function (f) { $(f).value = cd[f] || ""; });
+    $("more-details").open = ["label", "issuer", "recordingYear", "releaseYear", "year"].concat(DETAIL_FIELDS)
+      .some(function (f) { return !!cd[f]; });
+    $("notes").value = cd.notes || "";
+    resetWorks(cd.works);
     photoData = cd.photo || null;
     showPhoto();
     $("perf-rows").textContent = "";
@@ -2145,6 +2609,8 @@ legend { margin-bottom: 8px; }
     } else {
       addRow("Conductor");
     }
+    formCard = { open: false, own: Array.isArray(cd.cardFields) ? cd.cardFields.slice(0, CARD_FIELD_MAX) : null };
+    renderFormCard();
     renderAlbumChecks(albumsOf(cd.id).map(function (a) { return a.id; }));
     renderGrid();
     applyMode();
@@ -2176,7 +2642,8 @@ legend { margin-bottom: 8px; }
     var h = el("h2", null, cd.title);
     h.id = "detail-h";
     main.appendChild(h);
-    if (cd.composer) main.appendChild(el("p", "composer", cd.composer));
+    var shownComposer = discComposer(cd);
+    if (shownComposer) main.appendChild(el("p", "composer", shownComposer));
 
     var dl = el("dl", "facts");
     function fact(label, value) {
@@ -2185,10 +2652,6 @@ legend { margin-bottom: 8px; }
       dl.appendChild(el("dd", null, value));
     }
     (cd.performers || []).forEach(function (p) { fact(t("role." + p.role), p.name); });
-    fact(t("label"), cd.label);
-    fact(t("issuer"), cd.issuer);
-    fact(t("recYear"), cd.recordingYear);
-    fact(t("relYear"), cd.releaseYear || cd.year);
 
     var pk = favPicker(detailFav, "detail-fav",
       function (id) { var a = findAlbum(id); return !!a && a.cdIds.indexOf(cd.id) !== -1; },
@@ -2214,6 +2677,57 @@ legend { margin-bottom: 8px; }
       dl.appendChild(dd);
     }
     if (dl.children.length) main.appendChild(dl);
+
+    /* Works and their tracks, numbered across the disc */
+    if (cd.works && cd.works.length) {
+      var prog = el("section", "psect");
+      prog.appendChild(el("h3", null, t("works")));
+      var no = 0;
+      cd.works.forEach(function (w) {
+        var wbox = el("div", "pwork");
+        if (w.title) wbox.appendChild(el("p", "pwork-title", w.title));
+        if (w.composer && w.composer !== cd.composer) wbox.appendChild(el("p", "composer", w.composer));
+        if (w.tracks && w.tracks.length) {
+          var ol = el("ol", "ptracks");
+          w.tracks.forEach(function (tr) {
+            var li = el("li");
+            li.appendChild(el("span", "no", String(++no)));
+            li.appendChild(el("span", "nm", tr.title || "—"));
+            li.appendChild(el("span", "len", tr.duration || ""));
+            ol.appendChild(li);
+          });
+          wbox.appendChild(ol);
+        }
+        prog.appendChild(wbox);
+      });
+      var total = totalSeconds(cd);
+      if (total) prog.appendChild(el("p", "ptotal", t("totalTime", { x: fmtSeconds(total) })));
+      main.appendChild(prog);
+    }
+
+    /* Disc details, in the same order as the form */
+    var spec = el("dl", "facts");
+    [["label", cd.label], ["issuer", cd.issuer], ["recYear", cd.recordingYear], ["relYear", cd.releaseYear || cd.year],
+     ["catalogNo", cd.catalogNo], ["manufacturer", cd.manufacturer], ["madeIn", cd.madeIn], ["venue", cd.recordingVenue],
+     ["spars", cd.spars], ["barcode", cd.barcode], ["ifpiMastering", cd.ifpiMastering], ["ifpiMould", cd.ifpiMould]].forEach(function (pair) {
+      if (!pair[1]) return;
+      spec.appendChild(el("dt", null, t(pair[0])));
+      spec.appendChild(el("dd", null, pair[1]));
+    });
+    if (spec.children.length) {
+      var specBox = el("section", "psect");
+      specBox.appendChild(el("h3", null, t("discDetails")));
+      specBox.appendChild(spec);
+      main.appendChild(specBox);
+    }
+
+    /* Notes are written in the edit form; here they are only shown */
+    if (cd.notes) {
+      var notesBox = el("section", "psect");
+      notesBox.appendChild(el("h3", null, t("notes")));
+      notesBox.appendChild(el("p", "pnotes", cd.notes));
+      main.appendChild(notesBox);
+    }
 
     var actions = el("div", "profile-actions");
     if (detailConfirm) {
@@ -2273,8 +2787,13 @@ legend { margin-bottom: 8px; }
     var releaseYear = $("releaseYear").value.trim();
     var firstBad = null;
 
-    ["title", "recordingYear", "releaseYear"].forEach(function (f) { setErr(f, ""); });
+    ["title", "recordingYear", "releaseYear", "works"].forEach(function (f) { setErr(f, ""); });
     if (!title) { setErr("title", t("errTitle")); firstBad = firstBad || $("title"); }
+    var works = readWorks();
+    if (works.bad) {
+      setErr("works", t("errDuration"));
+      firstBad = firstBad || works.bad;
+    }
     if (recordingYear && !/^(19|20)\d{2}$/.test(recordingYear)) {
       setErr("recordingYear", t("errRec"));
       firstBad = firstBad || $("recordingYear");
@@ -2283,7 +2802,11 @@ legend { margin-bottom: 8px; }
       setErr("releaseYear", t("errRel"));
       firstBad = firstBad || $("releaseYear");
     }
-    if (firstBad) { firstBad.focus(); return; }
+    if (firstBad) {
+      if ($("more-details").contains(firstBad)) $("more-details").open = true;
+      firstBad.focus();
+      return;
+    }
     if (!backend || !loaded) { toast(t("toastLoading")); return; }
 
     var cd = {
@@ -2296,6 +2819,11 @@ legend { margin-bottom: 8px; }
       releaseYear: releaseYear,
       addedAt: editingId ? editingAddedAt : Date.now()
     };
+    if (works.length) cd.works = works;
+    DETAIL_FIELDS.forEach(function (f) { var v = $(f).value.trim(); if (v) cd[f] = v; });
+    var notes = $("notes").value.trim();
+    if (notes) cd.notes = notes;
+    if (Array.isArray(formCard.own)) cd.cardFields = formCard.own.slice();
     if (photoData) cd.photo = photoData;
     var chosenAlbums = readChecked();
 
@@ -2335,6 +2863,7 @@ legend { margin-bottom: 8px; }
 
   /* ---------- start ---------- */
   resetRows();
+  resetWorks();
   renderAlbumChecks([]);
   applyAll();
   init();
