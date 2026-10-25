@@ -1,0 +1,2345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>CDC</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+JP:wght@600&family=Noto+Serif+SC:wght@600&display=swap">
+<style>
+/* Layout: header with language and account, an albums bar, then a grid of square cover cards.
+   Adding, editing, albums and settings all open as floating windows over the shelf.
+   Palette: cool paper grey, ink blue-black, one indigo accent, silver disc iridescence as the only flourish.
+   Type: Cormorant Garamond for titles and composers (liner-note feel), IBM Plex Sans for UI, IBM Plex Mono for roles and counts.
+   Japanese and Chinese fall back to Noto Serif and Noto Sans, chosen by the page language. */
+:root {
+  --font-display: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --track: 0.08em;
+
+  --bg: #E8ECF0;
+  --surface: #F6F8FA;
+  --field: #FFFFFF;
+  --ink: #141B24;
+  --muted: #56616E;
+  --line: #C5CDD6;
+  --accent: #2B3990;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #DCE1F4;
+  --danger: #A32626;
+  --d1: #D9DFEA; --d2: #F7F9FC; --d3: #BFCAE3; --d4: #E9DFF1; --d5: #C3E4EA; --ring: #9AA6B8;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1319; --surface: #171D25; --field: #0F1319; --ink: #E6EAEF; --muted: #9AA5B2; --line: #2B3440;
+    --accent: #97A4F2; --accent-ink: #0F1319; --accent-soft: #232B4A; --danger: #F08A8A;
+    --d1: #4A5568; --d2: #8B97AB; --d3: #39435A; --d4: #6B5F86; --d5: #3D6A73; --ring: #222A36;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1319; --surface: #171D25; --field: #0F1319; --ink: #E6EAEF; --muted: #9AA5B2; --line: #2B3440;
+  --accent: #97A4F2; --accent-ink: #0F1319; --accent-soft: #232B4A; --danger: #F08A8A;
+  --d1: #4A5568; --d2: #8B97AB; --d3: #39435A; --d4: #6B5F86; --d5: #3D6A73; --ring: #222A36;
+  color-scheme: dark;
+}
+:root:lang(ja) {
+  --font-display: "Cormorant Garamond", "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-body: "IBM Plex Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "Noto Sans JP", "Hiragino Sans", ui-monospace, monospace;
+  --track: 0.02em;
+}
+:root:lang(zh) {
+  --font-display: "Cormorant Garamond", "Noto Serif SC", "Songti SC", "SimSun", serif;
+  --font-body: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "Noto Sans SC", "PingFang SC", ui-monospace, monospace;
+  --track: 0.02em;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.shell {
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-block: 28px 104px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* Disc glyph */
+.disc {
+  --hole: var(--bg);
+  width: var(--s, 48px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  flex: none;
+  background:
+    radial-gradient(circle closest-side, var(--hole) 0 12%, transparent 12.5% 22%, var(--ring) 22.5% 24%, transparent 24.5%),
+    conic-gradient(from 30deg, var(--d1), var(--d2), var(--d3), var(--d4), var(--d5), var(--d2), var(--d1));
+}
+
+/* Header */
+.top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
+.top h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 48px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.top .tag { margin: 0; color: var(--muted); min-width: 0; }
+.top-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.acct-wrap { position: relative; }
+.acct-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px 0 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  cursor: pointer;
+  max-width: 200px;
+}
+.acct-btn:hover, .acct-btn[aria-expanded="true"] { border-color: var(--accent); }
+.acct-btn .lbl-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.acct-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 25;
+  width: min(320px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+}
+.chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 2px;
+}
+.chip.tag { text-transform: none; letter-spacing: 0; background: var(--accent-soft); border-color: transparent; color: var(--ink); }
+.mini {
+  height: 36px;
+  padding: 0 10px;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-size: 14px;
+  max-width: 100%;
+}
+.avatar {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid var(--ring);
+  background: var(--field);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
+}
+.avatar:empty::before { content: "\266A"; font-size: 14px; color: var(--muted); }
+.avatar.big { width: 56px; height: 56px; font-size: 28px; }
+.avatar.big:empty::before { font-size: 24px; }
+
+/* Floating windows */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 14, 20, 0.58);
+  padding-top: max(16px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.panel {
+  --hole: var(--surface);
+  width: min(560px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 20px 22px 24px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+.panel.narrow { width: min(460px, 100%); }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.panel h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+form { display: flex; flex-direction: column; gap: 18px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+label.lbl, legend, .sect h3 {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0;
+  margin: 0;
+}
+.req { color: var(--accent); }
+.input, select.input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-size: 16px;
+}
+.input[aria-invalid="true"] { border-color: var(--danger); }
+.err { margin: 0; color: var(--danger); font-size: 13px; }
+.err:empty { display: none; }
+.hint { margin: 0; font-size: 13px; color: var(--muted); }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.actions .btn { flex: 1 1 auto; }
+
+/* Cover upload */
+.photo { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.drop {
+  --hole: var(--field);
+  position: relative;
+  width: 168px;
+  aspect-ratio: 1;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--field);
+  border: 1px dashed var(--ring);
+  border-radius: 3px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.photo-side { flex: 1 1 140px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.photo-side strong { font-weight: 600; }
+.photo-side p { margin: 0; color: var(--muted); font-size: 13px; }
+.photo-actions { display: flex; gap: 14px; }
+
+/* Performers */
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+legend { margin-bottom: 8px; }
+.prow { display: grid; grid-template-columns: 132px minmax(0, 1fr) 38px; gap: 8px; }
+.iconbtn {
+  height: 42px;
+  width: 38px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+.iconbtn:hover { color: var(--accent); border-color: var(--accent); }
+.prow .iconbtn:hover { color: var(--danger); border-color: var(--danger); }
+.linkbtn {
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  color: var(--accent);
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  align-self: flex-start;
+}
+.linkbtn.danger { color: var(--danger); }
+.linkbtn:disabled { color: var(--muted); text-decoration: none; cursor: default; }
+
+/* Album tick boxes in the CD form */
+.checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-size: 14px;
+  cursor: pointer;
+  min-width: 0;
+}
+.check input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.check span { overflow-wrap: anywhere; }
+
+.btn {
+  height: 46px;
+  padding: 0 22px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  border-radius: 3px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: 0.6; cursor: progress; }
+.btn.small { height: 34px; padding: 0 14px; font-size: 14px; }
+.btn.danger { background: var(--danger); color: var(--bg); }
+.btn.quiet { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+
+/* Settings window */
+.sect { display: flex; flex-direction: column; gap: 10px; padding-top: 18px; margin-top: 18px; border-top: 1px solid var(--line); }
+.panel-head + .sect { padding-top: 0; margin-top: 0; border-top: 0; }
+.acct-card { display: flex; align-items: center; gap: 14px; }
+.acct-card > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.acct-name { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 26px; line-height: 1.15; overflow-wrap: anywhere; }
+.seg { display: flex; gap: 0; }
+.seg button {
+  flex: 1 1 0;
+  height: 38px;
+  background: var(--field);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 14px;
+}
+.seg button + button { border-left: 0; }
+.seg button:first-child { border-radius: 3px 0 0 3px; }
+.seg button:last-child { border-radius: 0 3px 3px 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btnrow { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Albums bar and collection */
+/* Left column: albums, then the settings button pinned to the bottom */
+.layout { display: grid; grid-template-columns: minmax(0, 188px) minmax(0, 1fr); gap: 28px; align-items: start; }
+.layout > main { min-width: 0; }
+.side {
+  position: sticky;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  max-height: calc(100vh - 40px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 12px 8px 10px;
+}
+.side-h {
+  margin: 0 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.albums { display: flex; flex-direction: column; gap: 2px; min-height: 0; overflow-y: auto; }
+.achip {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13.5px;
+  text-align: left;
+}
+.achip:hover { background: var(--accent-soft); }
+.achip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.achip .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.achip .n { font-family: var(--font-mono); font-size: 11px; opacity: 0.75; flex: none; }
+.achip .chev { display: inline-block; width: 1em; color: var(--muted); }
+.achip[aria-pressed="true"] .chev { color: inherit; }
+.achip.fav-head.has-active { box-shadow: inset 3px 0 0 var(--accent); }
+.favgroup { display: flex; flex-direction: column; gap: 2px; margin: 0 0 4px 12px; padding-left: 8px; border-left: 1px solid var(--line); }
+.favgroup[hidden] { display: none; }
+
+.albums .linkbtn { padding: 6px 8px; font-size: 13px; }
+.setbtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  margin-top: 4px;
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.setbtn:hover { border-color: var(--accent); color: var(--accent); }
+
+.tools { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.tools .count { font-family: var(--font-mono); font-size: 12px; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); margin-right: auto; }
+.tools .input { width: 260px; max-width: 100%; }
+.sort { display: flex; align-items: center; gap: 8px; }
+.sort span { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); }
+.sort select.input { width: auto; max-width: 100%; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 20px; }
+.grid.compact { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.grid.compact .card h3 { font-size: 19px; }
+.grid.compact .composer { font-size: 16px; }
+.grid.compact .card-body { padding: 10px 10px 12px; gap: 8px; }
+.card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.card.sample { border-style: dashed; background: transparent; }
+.card.editing { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.cover {
+  --hole: var(--accent-soft);
+  position: relative;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--line);
+}
+.cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover .chip { position: absolute; top: 10px; left: 10px; background: var(--surface); }
+.card-body { padding: 14px 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; flex: 1; }
+.card h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 23px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.composer { margin: -4px 0 0; font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: 18px; color: var(--muted); overflow-wrap: anywhere; }
+:root:lang(ja) .composer, :root:lang(zh) .composer { font-style: normal; font-weight: 600; font-size: 16px; }
+.perfs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.perfs li { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: 14px; }
+.perfs .role { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); overflow-wrap: anywhere; }
+.perfs .name { overflow-wrap: anywhere; }
+.meta { margin: 0; font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.card-actions { margin-top: auto; padding-top: 6px; display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; font-size: 13px; }
+.card-actions select.mini { height: 30px; font-size: 13px; }
+.sample .perfs .name, .sample h3, .sample .composer { color: var(--muted); }
+.note { color: var(--muted); margin: 18px 0 0; max-width: 60ch; }
+.msg { color: var(--muted); margin: 0; max-width: 60ch; }
+.local-note { margin: 0 0 16px; font-size: 13px; color: var(--muted); }
+
+.fab {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 15;
+  height: 50px;
+  padding: 0 22px 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  border-radius: 25px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+}
+.fab:hover { filter: brightness(1.08); }
+.fab span { font-size: 24px; line-height: 1; margin-top: -2px; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 12px);
+  max-width: calc(100% - 32px);
+  background: var(--ink);
+  color: var(--bg);
+  padding: 10px 16px;
+  border-radius: 3px;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s, transform 0.18s;
+  z-index: 40;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+
+/* Favorites picker */
+.favpick { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.favrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.favlist { display: flex; flex-direction: column; gap: 6px; padding: 4px; background: var(--field); border: 1px solid var(--line); border-radius: 3px; }
+.favlist[hidden] { display: none; }
+.favitems { display: flex; flex-direction: column; gap: 2px; max-height: 190px; overflow-y: auto; }
+.favnew { display: flex; gap: 8px; padding: 4px; border-top: 1px solid var(--line); }
+.favnew .input { height: 34px; font-size: 14px; min-width: 0; }
+.profile-actions .favlist { flex: 1 1 100%; }
+.favlist .hint { padding: 6px 8px; }
+.favitem { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: transparent; border: 0; border-radius: 3px; cursor: pointer; text-align: left; font-size: 14px; }
+.favitem:hover { background: var(--accent-soft); }
+.favitem .tick { width: 18px; height: 18px; flex: none; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 3px; font-size: 13px; line-height: 1; }
+.favitem[aria-pressed="true"] .tick { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.favitem .nm { min-width: 0; overflow-wrap: anywhere; }
+
+/* CD profile window */
+.card.clickable { cursor: pointer; }
+.card.clickable:hover { border-color: var(--accent); }
+.panel.profile { width: min(760px, 100%); }
+.profile-body { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.profile-cover { --hole: var(--accent-soft); aspect-ratio: 1; display: grid; place-items: center; background: var(--accent-soft); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.profile-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.profile-main { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.profile-main h2 { font-size: 34px; overflow-wrap: anywhere; }
+.profile-main .composer { margin: -8px 0 0; font-size: 22px; }
+.facts { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 8px 14px; margin: 0; }
+.facts dt { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.profile-albums { display: flex; flex-direction: column; gap: 8px; }
+.profile-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding-top: 14px; border-top: 1px solid var(--line); }
+.profile-actions .ask { flex-basis: 100%; margin: 0; }
+@media (max-width: 640px) {
+  .profile-body { grid-template-columns: minmax(0, 1fr); }
+  .profile-cover { max-width: 260px; }
+  .facts { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .facts dd { margin-bottom: 8px; }
+}
+
+@media (max-width: 860px) {
+  .top h1 { font-size: 40px; }
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .side { position: static; max-height: none; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 12px; }
+  .side-h { flex-basis: 100%; margin-left: 0; }
+  .albums { flex-direction: row; flex-wrap: wrap; overflow: visible; gap: 8px; flex: 1 1 100%; }
+  .achip { width: auto; max-width: 100%; border: 1px solid var(--line); background: var(--field); }
+  .achip[aria-pressed="true"] { border-color: var(--accent); }
+  .albums .linkbtn { padding: 6px 4px; }
+  .favgroup { flex-direction: row; flex-wrap: wrap; flex: 1 1 100%; margin: 0; padding-left: 0; border-left: 0; gap: 8px; }
+  .setbtn { width: auto; margin-top: 0; }
+}
+@media (max-width: 480px) {
+  .panel { padding: 18px 16px 22px; }
+  .top .tag { flex-basis: 100%; order: 5; }
+  .acct-btn .lbl-name { display: none; }
+  .acct-btn { padding-right: 4px; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <div class="disc" style="--s:46px" aria-hidden="true"></div>
+    <h1>CDC</h1>
+    <p class="tag" data-i18n="tagline">Catalogue the discs on your shelf.</p>
+    <div class="top-actions">
+      <span class="chip" id="trial-chip" data-i18n="trial">Trial version</span>
+      <div class="acct-wrap">
+        <button type="button" class="acct-btn" id="open-account" aria-haspopup="dialog" aria-expanded="false" aria-controls="acct-pop" data-i18n-aria="acctSection" aria-label="Account">
+          <span class="avatar" id="acct-initial" aria-hidden="true"></span>
+          <span class="lbl-name" id="acct-label">Account</span>
+        </button>
+        <div class="acct-pop" id="acct-pop" role="dialog" aria-labelledby="set-name" hidden>
+          <div class="acct-card">
+            <span class="avatar big" id="set-initial" aria-hidden="true"></span>
+            <div>
+              <p class="acct-name" id="set-name"></p>
+              <p class="hint" id="set-storage"></p>
+              <p class="hint" id="set-stats"></p>
+            </div>
+          </div>
+          <p class="hint" id="acct-note" data-i18n="acctNote">Your account comes from your Claude sign-in. To switch accounts, sign in to Claude with another one.</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+  <aside class="side">
+    <nav class="albums" id="albums" data-i18n-aria="navLabel" aria-label="Browse"></nav>
+    <button type="button" class="setbtn" id="open-settings" data-i18n-aria="settings" aria-label="Settings">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M4 7h9M17 7h3M4 17h3M11 17h9"/>
+        <circle cx="15" cy="7" r="2" fill="var(--surface)"/>
+        <circle cx="9" cy="17" r="2" fill="var(--surface)"/>
+      </svg>
+      <span data-i18n="settingsBtn">Settings</span>
+    </button>
+  </aside>
+
+  <main>
+    <h2 id="coll-h" class="sr" data-i18n="collection">Your collection</h2>
+    <p class="local-note" id="local-note" hidden data-i18n="localNote">Saving is not available in this view, so CDs are kept in this browser only.</p>
+    <div class="tools">
+      <span class="count" id="count">Loading</span>
+      <input class="input" id="search" type="search" data-i18n-ph="searchPh" placeholder="Search title, composer or performer" data-i18n-aria="searchAria" aria-label="Search your collection" hidden>
+      <label class="sort" id="sort-wrap" for="sort" hidden>
+        <span data-i18n="sort">Sort</span>
+        <select class="input" id="sort">
+          <option value="added" data-i18n="sort.added">Recently added</option>
+          <option value="composer" data-i18n="sort.composer">Composer A–Z</option>
+          <option value="title" data-i18n="sort.title">Title A–Z</option>
+          <option value="release" data-i18n="sort.release">Release year, newest</option>
+        </select>
+      </label>
+    </div>
+    <div class="grid" id="grid" aria-live="polite"></div>
+    <p class="note" id="empty-note" hidden data-i18n="emptyNote">Nothing on the shelf yet. Select Add a CD and your first CD will appear here, laid out like this.</p>
+  </main>
+  </div>
+</div>
+
+<!-- Window: add or edit a CD -->
+<div class="overlay" id="win-cd" hidden>
+  <section class="panel" role="dialog" aria-modal="true" aria-labelledby="add-h">
+    <div class="panel-head">
+      <h2 id="add-h">Add a CD</h2>
+      <button type="button" class="iconbtn" id="close-cd" data-i18n-aria="close" aria-label="Close">×</button>
+    </div>
+    <form id="cd-form" novalidate>
+      <div class="field">
+        <div class="photo">
+          <label class="drop" id="drop" for="photo">
+            <span class="disc" id="drop-glyph" style="--s:72px" aria-hidden="true"></span>
+            <img id="drop-img" alt="Cover preview" hidden>
+            <input class="sr" type="file" id="photo" accept="image/*">
+          </label>
+          <div class="photo-side">
+            <strong id="photo-title">Cover</strong>
+            <p id="photo-hint">Drop an image here or choose one. A front cover or the disc itself both work.</p>
+            <div class="photo-actions" id="photo-actions" hidden>
+              <button type="button" class="linkbtn" id="photo-replace" data-i18n="replace">Replace</button>
+              <button type="button" class="linkbtn danger" id="photo-remove" data-i18n="remove">Remove</button>
+            </div>
+            <p class="err" id="photo-err" role="alert"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="title"><span data-i18n="cdTitle">Title of the CD</span> <span class="req">*</span></label>
+        <input class="input" id="title" name="title" type="text" autocomplete="off" data-autofocus data-i18n-ph="cdTitlePh" placeholder="e.g. Piano Concerto No. 2">
+        <p class="err" id="title-err" role="alert"></p>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="composer" data-i18n="composer">Composer</label>
+        <input class="input" id="composer" name="composer" type="text" autocomplete="off" list="composers" data-i18n-ph="composerPh" placeholder="e.g. Sergei Rachmaninoff (optional)">
+        <datalist id="composers"></datalist>
+      </div>
+
+      <fieldset id="perf-set">
+        <legend data-i18n="performers">Performers</legend>
+        <div id="perf-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+        <button type="button" class="linkbtn" id="add-perf" data-i18n="addPerformer">+ Add performer</button>
+      </fieldset>
+
+      <div class="field">
+        <label class="lbl" for="label" data-i18n="label">Label</label>
+        <input class="input" id="label" name="label" type="text" autocomplete="off" data-i18n-ph="labelPh" placeholder="e.g. Deutsche Grammophon">
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="issuer" data-i18n="issuer">Issuing corporation</label>
+        <input class="input" id="issuer" name="issuer" type="text" autocomplete="off" data-i18n-ph="issuerPh" placeholder="e.g. Universal Music Group">
+      </div>
+
+      <div class="two">
+        <div class="field">
+          <label class="lbl" for="recordingYear" data-i18n="recYear">Recording year</label>
+          <input class="input" id="recordingYear" name="recordingYear" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="1985">
+          <p class="err" id="recordingYear-err" role="alert"></p>
+        </div>
+        <div class="field">
+          <label class="lbl" for="releaseYear" data-i18n="relYear">CD release year</label>
+          <input class="input" id="releaseYear" name="releaseYear" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="1998">
+          <p class="err" id="releaseYear-err" role="alert"></p>
+        </div>
+      </div>
+
+      <fieldset id="albums-set">
+        <legend data-i18n="albumsField">Favorites</legend>
+        <div id="album-checks"></div>
+      </fieldset>
+
+      <div class="actions">
+        <button class="btn" id="submit" type="submit">Add to collection</button>
+        <button class="btn quiet" id="cancel-edit" type="button" hidden data-i18n="cancel">Cancel</button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<!-- Window: settings -->
+<div class="overlay" id="win-settings" hidden>
+  <section class="panel narrow" role="dialog" aria-modal="true" aria-labelledby="set-h">
+    <div class="panel-head">
+      <h2 id="set-h" data-i18n="settings">Settings</h2>
+      <button type="button" class="iconbtn" id="close-settings" data-autofocus data-i18n-aria="close" aria-label="Close">×</button>
+    </div>
+
+    <div class="sect">
+      <h3 data-i18n="langSection">Language</h3>
+      <select class="input" id="lang-set" data-i18n-aria="langLabel" aria-label="Language">
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+        <option value="zh">简体中文</option>
+      </select>
+    </div>
+
+    <div class="sect">
+      <h3 data-i18n="displaySection">Display</h3>
+      <span class="hint" data-i18n="cardSize">Card size</span>
+      <div class="seg" role="group" data-i18n-aria="cardSize" aria-label="Card size">
+        <button type="button" id="size-comfortable" aria-pressed="true" data-i18n="size.comfortable">Comfortable</button>
+        <button type="button" id="size-compact" aria-pressed="false" data-i18n="size.compact">Compact</button>
+      </div>
+      <span class="hint" data-i18n="cardDetails">Show on cards</span>
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="det-performers"><span data-i18n="performers">Performers</span></label>
+        <label class="check"><input type="checkbox" id="det-publisher"><span data-i18n="detPublisher">Label and issuing corporation</span></label>
+        <label class="check"><input type="checkbox" id="det-years"><span data-i18n="detYears">Recording and release years</span></label>
+      </div>
+    </div>
+
+    <div class="sect" id="data-sect">
+      <h3 data-i18n="dataSection">Your data</h3>
+      <div class="btnrow">
+        <button type="button" class="btn small quiet" id="export-json" data-i18n="exportJson">Export everything (JSON)</button>
+        <button type="button" class="btn small quiet" id="export-csv" data-i18n="exportCsv">Export list (CSV)</button>
+      </div>
+      <p class="hint" data-i18n="exportNote">JSON includes cover images and favorites. CSV is a plain list for spreadsheets.</p>
+    </div>
+
+    <div class="actions" style="margin-top:22px">
+      <button type="button" class="btn" id="done-settings" data-i18n="done">Done</button>
+    </div>
+  </section>
+</div>
+
+<!-- Window: CD profile -->
+<div class="overlay" id="win-detail" hidden>
+  <section class="panel profile" role="dialog" aria-modal="true" aria-labelledby="detail-h">
+    <div class="panel-head">
+      <span class="side-h" style="margin:0" data-i18n="profileHead">CD profile</span>
+      <button type="button" class="iconbtn" id="close-detail" data-autofocus data-i18n-aria="close" aria-label="Close">×</button>
+    </div>
+    <div class="profile-body" id="detail-body"></div>
+  </section>
+</div>
+
+<!-- Window: create or edit an album -->
+<div class="overlay" id="win-album" hidden>
+  <section class="panel narrow" role="dialog" aria-modal="true" aria-labelledby="album-h">
+    <div class="panel-head">
+      <h2 id="album-h">New favorite</h2>
+      <button type="button" class="iconbtn" id="close-album" data-i18n-aria="close" aria-label="Close">×</button>
+    </div>
+    <form id="album-form" novalidate>
+      <div class="field">
+        <label class="lbl" for="album-name" data-i18n="albumName">Favorite name</label>
+        <input class="input" id="album-name" type="text" maxlength="60" autocomplete="off" data-autofocus data-i18n-ph="albumNamePh" placeholder="e.g. Piano concertos">
+        <p class="err" id="album-name-err" role="alert"></p>
+      </div>
+      <div class="actions">
+        <button class="btn" id="album-save" type="submit">Create favorite</button>
+        <button class="btn quiet" id="album-cancel" type="button" data-i18n="cancel">Cancel</button>
+      </div>
+      <button type="button" class="linkbtn danger" id="album-delete" hidden data-i18n="deleteAlbum">Delete favorite</button>
+      <div id="album-del-ask" hidden>
+        <p class="hint" id="album-del-text" style="margin-bottom:10px"></p>
+        <div class="btnrow">
+          <button type="button" class="btn small danger" id="album-del-yes" data-i18n="deleteAlbum">Delete favorite</button>
+          <button type="button" class="btn small quiet" id="album-del-no" data-i18n="keep">Keep</button>
+        </div>
+      </div>
+    </form>
+  </section>
+</div>
+
+<button type="button" class="fab" id="open-add"><span aria-hidden="true">+</span><b id="fab-text" style="font-weight:600">Add a CD</b></button>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- text in three languages ---------- */
+  var I18N = {
+    en: {
+      tagline: "Catalogue the discs on your shelf.", trial: "Trial version", langLabel: "Language",
+      settings: "Settings", collection: "Your collection", albumsBar: "Favorites",
+      add: "Add a CD", edit: "Edit CD", close: "Close", cover: "Cover", coverAdded: "Cover added",
+      coverHint: "Drop an image here or choose one. A front cover or the disc itself both work.",
+      coverHintAdded: "It will be cropped to a square on the shelf.",
+      replace: "Replace", remove: "Remove",
+      cdTitle: "Title of the CD", cdTitlePh: "e.g. Piano Concerto No. 2",
+      composer: "Composer", composerPh: "e.g. Sergei Rachmaninoff (optional)",
+      performers: "Performers", performerName: "Name", performerNameAria: "Performer name", roleAria: "Role",
+      removePerformer: "Remove this performer", addPerformer: "+ Add performer",
+      "role.Conductor": "Conductor", "role.Orchestra": "Orchestra", "role.Ensemble": "Ensemble", "role.Singer": "Singer",
+      "role.Pianist": "Pianist", "role.Violinist": "Violinist", "role.Cellist": "Cellist", "role.Other": "Other",
+      label: "Label", labelPh: "e.g. Deutsche Grammophon",
+      issuer: "Issuing corporation", issuerPh: "e.g. Universal Music Group",
+      recYear: "Recording year", relYear: "CD release year", albumsField: "Favorites",
+      saveChanges: "Save changes", addToCollection: "Add to collection", saving: "Saving…", cancel: "Cancel",
+      errTitle: "Enter the title of the CD.", errRec: "Use a four-digit year, or leave it empty.",
+      errRel: "Use a four-digit year from 1980, or leave it empty.",
+      errPhoto: "That file could not be read as a picture. Try a JPEG or PNG.",
+      toastLoading: "Still loading your collection. Try again in a moment.",
+      toastAdded: "Added “{title}”", toastSaved: "Saved changes to “{title}”",
+      toastLocalFull: "Saved, but this browser has no room to keep it after you leave.",
+      toastQuota: "Your collection storage is full. Remove a CD or use a smaller cover image.",
+      toastReadOnly: "Your access to this page is read-only, so the CD was not saved.",
+      toastSaveFail: "The change could not be saved. Try again.",
+      toastGone: "That CD no longer exists, so editing stopped.",
+      loading: "Loading your collection…",
+      "count.one": "1 disc", "count.other": "{n} discs", countOf: "{a} of {b} discs",
+      searchPh: "Search title, composer or performer", searchAria: "Search your collection",
+      sort: "Sort", "sort.added": "Recently added", "sort.composer": "Composer A–Z", "sort.title": "Title A–Z", "sort.release": "Release year, newest",
+      noMatch: "No CD matches “{q}”.",
+      emptyNote: "Nothing on the shelf yet. Select Add a CD and your first CD will appear here, laid out like this.",
+      localNote: "Saving to your account is not available in this view, so CDs are kept in this browser only.",
+      removeAsk: "Remove this CD?", keep: "Keep", toastRemoved: "Removed “{title}”",
+      toastRemoveFail: "Could not remove that CD. Try again.",
+      editBtn: "Edit", editingBtn: "Editing",
+      issuedBy: "Issued by {x}", recorded: "Recorded {y}", released: "Released {y}", example: "Example",
+      allCds: "All CDs", newAlbum: "+ New favorite", editAlbum: "Edit favorite", albumDlgNew: "New favorite",
+      albumName: "Favorite name", albumNamePh: "e.g. Piano concertos", albumNameErr: "Enter a name for the favorite.",
+      createAlbum: "Create favorite", deleteAlbum: "Delete favorite",
+      deleteAlbumAsk: "Delete “{name}”? The CDs stay in your collection.",
+      toastAlbumCreated: "Created favorite “{name}”", toastAlbumRenamed: "Saved favorite “{name}”", toastAlbumDeleted: "Deleted favorite “{name}”",
+      albumEmpty: "This favorite is empty. Use Add to favorite on a CD, or tick the favorite when you edit a CD.",
+      addToAlbum: "Add to favorite…", removeFromAlbum: "Remove from favorite",
+      toastAddedToAlbum: "Added to “{name}”", toastRemovedFromAlbum: "Removed from “{name}”",
+      acctSection: "Account", acctLoading: "Loading account…", acctName: "You",
+      acctStorageDb: "Your collection is saved to your Claude account.",
+      acctStorageLocal: "Your collection is kept in this browser only.", acctStorageDesktop: "Your collection is saved on this computer.",
+      acctStats: "{cds} CDs · {albums} favorites",
+      acctNote: "Your account comes from your Claude sign-in. To switch accounts, sign in to Claude with another one.", acctNoteDesktop: "This is your Windows user. Each Windows user has their own collection.",
+      langSection: "Language", displaySection: "Display", cardSize: "Card size",
+      "size.comfortable": "Comfortable", "size.compact": "Compact",
+      dataSection: "Your data", exportJson: "Export everything (JSON)", exportCsv: "Export list (CSV)",
+      exportNote: "JSON includes cover images and favorites. CSV is a plain list for spreadsheets.",
+      exportEmpty: "Add a CD first, then you can export.", toastExported: "Export saved.",
+      toastExportFail: "The export could not be saved here.", done: "Done",
+      openProfile: "Open {title}", profileHead: "CD profile", noAlbumsYet: "No favorites yet. Create one from the left column.", addToFavorites: "Add to favorites", newFavPh: "New favorite name", create: "Create", navLabel: "Browse",
+      settingsBtn: "Settings", cardDetails: "Show on cards",
+      detPublisher: "Label and issuing corporation", detYears: "Recording and release years"
+    },
+    ja: {
+      tagline: "棚のCDをカタログにしましょう。", trial: "試用版", langLabel: "言語",
+      settings: "設定", collection: "コレクション", albumsBar: "お気に入り",
+      add: "CDを追加", edit: "CDを編集", close: "閉じる", cover: "カバー", coverAdded: "カバーを追加しました",
+      coverHint: "画像をここにドロップするか、ファイルを選んでください。ジャケットでもディスクの写真でも構いません。",
+      coverHintAdded: "棚では正方形に切り抜いて表示されます。",
+      replace: "差し替え", remove: "削除",
+      cdTitle: "CDのタイトル", cdTitlePh: "例：ピアノ協奏曲第2番",
+      composer: "作曲家", composerPh: "例：ラフマニノフ（任意）",
+      performers: "演奏者", performerName: "名前", performerNameAria: "演奏者名", roleAria: "役割",
+      removePerformer: "この演奏者を削除", addPerformer: "+ 演奏者を追加",
+      "role.Conductor": "指揮者", "role.Orchestra": "オーケストラ", "role.Ensemble": "アンサンブル", "role.Singer": "歌手",
+      "role.Pianist": "ピアニスト", "role.Violinist": "ヴァイオリニスト", "role.Cellist": "チェリスト", "role.Other": "その他",
+      label: "レーベル", labelPh: "例：ドイツ・グラモフォン",
+      issuer: "発売元", issuerPh: "例：ユニバーサル ミュージック",
+      recYear: "録音年", relYear: "CD発売年", albumsField: "お気に入り",
+      saveChanges: "変更を保存", addToCollection: "コレクションに追加", saving: "保存中…", cancel: "キャンセル",
+      errTitle: "CDのタイトルを入力してください。", errRec: "4桁の西暦を入力するか、空欄にしてください。",
+      errRel: "1980年以降の4桁の西暦を入力するか、空欄にしてください。",
+      errPhoto: "このファイルは画像として読み込めませんでした。JPEGまたはPNGをお試しください。",
+      toastLoading: "コレクションを読み込み中です。少し待ってからもう一度お試しください。",
+      toastAdded: "「{title}」を追加しました", toastSaved: "「{title}」の変更を保存しました",
+      toastLocalFull: "保存しましたが、このブラウザには保持する容量がなく、ページを離れると失われます。",
+      toastQuota: "保存容量がいっぱいです。CDを削除するか、より小さいカバー画像を使ってください。",
+      toastReadOnly: "このページは閲覧のみの権限のため、CDは保存されませんでした。",
+      toastSaveFail: "変更を保存できませんでした。もう一度お試しください。",
+      toastGone: "そのCDはすでに存在しないため、編集を終了しました。",
+      loading: "コレクションを読み込み中…",
+      "count.one": "1枚", "count.other": "{n}枚", countOf: "{b}枚中 {a}枚",
+      searchPh: "タイトル・作曲家・演奏者で検索", searchAria: "コレクションを検索",
+      sort: "並び替え", "sort.added": "追加順（新しい順）", "sort.composer": "作曲家順", "sort.title": "タイトル順", "sort.release": "発売年（新しい順）",
+      noMatch: "「{q}」に一致するCDはありません。",
+      emptyNote: "棚はまだ空です。「CDを追加」を押すと、最初のCDがこのように表示されます。",
+      localNote: "この表示ではアカウントへの保存ができないため、CDはこのブラウザ内にのみ保管されます。",
+      removeAsk: "このCDを削除しますか？", keep: "残す", toastRemoved: "「{title}」を削除しました",
+      toastRemoveFail: "CDを削除できませんでした。もう一度お試しください。",
+      editBtn: "編集", editingBtn: "編集中",
+      issuedBy: "発売元：{x}", recorded: "録音 {y}", released: "発売 {y}", example: "サンプル",
+      allCds: "すべてのCD", newAlbum: "+ 新しいお気に入り", editAlbum: "お気に入りを編集", albumDlgNew: "新しいお気に入り",
+      albumName: "お気に入り名", albumNamePh: "例：ピアノ協奏曲", albumNameErr: "お気に入り名を入力してください。",
+      createAlbum: "お気に入りを作成", deleteAlbum: "お気に入りを削除",
+      deleteAlbumAsk: "「{name}」を削除しますか？CDはコレクションに残ります。",
+      toastAlbumCreated: "お気に入り「{name}」を作成しました", toastAlbumRenamed: "お気に入り「{name}」を保存しました", toastAlbumDeleted: "お気に入り「{name}」を削除しました",
+      albumEmpty: "このお気に入りは空です。CDの「お気に入りに追加」から追加するか、CD編集時にお気に入りにチェックを入れてください。",
+      addToAlbum: "お気に入りに追加…", removeFromAlbum: "お気に入りから外す",
+      toastAddedToAlbum: "「{name}」に追加しました", toastRemovedFromAlbum: "「{name}」から外しました",
+      acctSection: "アカウント", acctLoading: "アカウントを読み込み中…", acctName: "あなた",
+      acctStorageDb: "コレクションはClaudeアカウントに保存されています。",
+      acctStorageLocal: "コレクションはこのブラウザ内にのみ保管されています。", acctStorageDesktop: "コレクションはこのパソコンに保存されています。",
+      acctStats: "CD {cds}枚 · お気に入り {albums}件",
+      acctNote: "アカウントはClaudeのサインイン情報から取得しています。切り替えるには、別のアカウントでClaudeにサインインしてください。", acctNoteDesktop: "これはWindowsのユーザーです。Windowsユーザーごとに別のコレクションになります。",
+      langSection: "言語", displaySection: "表示", cardSize: "カードのサイズ",
+      "size.comfortable": "標準", "size.compact": "コンパクト",
+      dataSection: "データ", exportJson: "すべてを書き出す（JSON）", exportCsv: "一覧を書き出す（CSV）",
+      exportNote: "JSONにはカバー画像とお気に入りが含まれます。CSVは表計算ソフト向けの一覧です。",
+      exportEmpty: "先にCDを追加すると書き出せます。", toastExported: "書き出しを保存しました。",
+      toastExportFail: "この環境では書き出しを保存できませんでした。", done: "完了",
+      openProfile: "「{title}」を開く", profileHead: "CDのプロフィール", noAlbumsYet: "お気に入りはまだありません。左の列から作成できます。", addToFavorites: "お気に入りに追加", newFavPh: "新しいお気に入りの名前", create: "作成", navLabel: "閲覧",
+      settingsBtn: "設定", cardDetails: "カードに表示する項目",
+      detPublisher: "レーベルと発売元", detYears: "録音年と発売年"
+    },
+    zh: {
+      tagline: "为架上的每一张CD建立目录。", trial: "试用版", langLabel: "语言",
+      settings: "设置", collection: "你的CD", albumsBar: "收藏夹",
+      add: "添加CD", edit: "编辑CD", close: "关闭", cover: "封面", coverAdded: "封面已添加",
+      coverHint: "将图片拖到此处，或选择文件。封面或光盘照片均可。",
+      coverHintAdded: "在书架上将裁剪为正方形显示。",
+      replace: "更换", remove: "删除",
+      cdTitle: "CD标题", cdTitlePh: "例如：第二钢琴协奏曲",
+      composer: "作曲家", composerPh: "例如：拉赫玛尼诺夫（可选）",
+      performers: "演奏者", performerName: "姓名", performerNameAria: "演奏者姓名", roleAria: "角色",
+      removePerformer: "删除此演奏者", addPerformer: "+ 添加演奏者",
+      "role.Conductor": "指挥", "role.Orchestra": "乐团", "role.Ensemble": "合奏团", "role.Singer": "歌手",
+      "role.Pianist": "钢琴家", "role.Violinist": "小提琴家", "role.Cellist": "大提琴家", "role.Other": "其他",
+      label: "厂牌", labelPh: "例如：德国留声机",
+      issuer: "发行公司", issuerPh: "例如：环球音乐集团",
+      recYear: "录音年份", relYear: "CD发行年份", albumsField: "收藏夹",
+      saveChanges: "保存更改", addToCollection: "添加CD", saving: "保存中…", cancel: "取消",
+      errTitle: "请输入CD标题。", errRec: "请输入四位数年份，或留空。",
+      errRel: "请输入1980年及以后的四位数年份，或留空。",
+      errPhoto: "无法将此文件读取为图片，请尝试 JPEG 或 PNG。",
+      toastLoading: "收藏仍在加载，请稍后再试。",
+      toastAdded: "已添加《{title}》", toastSaved: "已保存《{title}》的更改",
+      toastLocalFull: "已保存，但此浏览器空间不足，离开页面后将丢失。",
+      toastQuota: "收藏存储已满。请删除一张CD，或使用更小的封面图片。",
+      toastReadOnly: "你对此页面只有只读权限，因此未能保存CD。",
+      toastSaveFail: "无法保存更改，请重试。",
+      toastGone: "该CD已不存在，编辑已停止。",
+      loading: "正在加载你的收藏…",
+      "count.one": "1张", "count.other": "{n}张", countOf: "共{b}张，显示{a}张",
+      searchPh: "搜索标题、作曲家或演奏者", searchAria: "搜索收藏",
+      sort: "排序", "sort.added": "最近添加", "sort.composer": "按作曲家", "sort.title": "按标题", "sort.release": "发行年份（最新）",
+      noMatch: "没有与“{q}”匹配的CD。",
+      emptyNote: "书架还是空的。点击“添加CD”，你的第一张CD将按此样式显示在这里。",
+      localNote: "当前视图无法保存到账户，CD 仅保存在此浏览器中。",
+      removeAsk: "删除这张CD？", keep: "保留", toastRemoved: "已删除《{title}》",
+      toastRemoveFail: "无法删除该CD，请重试。",
+      editBtn: "编辑", editingBtn: "编辑中",
+      issuedBy: "发行：{x}", recorded: "录音 {y}", released: "发行 {y}", example: "示例",
+      allCds: "全部CD", newAlbum: "+ 新建收藏夹", editAlbum: "编辑收藏夹", albumDlgNew: "新建收藏夹",
+      albumName: "收藏夹名称", albumNamePh: "例如：钢琴协奏曲", albumNameErr: "请输入收藏夹名称。",
+      createAlbum: "创建收藏夹", deleteAlbum: "删除收藏夹",
+      deleteAlbumAsk: "删除“{name}”？其中的CD仍保留在收藏中。",
+      toastAlbumCreated: "已创建收藏夹“{name}”", toastAlbumRenamed: "已保存收藏夹“{name}”", toastAlbumDeleted: "已删除收藏夹“{name}”",
+      albumEmpty: "此收藏夹是空的。可在CD上使用“添加到收藏夹”，或在编辑CD时勾选该收藏夹。",
+      addToAlbum: "添加到收藏夹…", removeFromAlbum: "移出收藏夹",
+      toastAddedToAlbum: "已添加到“{name}”", toastRemovedFromAlbum: "已从“{name}”移出",
+      acctSection: "账户", acctLoading: "正在加载账户…", acctName: "你",
+      acctStorageDb: "你的收藏已保存到 Claude 账户。",
+      acctStorageLocal: "你的收藏仅保存在此浏览器中。", acctStorageDesktop: "你的收藏保存在这台电脑上。",
+      acctStats: "{cds} 张CD · {albums} 个收藏夹",
+      acctNote: "账户信息来自你的 Claude 登录。如需切换账户，请使用另一个账户登录 Claude。", acctNoteDesktop: "这是你的 Windows 用户。每个 Windows 用户拥有各自的收藏。",
+      langSection: "语言", displaySection: "显示", cardSize: "卡片大小",
+      "size.comfortable": "标准", "size.compact": "紧凑",
+      dataSection: "数据", exportJson: "导出全部（JSON）", exportCsv: "导出列表（CSV）",
+      exportNote: "JSON 包含封面图片和收藏夹；CSV 是适用于电子表格的纯列表。",
+      exportEmpty: "请先添加CD，然后才能导出。", toastExported: "导出已保存。",
+      toastExportFail: "此处无法保存导出文件。", done: "完成",
+      openProfile: "打开《{title}》", profileHead: "CD档案", noAlbumsYet: "还没有收藏夹。可在左侧栏中创建。", addToFavorites: "添加到收藏夹", newFavPh: "新收藏夹名称", create: "创建", navLabel: "浏览",
+      settingsBtn: "设置", cardDetails: "卡片上显示",
+      detPublisher: "厂牌与发行公司", detYears: "录音与发行年份"
+    }
+  };
+  var LANGS = {
+    en: { tag: "en", name: "English" },
+    ja: { tag: "ja", name: "日本語" },
+    zh: { tag: "zh-CN", name: "简体中文" }
+  };
+  var COMPOSERS = {
+    en: ["Johann Sebastian Bach", "Ludwig van Beethoven", "Johannes Brahms", "Frédéric Chopin", "Claude Debussy", "Antonín Dvořák", "Joseph Haydn", "Gustav Mahler", "Wolfgang Amadeus Mozart", "Sergei Rachmaninoff", "Maurice Ravel", "Franz Schubert", "Robert Schumann", "Dmitri Shostakovich", "Pyotr Ilyich Tchaikovsky"],
+    ja: ["バッハ", "ベートーヴェン", "ブラームス", "ショパン", "ドビュッシー", "ドヴォルザーク", "ハイドン", "マーラー", "モーツァルト", "ラフマニノフ", "ラヴェル", "シューベルト", "シューマン", "ショスタコーヴィチ", "チャイコフスキー"],
+    zh: ["巴赫", "贝多芬", "勃拉姆斯", "肖邦", "德彪西", "德沃夏克", "海顿", "马勒", "莫扎特", "拉赫玛尼诺夫", "拉威尔", "舒伯特", "舒曼", "肖斯塔科维奇", "柴可夫斯基"]
+  };
+  var ROLES = ["Conductor", "Orchestra", "Ensemble", "Singer", "Pianist", "Violinist", "Cellist", "Other"];
+  var DEFAULT_ROLES = ["Conductor", "Orchestra", "Pianist", "Singer"];
+
+  var $ = function (id) { return document.getElementById(id); };
+  function qsa(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  function detectLang() {
+    try {
+      var s = localStorage.getItem("cdc.lang");
+      if (s && LANGS[s]) return s;
+    } catch (e) { /* storage unavailable */ }
+    var nav = String(navigator.language || "en").toLowerCase();
+    if (nav.indexOf("ja") === 0) return "ja";
+    if (nav.indexOf("zh") === 0) return "zh";
+    return "en";
+  }
+  var lang = detectLang();
+
+  function t(key, vars) {
+    var s = I18N[lang][key];
+    if (s == null) s = I18N.en[key];
+    if (s == null) return key;
+    if (vars) s = s.replace(/\{(\w+)\}/g, function (m, k) { return vars[k] != null ? vars[k] : m; });
+    return s;
+  }
+  function tn(base, n) { return t(base + (n === 1 ? ".one" : ".other"), { n: n }); }
+
+  /* ---------- state ---------- */
+  var cds = [];
+  var loaded = false;
+  var backend = null;
+  var downloadsApi = null;
+  var meta = { albums: [], settings: {} };
+  var acct = { loading: true, name: "", color: "" };
+  var query = "";
+  var currentAlbum = "all";
+  var favOpen = false;
+  try { favOpen = localStorage.getItem("cdc.favopen") === "1"; } catch (e) { /* storage unavailable */ }
+  var detailId = null;
+  var detailConfirm = false;
+  var photoData = null;
+  var rowCounter = 0;
+  var toastTimer = null;
+  var editingId = null;
+  var editingAddedAt = null;
+  var sortKey = "added";
+  try {
+    var savedSort = localStorage.getItem("cdc.sort");
+    if (["added", "composer", "title", "release"].indexOf(savedSort) !== -1) sortKey = savedSort;
+  } catch (e) { /* storage unavailable */ }
+
+  function toast(msg) {
+    var n = $("toast");
+    n.textContent = msg;
+    n.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { n.classList.remove("show"); }, 3800);
+  }
+
+  /* ---------- translating the page ---------- */
+  function applyI18n() {
+    document.documentElement.lang = LANGS[lang].tag;
+    qsa("[data-i18n]").forEach(function (n) { n.textContent = t(n.getAttribute("data-i18n")); });
+    qsa("[data-i18n-ph]").forEach(function (n) { n.placeholder = t(n.getAttribute("data-i18n-ph")); });
+    qsa("[data-i18n-aria]").forEach(function (n) { n.setAttribute("aria-label", t(n.getAttribute("data-i18n-aria"))); });
+    $("fab-text").textContent = t("add");
+    $("drop-img").alt = t("cover");
+  }
+  function fillComposers() {
+    var dl = $("composers");
+    dl.textContent = "";
+    COMPOSERS[lang].forEach(function (name) {
+      var o = el("option");
+      o.value = name;
+      dl.appendChild(o);
+    });
+  }
+  function refreshRows() {
+    qsa(".prow").forEach(function (row) {
+      var sel = row.querySelector("select");
+      sel.setAttribute("aria-label", t("roleAria"));
+      qsa("option", sel).forEach(function (o) { o.textContent = t("role." + o.value); });
+      var inp = row.querySelector("input");
+      inp.placeholder = t("performerName");
+      inp.setAttribute("aria-label", t("performerNameAria"));
+      row.querySelector("button").setAttribute("aria-label", t("removePerformer"));
+    });
+  }
+  function setLang(code, persist) {
+    if (!LANGS[code]) return;
+    lang = code;
+    try { localStorage.setItem("cdc.lang", code); } catch (e) { /* storage unavailable */ }
+    applyAll();
+    if (persist) commitMeta(function (m) { m.settings.lang = code; });
+  }
+  function applyAll() {
+    applyI18n();
+    fillComposers();
+    refreshRows();
+    ["title", "recordingYear", "releaseYear"].forEach(function (f) { setErr(f, ""); });
+    $("photo-err").textContent = "";
+    applyMode();
+    showPhoto();
+    $("lang-set").value = lang;
+    renderAll();
+  }
+  $("lang-set").addEventListener("change", function (e) { setLang(e.target.value, true); });
+
+  /* ---------- windows ---------- */
+  var winState = {};
+  var stack = [];
+  function openWin(id) {
+    var ov = $("win-" + id);
+    if (!ov.hidden) return;
+    winState[id] = document.activeElement;
+    ov.hidden = false;
+    stack.push(id);
+    document.body.style.overflow = "hidden";
+    ov.querySelector(".panel").scrollTop = 0;
+    var first = ov.querySelector("[data-autofocus]") || ov.querySelector("button, input, select");
+    if (first) first.focus({ preventScroll: true });
+  }
+  function closeWin(id) {
+    var ov = $("win-" + id);
+    if (ov.hidden) return;
+    if (id === "cd" && editingId) { clearForm(); renderAll(); }
+    if (id === "album") resetAlbumDlg();
+    if (id === "detail") { detailId = null; detailConfirm = false; }
+    ov.hidden = true;
+    stack = stack.filter(function (x) { return x !== id; });
+    if (!stack.length) document.body.style.overflow = "";
+    var back = winState[id];
+    winState[id] = null;
+    if (!back || back === document.body || !document.contains(back)) back = $("open-add");
+    if (back.focus) back.focus({ preventScroll: true });
+  }
+  qsa(".overlay").forEach(function (ov) {
+    var id = ov.id.replace("win-", "");
+    var downOnBackdrop = false;
+    ov.addEventListener("mousedown", function (e) { downOnBackdrop = e.target === ov; });
+    ov.addEventListener("click", function (e) {
+      if (e.target === ov && downOnBackdrop) closeWin(id);
+      downOnBackdrop = false;
+    });
+  });
+  document.addEventListener("keydown", function (e) {
+    if (!stack.length) return;
+    var id = stack[stack.length - 1];
+    if (e.key === "Escape") { e.preventDefault(); closeWin(id); return; }
+    if (e.key !== "Tab") return;
+    var nodes = qsa("button, input, select, a[href]", $("win-" + id)).filter(function (n) {
+      return (!n.disabled && !n.hidden && n.offsetParent !== null) || n === document.activeElement;
+    });
+    if (!nodes.length) return;
+    var first = nodes[0], last = nodes[nodes.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+  $("close-cd").addEventListener("click", function () { closeWin("cd"); });
+  $("cancel-edit").addEventListener("click", function () { closeWin("cd"); });
+  $("close-settings").addEventListener("click", function () { closeWin("settings"); });
+  $("done-settings").addEventListener("click", function () { closeWin("settings"); });
+  $("close-album").addEventListener("click", function () { closeWin("album"); });
+  $("album-cancel").addEventListener("click", function () { closeWin("album"); });
+
+  /* ---------- cover photo ---------- */
+  function fileToDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onload = function () { resolve(r.result); };
+      r.onerror = function () { reject(r.error || new Error("read")); };
+      r.readAsDataURL(file);
+    });
+  }
+  function loadImage(src) {
+    return new Promise(function (resolve, reject) {
+      var i = new Image();
+      i.onload = function () { resolve(i); };
+      i.onerror = function () { reject(new Error("decode")); };
+      i.src = src;
+    });
+  }
+  async function prepareCover(file) {
+    if (!file.type || file.type.indexOf("image/") !== 0) throw new Error("not_image");
+    var img = await loadImage(await fileToDataUrl(file));
+    var longest = Math.max(img.naturalWidth, img.naturalHeight);
+    if (!longest) throw new Error("decode");
+    var maxSide = 800;
+    var out = "";
+    for (var attempt = 0; attempt < 4; attempt++) {
+      var s = Math.min(1, maxSide / longest);
+      var w = Math.max(1, Math.round(img.naturalWidth * s));
+      var h = Math.max(1, Math.round(img.naturalHeight * s));
+      var c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      var ctx = c.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      var q = 0.85;
+      out = c.toDataURL("image/jpeg", q);
+      while (out.length > 170000 && q > 0.45) {
+        q -= 0.1;
+        out = c.toDataURL("image/jpeg", q);
+      }
+      if (out.length <= 170000) return out;
+      maxSide = Math.round(maxSide * 0.75);
+    }
+    return out;
+  }
+  function showPhoto() {
+    var has = !!photoData;
+    var img = $("drop-img");
+    if (has) img.src = photoData; else img.removeAttribute("src");
+    img.hidden = !has;
+    $("drop-glyph").hidden = has;
+    $("photo-actions").hidden = !has;
+    $("photo-title").textContent = has ? t("coverAdded") : t("cover");
+    $("photo-hint").textContent = has ? t("coverHintAdded") : t("coverHint");
+  }
+  async function handleFile(file) {
+    if (!file) return;
+    $("photo-err").textContent = "";
+    try {
+      photoData = await prepareCover(file);
+    } catch (e) {
+      photoData = null;
+      $("photo-err").textContent = t("errPhoto");
+    }
+    showPhoto();
+  }
+  var drop = $("drop");
+  $("photo").addEventListener("change", function (e) {
+    var f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    handleFile(f);
+  });
+  ["dragenter", "dragover"].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("over"); });
+  });
+  ["dragleave", "drop"].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("over"); });
+  });
+  drop.addEventListener("drop", function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    handleFile(f);
+  });
+  $("photo-replace").addEventListener("click", function () { $("photo").click(); });
+  $("photo-remove").addEventListener("click", function () { photoData = null; showPhoto(); });
+
+  /* ---------- performer rows ---------- */
+  function addRow(role, name) {
+    var n = ++rowCounter;
+    var row = el("div", "prow");
+    var sel = el("select", "input");
+    sel.id = "perf-role-" + n;
+    sel.setAttribute("aria-label", t("roleAria"));
+    ROLES.forEach(function (r) {
+      var o = el("option", null, t("role." + r));
+      o.value = r;
+      sel.appendChild(o);
+    });
+    sel.value = role || DEFAULT_ROLES[$("perf-rows").children.length] || "Other";
+    var inp = el("input", "input");
+    inp.id = "perf-name-" + n;
+    inp.type = "text";
+    inp.autocomplete = "off";
+    inp.placeholder = t("performerName");
+    inp.setAttribute("aria-label", t("performerNameAria"));
+    if (name) inp.value = name;
+    var rm = el("button", "iconbtn", "×");
+    rm.type = "button";
+    rm.id = "perf-remove-" + n;
+    rm.setAttribute("aria-label", t("removePerformer"));
+    rm.addEventListener("click", function () { row.remove(); });
+    row.appendChild(sel); row.appendChild(inp); row.appendChild(rm);
+    $("perf-rows").appendChild(row);
+    return inp;
+  }
+  $("add-perf").addEventListener("click", function () { addRow().focus(); });
+  function resetRows() {
+    $("perf-rows").textContent = "";
+    addRow("Conductor");
+  }
+  function readPerformers() {
+    var out = [];
+    qsa(".prow").forEach(function (row) {
+      var role = row.querySelector("select").value;
+      var name = row.querySelector("input").value.trim();
+      if (name) out.push({ role: role, name: name });
+    });
+    return out;
+  }
+
+  /* ---------- albums: data ---------- */
+  function normMeta(raw) {
+    var m = { albums: [], settings: {} };
+    if (raw && Array.isArray(raw.albums)) {
+      raw.albums.forEach(function (a) {
+        if (a && a.id && a.name) {
+          m.albums.push({
+            id: String(a.id),
+            name: String(a.name),
+            cdIds: Array.isArray(a.cdIds) ? a.cdIds.map(String) : []
+          });
+        }
+      });
+    }
+    if (raw && raw.settings && typeof raw.settings === "object") m.settings = Object.assign({}, raw.settings);
+    return m;
+  }
+  function showOpt(key) {
+    var v = meta.settings["show_" + key];
+    return v !== false;
+  }
+  function findAlbum(id) {
+    for (var i = 0; i < meta.albums.length; i++) if (meta.albums[i].id === id) return meta.albums[i];
+    return null;
+  }
+  function albumsOf(cdId) {
+    return meta.albums.filter(function (a) { return a.cdIds.indexOf(cdId) !== -1; });
+  }
+  function commitMeta(mutate) {
+    var next = clone(meta);
+    mutate(next);
+    meta = next;
+    renderAll();
+    if (backend) backend.saveMeta();
+  }
+  function setMembership(cdId, albumIds) {
+    var changed = false;
+    var next = meta.albums.map(function (a) {
+      var has = a.cdIds.indexOf(cdId) !== -1;
+      var want = albumIds.indexOf(a.id) !== -1;
+      if (has === want) return a;
+      changed = true;
+      return { id: a.id, name: a.name, cdIds: want ? a.cdIds.concat(cdId) : a.cdIds.filter(function (x) { return x !== cdId; }) };
+    });
+    if (changed) commitMeta(function (m) { m.albums = next; });
+  }
+  function purgeFromAlbums(cdId) {
+    if (!albumsOf(cdId).length) return;
+    commitMeta(function (m) {
+      m.albums.forEach(function (a) { a.cdIds = a.cdIds.filter(function (x) { return x !== cdId; }); });
+    });
+  }
+  function applyMeta(raw) {
+    meta = normMeta(raw);
+    if (meta.settings.lang && LANGS[meta.settings.lang] && meta.settings.lang !== lang) {
+      setLang(meta.settings.lang, false);
+      return;
+    }
+    renderAll();
+  }
+
+  /* ---------- storage backends ---------- */
+  function setCds(list) {
+    cds = list;
+    loaded = true;
+    if (editingId && !cds.some(function (c) { return c.id === editingId; })) {
+      closeWin("cd");
+      toast(t("toastGone"));
+    }
+    renderAll();
+  }
+  function localBackend() {
+    var KEY = "cdc.collection.v1";
+    var META_KEY = "cdc.meta.v1";
+    var items = [];
+    try { items = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch (e) { items = []; }
+    function persist() {
+      try { localStorage.setItem(KEY, JSON.stringify(items)); return true; } catch (e) { return false; }
+    }
+    return {
+      kind: "local",
+      start: function () {
+        $("local-note").hidden = false;
+        var raw = null;
+        try { raw = JSON.parse(localStorage.getItem(META_KEY) || "null"); } catch (e) { raw = null; }
+        meta = normMeta(raw);
+        loaded = true;
+        setCds(items.slice());
+        applyMeta(raw);
+      },
+      add: async function (cd) {
+        cd.id = "l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        items = [cd].concat(items);
+        var ok = persist();
+        setCds(items.slice());
+        if (!ok) throw { code: "local_full", id: cd.id };
+        return cd.id;
+      },
+      update: async function (id, cd) {
+        items = items.map(function (i) {
+          if (i.id !== id) return i;
+          var n = Object.assign({}, cd);
+          n.id = id;
+          return n;
+        });
+        var ok = persist();
+        setCds(items.slice());
+        if (!ok) throw { code: "local_full", id: id };
+      },
+      remove: async function (id) {
+        items = items.filter(function (i) { return i.id !== id; });
+        persist();
+        setCds(items.slice());
+      },
+      saveMeta: function () {
+        try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) { toast(t("toastSaveFail")); }
+      }
+    };
+  }
+  function dbBackend(db, uid, onFail) {
+    var col = db.collection("data/users/" + uid);
+    var metaRef = db.doc("data/users/" + uid + "/meta");
+    var pending = false;
+    var dirty = false;
+    function flush() {
+      if (pending) { dirty = true; return; }
+      pending = true;
+      metaRef.set(clone(meta)).catch(function () { toast(t("toastSaveFail")); }).then(function () {
+        pending = false;
+        if (dirty) { dirty = false; flush(); }
+      });
+    }
+    return {
+      kind: "db",
+      start: function () {
+        col.orderBy("addedAt", "desc").limit(500).onSnapshot(function (snap) {
+          setCds(snap.docs.filter(function (d) { return d.id !== "meta"; }).map(function (d) {
+            var o = Object.assign({}, d.data());
+            o.id = d.id;
+            return o;
+          }));
+        }, function () { onFail(); });
+        metaRef.onSnapshot(function (snap) {
+          if (pending || dirty) return;
+          applyMeta(snap.exists ? snap.data() : null);
+        }, function () { onFail(); });
+      },
+      add: async function (cd) { var ref = await col.add(cd); return ref.id; },
+      update: function (id, cd) { return col.doc(id).set(cd); },
+      remove: function (id) { return col.doc(id).delete(); },
+      saveMeta: flush
+    };
+  }
+  /* ---------- storage layer ----------
+     Every save and load of the collection goes through Store. Today it talks to the desktop app
+     (Tauri commands, or the older local server). Adding online sync later means writing another
+     Store with the same load()/save() shape, without touching the rest of the page. */
+  var IS_TAURI = !!(window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke);
+  var Store = IS_TAURI ? {
+    load: function () { return window.__TAURI__.core.invoke("load_data"); },
+    save: function (doc) { return window.__TAURI__.core.invoke("save_data", { data: doc }); }
+  } : {
+    load: function () { return fetch("/api/data").then(function (r) { if (!r.ok) throw new Error("load"); return r.json(); }); },
+    save: function (doc) {
+      return fetch("/api/data", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(doc)
+      }).then(function (r) { if (!r.ok) throw new Error("save"); });
+    }
+  };
+
+  /* Desktop app: the collection lives in a file on this computer. */
+  function desktopBackend() {
+    var items = [];
+    var saving = false, again = false;
+    function persist() {
+      if (saving) { again = true; return Promise.resolve(); }
+      saving = true;
+      return Store.save({ cds: items, meta: meta }).catch(function () {
+        toast(t("toastSaveFail"));
+      }).then(function () {
+        saving = false;
+        if (again) { again = false; return persist(); }
+      });
+    }
+    return {
+      kind: "desktop",
+      start: function () {
+        Store.load().then(function (d) {
+          items = Array.isArray(d && d.cds) ? d.cds : [];
+          if (d && d.user) { acct.name = d.user; acct.loading = false; }
+          meta = normMeta(d && d.meta);
+          setCds(items.slice());
+          applyMeta(d && d.meta);
+        }).catch(function () {
+          setCds([]);
+          toast(t("toastSaveFail"));
+        });
+      },
+      add: async function (cd) {
+        cd.id = "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        items = [cd].concat(items);
+        setCds(items.slice());
+        await persist();
+        return cd.id;
+      },
+      update: async function (id, cd) {
+        items = items.map(function (i) {
+          if (i.id !== id) return i;
+          var n = Object.assign({}, cd);
+          n.id = id;
+          return n;
+        });
+        setCds(items.slice());
+        await persist();
+      },
+      remove: async function (id) {
+        items = items.filter(function (i) { return i.id !== id; });
+        setCds(items.slice());
+        await persist();
+      },
+      saveMeta: function () { persist(); }
+    };
+  }
+  async function init() {
+    if (window.CDC_DESKTOP || IS_TAURI) {
+      window.CDC_DESKTOP = true;
+      downloadsApi = {
+        save: function (req) {
+          var blob = new Blob([req.data], { type: "application/octet-stream" });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          a.href = url;
+          a.download = req.filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+          return Promise.resolve({ status: "saved" });
+        }
+      };
+      backend = desktopBackend();
+      backend.start();
+      $("data-sect").hidden = false;
+      acct.loading = false;
+      renderAccount();
+      if (!IS_TAURI) setInterval(function () { fetch("/api/ping").catch(function () {}); }, 4000);
+      return;
+    }
+    var chosen = null;
+    var userNs = null;
+    try {
+      if (window.claude && typeof window.claude.use === "function") {
+        var parts = await Promise.all([window.claude.use("db"), window.claude.use("user"), window.claude.use("downloads")]);
+        var db = parts[0];
+        userNs = parts[1];
+        downloadsApi = parts[2];
+        if (db && userNs && typeof userNs.id === "function") {
+          var uid = await userNs.id();
+          if (uid) {
+            chosen = dbBackend(db, uid, function () {
+              backend = localBackend();
+              backend.start();
+              renderAll();
+            });
+          }
+        }
+      }
+    } catch (e) { chosen = null; }
+    backend = chosen || localBackend();
+    backend.start();
+    $("data-sect").hidden = !downloadsApi;
+    try {
+      if (userNs && typeof userNs.me === "function") {
+        var me = await userNs.me();
+        acct.name = me.name || "";
+        acct.color = me.color || "";
+      }
+    } catch (e) { /* no account details */ }
+    acct.loading = false;
+    renderAccount();
+  }
+
+  /* ---------- rendering ---------- */
+  function perfList(perfs) {
+    var ul = el("ul", "perfs");
+    perfs.forEach(function (p) {
+      var li = el("li");
+      li.appendChild(el("span", "role", t("role." + p.role)));
+      li.appendChild(el("span", "name", p.name));
+      ul.appendChild(li);
+    });
+    return ul;
+  }
+  function sampleCard() {
+    var card = el("article", "card sample");
+    var cover = el("div", "cover");
+    var disc = el("div", "disc");
+    disc.style.setProperty("--s", "96px");
+    cover.appendChild(disc);
+    cover.appendChild(el("span", "chip", t("example")));
+    var body = el("div", "card-body");
+    body.appendChild(el("h3", null, t("cdTitle")));
+    body.appendChild(el("p", "composer", t("composer")));
+    body.appendChild(perfList([
+      { role: "Conductor", name: t("role.Conductor") },
+      { role: "Pianist", name: t("role.Pianist") }
+    ]));
+    body.appendChild(el("p", "meta", t("label")));
+    body.appendChild(el("p", "meta", t("issuedBy", { x: t("issuer") })));
+    body.appendChild(el("p", "meta", t("recYear") + " · " + t("relYear")));
+    card.appendChild(cover);
+    card.appendChild(body);
+    return card;
+  }
+
+  function card(cd) {
+    var art = el("article", "card clickable" + (editingId === cd.id ? " editing" : ""));
+    art.tabIndex = 0;
+    art.setAttribute("role", "button");
+    art.setAttribute("aria-label", t("openProfile", { title: cd.title }));
+    art.addEventListener("click", function () { openDetail(cd.id); });
+    art.addEventListener("keydown", function (e) {
+      if (e.target === art && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openDetail(cd.id); }
+    });
+    var cover = el("div", "cover");
+    if (cd.photo) {
+      var img = el("img");
+      img.src = cd.photo;
+      img.alt = cd.title;
+      cover.appendChild(img);
+    } else {
+      var d = el("div", "disc");
+      d.style.setProperty("--s", "96px");
+      cover.appendChild(d);
+    }
+    var body = el("div", "card-body");
+    body.appendChild(el("h3", null, cd.title));
+    if (cd.composer) body.appendChild(el("p", "composer", cd.composer));
+    if (showOpt("performers") && cd.performers && cd.performers.length) body.appendChild(perfList(cd.performers));
+    if (showOpt("publisher")) {
+      if (cd.label) body.appendChild(el("p", "meta", cd.label));
+      if (cd.issuer) body.appendChild(el("p", "meta", t("issuedBy", { x: cd.issuer })));
+    }
+    if (showOpt("years")) {
+      var years = [];
+      var rel = cd.releaseYear || cd.year;
+      if (cd.recordingYear) years.push(t("recorded", { y: cd.recordingYear }));
+      if (rel) years.push(t("released", { y: rel }));
+      if (years.length) body.appendChild(el("p", "meta", years.join(" · ")));
+    }
+
+    var mine = albumsOf(cd.id);
+    if (mine.length) {
+      var tags = el("div", "tags");
+      mine.forEach(function (a) { tags.appendChild(el("span", "chip tag", a.name)); });
+      body.appendChild(tags);
+    }
+
+    art.appendChild(cover);
+    art.appendChild(body);
+    return art;
+  }
+
+  function matches(cd, q) {
+    var hay = [cd.title, cd.composer, cd.label, cd.issuer, cd.recordingYear, cd.releaseYear, cd.year]
+      .concat((cd.performers || []).map(function (p) { return p.name + " " + t("role." + p.role); }))
+      .join(" ").toLowerCase();
+    return hay.indexOf(q) !== -1;
+  }
+
+  /* Sorting. Composer sorts by surname: the last word, or the part before a comma. */
+  function surnameKey(name) {
+    var n = (name || "").trim();
+    if (!n) return "";
+    if (n.indexOf(",") !== -1) n = n.split(",")[0];
+    else n = n.split(/[\s・·‧]+/).pop();
+    return n.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  }
+  function cmpText(a, b) {
+    return a.localeCompare(b, LANGS[lang].tag, { sensitivity: "base", numeric: true });
+  }
+  function sortList(list) {
+    var out = list.slice();
+    out.sort(function (a, b) {
+      if (sortKey === "composer") {
+        var ka = surnameKey(a.composer), kb = surnameKey(b.composer);
+        if (!ka !== !kb) return ka ? -1 : 1;
+        return cmpText(ka, kb) || cmpText(a.composer || "", b.composer || "") || cmpText(a.title || "", b.title || "");
+      }
+      if (sortKey === "title") return cmpText(a.title || "", b.title || "");
+      if (sortKey === "release") {
+        var ya = parseInt(a.releaseYear || a.year, 10) || 0, yb = parseInt(b.releaseYear || b.year, 10) || 0;
+        if (!ya !== !yb) return ya ? -1 : 1;
+        return yb - ya || cmpText(a.title || "", b.title || "");
+      }
+      return (b.addedAt || 0) - (a.addedAt || 0);
+    });
+    return out;
+  }
+
+  function baseList() {
+    if (currentAlbum === "all") return cds;
+    var a = findAlbum(currentAlbum);
+    if (!a) { currentAlbum = "all"; return cds; }
+    var ids = {};
+    a.cdIds.forEach(function (id) { ids[id] = true; });
+    return cds.filter(function (c) { return ids[c.id]; });
+  }
+
+  function renderAlbums() {
+    var bar = $("albums");
+    bar.textContent = "";
+    if (!loaded) return;
+    if (currentAlbum !== "all" && !findAlbum(currentAlbum)) currentAlbum = "all";
+
+    function chip(id, name, count) {
+      var b = el("button", "achip");
+      b.type = "button";
+      b.setAttribute("aria-pressed", currentAlbum === id ? "true" : "false");
+      b.appendChild(el("span", "nm", name));
+      b.appendChild(el("span", "n", String(count)));
+      b.addEventListener("click", function () {
+        currentAlbum = id;
+        if (id !== "all" && !favOpen) { favOpen = true; try { localStorage.setItem("cdc.favopen", "1"); } catch (e) { /* storage unavailable */ } }
+        renderAlbums(); renderGrid();
+      });
+      return b;
+    }
+    bar.appendChild(chip("all", t("allCds"), cds.length));
+
+    var activeFav = currentAlbum !== "all";
+    var open = favOpen;
+    var head = el("button", "achip fav-head" + (activeFav && !open ? " has-active" : ""));
+    head.type = "button";
+    head.id = "fav-head";
+    head.setAttribute("aria-expanded", open ? "true" : "false");
+    head.setAttribute("aria-controls", "fav-group");
+    var lead = el("span", "nm");
+    lead.appendChild(el("span", "chev", open ? "\u25BE" : "\u25B8"));
+    lead.appendChild(document.createTextNode(" " + t("albumsBar")));
+    head.appendChild(lead);
+    head.appendChild(el("span", "n", String(meta.albums.length)));
+    head.addEventListener("click", function () {
+      favOpen = !favOpen;
+      try { localStorage.setItem("cdc.favopen", favOpen ? "1" : "0"); } catch (e) { /* storage unavailable */ }
+      renderAlbums();
+      $("fav-head").focus({ preventScroll: true });
+    });
+    bar.appendChild(head);
+
+    var group = el("div", "favgroup");
+    group.id = "fav-group";
+    group.hidden = !open;
+    var present = {};
+    cds.forEach(function (c) { present[c.id] = true; });
+    meta.albums.forEach(function (a) {
+      var n = a.cdIds.filter(function (id) { return present[id]; }).length;
+      group.appendChild(chip(a.id, a.name, n));
+    });
+    var nw = el("button", "linkbtn", t("newAlbum"));
+    nw.type = "button";
+    nw.addEventListener("click", function () { openAlbumDlg("new", null); });
+    group.appendChild(nw);
+    if (activeFav) {
+      var ea = el("button", "linkbtn", t("editAlbum"));
+      ea.type = "button";
+      ea.addEventListener("click", function () { openAlbumDlg("edit", currentAlbum); });
+      group.appendChild(ea);
+    }
+    bar.appendChild(group);
+  }
+
+  function renderGrid() {
+    var grid = $("grid");
+    grid.textContent = "";
+    grid.classList.toggle("compact", meta.settings.size === "compact");
+    var search = $("search");
+    var count = $("count");
+    var emptyNote = $("empty-note");
+    var sortWrap = $("sort-wrap");
+    emptyNote.hidden = true;
+
+    if (!loaded) {
+      count.textContent = t("loading");
+      search.hidden = true;
+      sortWrap.hidden = true;
+      grid.appendChild(el("p", "msg", t("loading")));
+      return;
+    }
+    if (!cds.length) {
+      count.textContent = tn("count", 0);
+      search.hidden = true;
+      sortWrap.hidden = true;
+      grid.appendChild(sampleCard());
+      emptyNote.hidden = false;
+      return;
+    }
+    search.hidden = false;
+    sortWrap.hidden = false;
+    var base = baseList();
+    var q = query.trim().toLowerCase();
+    var list = sortList(q ? base.filter(function (c) { return matches(c, q); }) : base);
+    count.textContent = q ? t("countOf", { a: list.length, b: base.length }) : tn("count", base.length);
+    if (!list.length) {
+      grid.appendChild(el("p", "msg", q ? t("noMatch", { q: query.trim() }) : t("albumEmpty")));
+      return;
+    }
+    list.forEach(function (cd) { grid.appendChild(card(cd)); });
+  }
+
+  function renderAccount() {
+    var name = acct.loading ? "" : acct.name;
+    var initial = name ? Array.from(name)[0].toUpperCase() : "";
+    $("acct-label").textContent = name || t("acctSection");
+    $("acct-initial").textContent = initial;
+    $("set-initial").textContent = initial;
+    [$("acct-initial"), $("set-initial")].forEach(function (n) { n.style.borderColor = acct.color || ""; });
+    $("det-performers").checked = showOpt("performers");
+    $("det-publisher").checked = showOpt("publisher");
+    $("det-years").checked = showOpt("years");
+    $("set-name").textContent = acct.loading ? t("acctLoading") : (name || t("acctName"));
+    if (window.CDC_DESKTOP) $("acct-note").textContent = t("acctNoteDesktop");
+    $("set-storage").textContent = !backend ? "" : t(backend.kind === "db" ? "acctStorageDb" : backend.kind === "desktop" ? "acctStorageDesktop" : "acctStorageLocal");
+    $("set-stats").textContent = loaded ? t("acctStats", { cds: cds.length, albums: meta.albums.length }) : "";
+    var size = meta.settings.size === "compact" ? "compact" : "comfortable";
+    $("size-comfortable").setAttribute("aria-pressed", size === "comfortable" ? "true" : "false");
+    $("size-compact").setAttribute("aria-pressed", size === "compact" ? "true" : "false");
+  }
+
+  function renderAll() {
+    renderAlbums();
+    renderGrid();
+    renderAccount();
+    if (detailId && !$("win-detail").hidden) renderDetail();
+    $("lang-set").value = lang;
+  }
+
+  $("search").addEventListener("input", function (e) { query = e.target.value; renderGrid(); });
+  $("sort").value = sortKey;
+  $("sort").addEventListener("change", function (e) {
+    sortKey = e.target.value;
+    try { localStorage.setItem("cdc.sort", sortKey); } catch (err) { /* storage unavailable */ }
+    renderGrid();
+  });
+
+  /* ---------- settings window ---------- */
+  $("open-settings").addEventListener("click", function () { closeAccount(); renderAccount(); openWin("settings"); });
+
+  /* Account popover in the top right corner */
+  function closeAccount(refocus) {
+    if ($("acct-pop").hidden) return;
+    $("acct-pop").hidden = true;
+    $("open-account").setAttribute("aria-expanded", "false");
+    if (refocus) $("open-account").focus({ preventScroll: true });
+  }
+  $("open-account").addEventListener("click", function () {
+    if ($("acct-pop").hidden) {
+      renderAccount();
+      $("acct-pop").hidden = false;
+      $("open-account").setAttribute("aria-expanded", "true");
+    } else {
+      closeAccount(true);
+    }
+  });
+  document.addEventListener("mousedown", function (e) {
+    if (!$("acct-pop").hidden && !e.target.closest(".acct-wrap")) closeAccount();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !$("acct-pop").hidden && !stack.length) { e.preventDefault(); closeAccount(true); }
+  });
+  document.addEventListener("focusin", function (e) {
+    if (!$("acct-pop").hidden && !e.target.closest(".acct-wrap")) closeAccount();
+  });
+  $("size-comfortable").addEventListener("click", function () { commitMeta(function (m) { m.settings.size = "comfortable"; }); });
+  $("size-compact").addEventListener("click", function () { commitMeta(function (m) { m.settings.size = "compact"; }); });
+
+  [["performers", "det-performers"], ["publisher", "det-publisher"], ["years", "det-years"]].forEach(function (pair) {
+    $(pair[1]).addEventListener("change", function (e) {
+      var on = e.target.checked;
+      commitMeta(function (m) { m.settings["show_" + pair[0]] = on; });
+    });
+  });
+
+  function csvCell(v) {
+    var s = String(v == null ? "" : v);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  async function doExport(kind) {
+    if (!downloadsApi) return;
+    if (!cds.length) { toast(t("exportEmpty")); return; }
+    var data, name;
+    if (kind === "json") {
+      data = JSON.stringify({
+        app: "CDC",
+        exportedAt: new Date().toISOString(),
+        albums: meta.albums,
+        cds: cds
+      }, null, 2);
+      name = "cdc-collection.json";
+    } else {
+      var head = ["cdTitle", "composer", "performers", "label", "issuer", "recYear", "relYear", "albumsField"]
+        .map(function (k) { return csvCell(t(k)); }).join(",");
+      var rows = sortList(cds).map(function (c) {
+        return [
+          c.title,
+          c.composer,
+          (c.performers || []).map(function (p) { return t("role." + p.role) + ": " + p.name; }).join("; "),
+          c.label,
+          c.issuer,
+          c.recordingYear,
+          c.releaseYear || c.year,
+          albumsOf(c.id).map(function (a) { return a.name; }).join("; ")
+        ].map(csvCell).join(",");
+      });
+      data = "﻿" + [head].concat(rows).join("\r\n");
+      name = "cdc-collection.csv";
+    }
+    try {
+      await downloadsApi.save({ filename: name, data: data });
+      toast(t("toastExported"));
+    } catch (e) {
+      if (e && e.code === "declined") return;
+      toast(t("toastExportFail"));
+    }
+  }
+  $("export-json").addEventListener("click", function () { doExport("json"); });
+  $("export-csv").addEventListener("click", function () { doExport("csv"); });
+
+  /* ---------- album window ---------- */
+  var albumDlg = { mode: "new", id: null };
+  function openAlbumDlg(mode, id) {
+    albumDlg = { mode: mode, id: id };
+    var a = id ? findAlbum(id) : null;
+    $("album-h").textContent = mode === "new" ? t("albumDlgNew") : t("editAlbum");
+    $("album-name").value = a ? a.name : "";
+    setErr("album-name", "");
+    $("album-save").textContent = mode === "new" ? t("createAlbum") : t("saveChanges");
+    $("album-delete").hidden = mode === "new";
+    $("album-del-ask").hidden = true;
+    openWin("album");
+  }
+  function resetAlbumDlg() {
+    albumDlg = { mode: "new", id: null };
+    $("album-del-ask").hidden = true;
+  }
+  $("album-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = $("album-name").value.trim();
+    if (!name) { setErr("album-name", t("albumNameErr")); $("album-name").focus(); return; }
+    if (albumDlg.mode === "new") {
+      var id = "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+      commitMeta(function (m) { m.albums.push({ id: id, name: name, cdIds: [] }); });
+      currentAlbum = id;
+      favOpen = true;
+      closeWin("album");
+      renderAll();
+      toast(t("toastAlbumCreated", { name: name }));
+    } else {
+      var target = albumDlg.id;
+      commitMeta(function (m) { m.albums.forEach(function (a) { if (a.id === target) a.name = name; }); });
+      closeWin("album");
+      toast(t("toastAlbumRenamed", { name: name }));
+    }
+  });
+  $("album-delete").addEventListener("click", function () {
+    var a = findAlbum(albumDlg.id);
+    if (!a) return;
+    $("album-del-text").textContent = t("deleteAlbumAsk", { name: a.name });
+    $("album-del-ask").hidden = false;
+    $("album-delete").hidden = true;
+  });
+  $("album-del-no").addEventListener("click", function () {
+    $("album-del-ask").hidden = true;
+    $("album-delete").hidden = false;
+  });
+  $("album-del-yes").addEventListener("click", function () {
+    var a = findAlbum(albumDlg.id);
+    if (!a) { closeWin("album"); return; }
+    var name = a.name, target = a.id;
+    commitMeta(function (m) { m.albums = m.albums.filter(function (x) { return x.id !== target; }); });
+    if (currentAlbum === target) currentAlbum = "all";
+    closeWin("album");
+    renderAll();
+    toast(t("toastAlbumDeleted", { name: name }));
+  });
+
+  /* ---------- add / edit CD ---------- */
+  function setErr(field, msg) {
+    $(field + "-err").textContent = msg;
+    var input = $(field);
+    if (input) input.setAttribute("aria-invalid", msg ? "true" : "false");
+  }
+
+  /* A button that opens a list of favorites to put a CD into, with a field to create a new one.
+     Returns the button, the tags for the favorites already chosen, and the list to show below. */
+  function newFavoriteId() { return "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+  function favPicker(state, idBase, isOn, onToggle, onCreate) {
+    var btn = el("button", "btn small quiet", t("addToFavorites"));
+    btn.type = "button";
+    btn.id = idBase + "-toggle";
+    btn.setAttribute("aria-expanded", state.open ? "true" : "false");
+    btn.setAttribute("aria-controls", idBase + "-list");
+    var chips = meta.albums.filter(function (a) { return isOn(a.id); }).map(function (a) {
+      return el("span", "chip tag", a.name);
+    });
+    var list = el("div", "favlist");
+    list.id = idBase + "-list";
+    list.hidden = !state.open;
+    var items = el("div", "favitems");
+    if (!meta.albums.length) {
+      items.appendChild(el("p", "hint", t("noAlbumsYet")));
+    } else {
+      meta.albums.forEach(function (a) {
+        var on = isOn(a.id);
+        var it = el("button", "favitem");
+        it.type = "button";
+        it.id = idBase + "-item-" + a.id;
+        it.setAttribute("aria-pressed", on ? "true" : "false");
+        it.appendChild(el("span", "tick", on ? "\u2713" : ""));
+        it.appendChild(el("span", "nm", a.name));
+        it.addEventListener("click", function () { onToggle(a, !isOn(a.id)); });
+        items.appendChild(it);
+      });
+    }
+    list.appendChild(items);
+    var make = el("div", "favnew");
+    var inp = el("input", "input");
+    inp.id = idBase + "-new";
+    inp.type = "text";
+    inp.maxLength = 60;
+    inp.autocomplete = "off";
+    inp.placeholder = t("newFavPh");
+    inp.setAttribute("aria-label", t("newFavPh"));
+    var go = el("button", "btn small", t("create"));
+    go.type = "button";
+    go.id = idBase + "-create";
+    function create() {
+      var name = inp.value.trim();
+      if (!name) { inp.focus(); return; }
+      onCreate(name);
+    }
+    go.addEventListener("click", create);
+    inp.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); create(); }
+    });
+    make.appendChild(inp);
+    make.appendChild(go);
+    list.appendChild(make);
+    btn.addEventListener("click", function () {
+      state.open = !state.open;
+      list.hidden = !state.open;
+      btn.setAttribute("aria-expanded", state.open ? "true" : "false");
+      if (state.open) inp.focus({ preventScroll: true });
+    });
+    return { btn: btn, chips: chips, list: list };
+  }
+  var formFav = { open: false, ids: [] };
+  var detailFav = { open: false };
+  function renderAlbumChecks(selected) {
+    if (selected) { formFav.ids = selected.slice(); formFav.open = false; }
+    var box = $("album-checks");
+    var keep = box.contains(document.activeElement) ? document.activeElement.id : "";
+    box.textContent = "";
+    $("albums-set").hidden = false;
+    var pk = favPicker(formFav, "form-fav",
+      function (id) { return formFav.ids.indexOf(id) !== -1; },
+      function (a, on) {
+        formFav.ids = formFav.ids.filter(function (x) { return x !== a.id; });
+        if (on) formFav.ids.push(a.id);
+        renderAlbumChecks();
+      },
+      function (name) {
+        var id = newFavoriteId();
+        formFav.ids.push(id);
+        formFav.open = true;
+        commitMeta(function (m) { m.albums.push({ id: id, name: name, cdIds: [] }); });
+        toast(t("toastAlbumCreated", { name: name }));
+      });
+    var row = el("div", "favrow");
+    row.appendChild(pk.btn);
+    pk.chips.forEach(function (c) { row.appendChild(c); });
+    var wrap = el("div", "favpick");
+    wrap.appendChild(row);
+    wrap.appendChild(pk.list);
+    box.appendChild(wrap);
+    if (keep && $(keep)) $(keep).focus({ preventScroll: true });
+  }
+  function readChecked() { return formFav.ids.filter(function (id) { return !!findAlbum(id); }); }
+
+  function applyMode() {
+    var editing = !!editingId;
+    $("add-h").textContent = editing ? t("edit") : t("add");
+    if (!$("submit").disabled) $("submit").textContent = editing ? t("saveChanges") : t("addToCollection");
+    $("cancel-edit").hidden = !editing;
+  }
+  function clearForm() {
+    $("cd-form").reset();
+    photoData = null;
+    editingId = null;
+    editingAddedAt = null;
+    ["title", "recordingYear", "releaseYear"].forEach(function (f) { setErr(f, ""); });
+    $("photo-err").textContent = "";
+    showPhoto();
+    resetRows();
+    renderAlbumChecks([]);
+    applyMode();
+  }
+  function openAdd() {
+    if (!editingId) {
+      var prev = readChecked();
+      if (currentAlbum !== "all" && prev.indexOf(currentAlbum) === -1 && findAlbum(currentAlbum)) prev.push(currentAlbum);
+      renderAlbumChecks(prev);
+    }
+    applyMode();
+    openWin("cd");
+  }
+  function startEdit(cd) {
+    clearForm();
+    editingId = cd.id;
+    editingAddedAt = cd.addedAt || Date.now();
+    $("title").value = cd.title || "";
+    $("composer").value = cd.composer || "";
+    $("label").value = cd.label || "";
+    $("issuer").value = cd.issuer || "";
+    $("recordingYear").value = cd.recordingYear || "";
+    $("releaseYear").value = cd.releaseYear || cd.year || "";
+    photoData = cd.photo || null;
+    showPhoto();
+    $("perf-rows").textContent = "";
+    if (cd.performers && cd.performers.length) {
+      cd.performers.forEach(function (p) { addRow(p.role, p.name); });
+    } else {
+      addRow("Conductor");
+    }
+    renderAlbumChecks(albumsOf(cd.id).map(function (a) { return a.id; }));
+    renderGrid();
+    applyMode();
+    openWin("cd");
+  }
+
+  /* ---------- CD profile window ---------- */
+  function renderDetail() {
+    var cd = null;
+    for (var i = 0; i < cds.length; i++) if (cds[i].id === detailId) cd = cds[i];
+    if (!cd) { if (!$("win-detail").hidden) closeWin("detail"); return; }
+    var box = $("detail-body");
+    var keepFocus = box.contains(document.activeElement) ? document.activeElement.id : "";
+    box.textContent = "";
+
+    var cover = el("div", "profile-cover");
+    if (cd.photo) {
+      var img = el("img");
+      img.src = cd.photo;
+      img.alt = cd.title;
+      cover.appendChild(img);
+    } else {
+      var d = el("div", "disc");
+      d.style.setProperty("--s", "120px");
+      cover.appendChild(d);
+    }
+
+    var main = el("div", "profile-main");
+    var h = el("h2", null, cd.title);
+    h.id = "detail-h";
+    main.appendChild(h);
+    if (cd.composer) main.appendChild(el("p", "composer", cd.composer));
+
+    var dl = el("dl", "facts");
+    function fact(label, value) {
+      if (!value) return;
+      dl.appendChild(el("dt", null, label));
+      dl.appendChild(el("dd", null, value));
+    }
+    (cd.performers || []).forEach(function (p) { fact(t("role." + p.role), p.name); });
+    fact(t("label"), cd.label);
+    fact(t("issuer"), cd.issuer);
+    fact(t("recYear"), cd.recordingYear);
+    fact(t("relYear"), cd.releaseYear || cd.year);
+
+    var pk = favPicker(detailFav, "detail-fav",
+      function (id) { var a = findAlbum(id); return !!a && a.cdIds.indexOf(cd.id) !== -1; },
+      function (a, on) {
+        commitMeta(function (m) {
+          m.albums.forEach(function (x) {
+            if (x.id !== a.id) return;
+            x.cdIds = x.cdIds.filter(function (id) { return id !== cd.id; });
+            if (on) x.cdIds.push(cd.id);
+          });
+        });
+        toast(t(on ? "toastAddedToAlbum" : "toastRemovedFromAlbum", { name: a.name }));
+      },
+      function (name) {
+        detailFav.open = true;
+        commitMeta(function (m) { m.albums.push({ id: newFavoriteId(), name: name, cdIds: [cd.id] }); });
+        toast(t("toastAlbumCreated", { name: name }));
+      });
+    if (pk.chips.length) {
+      dl.appendChild(el("dt", null, t("albumsField")));
+      var dd = el("dd", "tags");
+      pk.chips.forEach(function (c) { dd.appendChild(c); });
+      dl.appendChild(dd);
+    }
+    if (dl.children.length) main.appendChild(dl);
+
+    var actions = el("div", "profile-actions");
+    if (detailConfirm) {
+      actions.appendChild(el("p", "hint ask", t("removeAsk")));
+      var yes = el("button", "btn small danger", t("remove"));
+      yes.type = "button";
+      yes.addEventListener("click", async function () {
+        yes.disabled = true;
+        try {
+          await backend.remove(cd.id);
+          purgeFromAlbums(cd.id);
+          closeWin("detail");
+          toast(t("toastRemoved", { title: cd.title }));
+        } catch (e) {
+          yes.disabled = false;
+          toast(t("toastRemoveFail"));
+        }
+      });
+      var no = el("button", "btn small quiet", t("keep"));
+      no.type = "button";
+      no.addEventListener("click", function () { detailConfirm = false; renderDetail(); });
+      actions.appendChild(yes);
+      actions.appendChild(no);
+    } else {
+      var ed = el("button", "btn small", t("editBtn"));
+      ed.type = "button";
+      ed.addEventListener("click", function () { var c = cd; closeWin("detail"); startEdit(c); });
+      var rm = el("button", "btn small quiet", t("remove"));
+      rm.type = "button";
+      rm.style.color = "var(--danger)";
+      rm.addEventListener("click", function () { detailConfirm = true; renderDetail(); });
+      actions.appendChild(ed);
+      actions.appendChild(rm);
+      actions.appendChild(pk.btn);
+      actions.appendChild(pk.list);
+    }
+    main.appendChild(actions);
+
+    box.appendChild(cover);
+    box.appendChild(main);
+    if (keepFocus && $(keepFocus)) $(keepFocus).focus({ preventScroll: true });
+  }
+  function openDetail(id) {
+    detailId = id;
+    detailConfirm = false;
+    detailFav.open = false;
+    renderDetail();
+    openWin("detail");
+  }
+  $("close-detail").addEventListener("click", function () { closeWin("detail"); });
+  $("open-add").addEventListener("click", openAdd);
+
+  $("cd-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var title = $("title").value.trim();
+    var recordingYear = $("recordingYear").value.trim();
+    var releaseYear = $("releaseYear").value.trim();
+    var firstBad = null;
+
+    ["title", "recordingYear", "releaseYear"].forEach(function (f) { setErr(f, ""); });
+    if (!title) { setErr("title", t("errTitle")); firstBad = firstBad || $("title"); }
+    if (recordingYear && !/^(19|20)\d{2}$/.test(recordingYear)) {
+      setErr("recordingYear", t("errRec"));
+      firstBad = firstBad || $("recordingYear");
+    }
+    if (releaseYear && !/^(19[89]\d|20\d{2})$/.test(releaseYear)) {
+      setErr("releaseYear", t("errRel"));
+      firstBad = firstBad || $("releaseYear");
+    }
+    if (firstBad) { firstBad.focus(); return; }
+    if (!backend || !loaded) { toast(t("toastLoading")); return; }
+
+    var cd = {
+      title: title,
+      composer: $("composer").value.trim(),
+      performers: readPerformers(),
+      label: $("label").value.trim(),
+      issuer: $("issuer").value.trim(),
+      recordingYear: recordingYear,
+      releaseYear: releaseYear,
+      addedAt: editingId ? editingAddedAt : Date.now()
+    };
+    if (photoData) cd.photo = photoData;
+    var chosenAlbums = readChecked();
+
+    var wasEditing = !!editingId;
+    var targetId = editingId;
+    var btn = $("submit");
+    btn.disabled = true;
+    btn.textContent = t("saving");
+    try {
+      if (wasEditing) await backend.update(targetId, cd);
+      else targetId = await backend.add(cd);
+      setMembership(targetId, chosenAlbums);
+      clearForm();
+      closeWin("cd");
+      renderAll();
+      toast(t(wasEditing ? "toastSaved" : "toastAdded", { title: title }));
+    } catch (err) {
+      var code = err && err.code;
+      if (code === "local_full") {
+        setMembership(err.id || targetId, chosenAlbums);
+        clearForm();
+        closeWin("cd");
+        renderAll();
+        toast(t("toastLocalFull"));
+      } else if (code === "quota_exceeded") {
+        toast(t("toastQuota"));
+      } else if (code === "invalid_argument") {
+        toast(t("toastReadOnly"));
+      } else {
+        toast(t("toastSaveFail"));
+      }
+    } finally {
+      btn.disabled = false;
+      applyMode();
+    }
+  });
+
+  /* ---------- start ---------- */
+  resetRows();
+  renderAlbumChecks([]);
+  applyAll();
+  init();
+})();
+</script>
+
+</body>
+</html>
