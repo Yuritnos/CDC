@@ -31,19 +31,20 @@
   --accent-ink: #FFFFFF;
   --accent-soft: #DCE1F4;
   --danger: #A32626;
+  --ok: #2E7D4F;
   --d1: #D9DFEA; --d2: #F7F9FC; --d3: #BFCAE3; --d4: #E9DFF1; --d5: #C3E4EA; --ring: #9AA6B8;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0F1319; --surface: #171D25; --field: #0F1319; --ink: #E6EAEF; --muted: #9AA5B2; --line: #2B3440;
-    --accent: #97A4F2; --accent-ink: #0F1319; --accent-soft: #232B4A; --danger: #F08A8A;
+    --accent: #97A4F2; --accent-ink: #0F1319; --accent-soft: #232B4A; --danger: #F08A8A; --ok: #6FCF97;
     --d1: #4A5568; --d2: #8B97AB; --d3: #39435A; --d4: #6B5F86; --d5: #3D6A73; --ring: #222A36;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0F1319; --surface: #171D25; --field: #0F1319; --ink: #E6EAEF; --muted: #9AA5B2; --line: #2B3440;
-  --accent: #97A4F2; --accent-ink: #0F1319; --accent-soft: #232B4A; --danger: #F08A8A;
+  --accent: #97A4F2; --accent-ink: #0F1319; --accent-soft: #232B4A; --danger: #F08A8A; --ok: #6FCF97;
   --d1: #4A5568; --d2: #8B97AB; --d3: #39435A; --d4: #6B5F86; --d5: #3D6A73; --ring: #222A36;
   color-scheme: dark;
 }
@@ -378,6 +379,37 @@ details.more[open] > summary { margin-bottom: 14px; }
 .sect { display: flex; flex-direction: column; gap: 10px; padding-top: 18px; margin-top: 18px; border-top: 1px solid var(--line); }
 .panel-head + .sect { padding-top: 0; margin-top: 0; border-top: 0; }
 .acct-card { display: flex; align-items: center; gap: 14px; }
+.acct-cloud { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.acct-cloud[hidden] { display: none; }
+.acct-cloud .who { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.acct-cloud .sync { margin: 0; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.acct-cloud .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.acct-cloud .dot.ok { background: var(--ok); }
+.acct-cloud .dot.warn { background: var(--danger); }
+#signin-email-form, #signin-code-form { display: flex; flex-direction: column; gap: 16px; }
+#signin-email-form[hidden], #signin-code-form[hidden] { display: none; }
+#signin-code { font-family: var(--font-mono); font-size: 22px; letter-spacing: 0.3em; }
+/* Profile window: a round crop of the photo, moved by dragging and zoomed by slider or wheel */
+#profile-form { display: flex; flex-direction: column; gap: 18px; }
+.pf-photo { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.crop { position: relative; width: 168px; height: 168px; flex: none; border-radius: 50%; overflow: hidden; background: var(--field); border: 1px solid var(--line); }
+.crop canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.crop canvas:active { cursor: grabbing; }
+.crop canvas:focus-visible { outline: none; }
+.crop:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+.crop.empty canvas { cursor: default; }
+.crop-empty { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-display); font-weight: 600; font-size: 72px; color: var(--muted); pointer-events: none; }
+.crop-empty:empty::before { content: "\266A"; font-size: 56px; }
+.pf-side { flex: 1 1 180px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.pf-side .linkbtn { padding: 2px 0; font-size: 13.5px; }
+.avatar { overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fs { display: flex; flex-direction: column; gap: 16px; }
+.fs[hidden] { display: none; }
+.fs > p { margin: 0; }
+.fs-choice { display: flex; flex-direction: column; gap: 6px; }
+.fs-choice .btn { align-self: stretch; }
+#fs-discard { color: var(--danger); }
 .acct-card > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .acct-name { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 26px; line-height: 1.15; overflow-wrap: anywhere; }
 .btnrow { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -681,6 +713,7 @@ details.more[open] > summary { margin-bottom: 14px; }
             </div>
           </div>
           <p class="hint" id="acct-note" data-i18n="acctNote">Your account comes from your Claude sign-in. To switch accounts, sign in to Claude with another one.</p>
+          <div class="acct-cloud" id="acct-cloud" hidden></div>
         </div>
       </div>
     </div>
@@ -950,6 +983,117 @@ details.more[open] > summary { margin-bottom: 14px; }
   </section>
 </div>
 
+<!-- Window: sign in with a code sent by email -->
+<div class="overlay" id="win-signin" hidden>
+  <section class="panel narrow" role="dialog" aria-modal="true" aria-labelledby="signin-h">
+    <div class="panel-head">
+      <h2 id="signin-h" data-i18n="signInHead">Sign in</h2>
+      <button type="button" class="iconbtn" id="close-signin" data-i18n-aria="close" aria-label="Close">×</button>
+    </div>
+    <form id="signin-email-form" novalidate>
+      <p class="hint" data-i18n="signInIntro">Sign in to keep your collection in sync on all your computers. We'll email you a sign-in code; there is no password.</p>
+      <div class="field">
+        <label class="lbl" for="signin-email" data-i18n="emailLabel">Email</label>
+        <input class="input" id="signin-email" type="email" autocomplete="email" inputmode="email" data-autofocus data-i18n-ph="emailPh" placeholder="you@example.com">
+        <p class="err" id="signin-email-err" role="alert"></p>
+      </div>
+      <div class="actions">
+        <button class="btn" id="signin-send" type="submit" data-i18n="sendCode">Send code</button>
+      </div>
+    </form>
+    <form id="signin-code-form" novalidate hidden>
+      <p class="hint" id="signin-sent"></p>
+      <div class="field">
+        <label class="lbl" for="signin-code" data-i18n="codeLabel">Code</label>
+        <input class="input" id="signin-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="12345678">
+        <p class="err" id="signin-code-err" role="alert"></p>
+      </div>
+      <div class="actions">
+        <button class="btn" id="signin-verify" type="submit" data-i18n="signInBtn">Sign in</button>
+      </div>
+      <div class="btnrow">
+        <button type="button" class="linkbtn" id="signin-resend" data-i18n="resendCode">Send a new code</button>
+        <button type="button" class="linkbtn" id="signin-other" data-i18n="otherEmail">Use another email</button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<!-- Window: the signed-in person's profile (user ID and photo) -->
+<div class="overlay" id="win-profile" hidden>
+  <section class="panel narrow" role="dialog" aria-modal="true" aria-labelledby="pf-h">
+    <div class="panel-head">
+      <h2 id="pf-h" data-i18n="pfHead">Your profile</h2>
+      <button type="button" class="iconbtn" id="close-profile" data-i18n-aria="close" aria-label="Close">×</button>
+    </div>
+    <form id="profile-form" novalidate>
+      <div class="field">
+        <span class="lbl" data-i18n="pfPhoto">Profile photo</span>
+        <div class="pf-photo">
+          <div class="crop" id="crop">
+            <canvas id="crop-canvas" width="480" height="480" tabindex="0" data-i18n-aria="pfCropAria" aria-label="Photo position. Drag, or use the arrow keys; plus and minus zoom."></canvas>
+            <span class="crop-empty" id="crop-empty" aria-hidden="true"></span>
+          </div>
+          <div class="pf-side">
+            <div class="range" id="crop-zoom-row">
+              <span aria-hidden="true">−</span>
+              <input type="range" id="crop-zoom" min="1" max="4" step="0.01" value="1" data-i18n-aria="pfZoom" aria-label="Zoom">
+              <span aria-hidden="true">+</span>
+            </div>
+            <p class="hint" id="crop-hint" data-i18n="pfCropHint">Drag the photo to choose the part inside the circle. Zoom with the slider or the mouse wheel.</p>
+            <div class="btnrow">
+              <button type="button" class="linkbtn" id="pf-choose" data-i18n="pfChoose">Choose a photo</button>
+              <button type="button" class="linkbtn danger" id="pf-remove" data-i18n="pfRemove">Remove photo</button>
+            </div>
+            <input class="sr" type="file" id="pf-file" accept="image/*" tabindex="-1" aria-hidden="true">
+            <p class="err" id="pf-photo-err" role="alert"></p>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label class="lbl" for="pf-handle" data-i18n="pfHandle">User ID</label>
+        <input class="input" id="pf-handle" type="text" maxlength="20" autocomplete="off" spellcheck="false" data-autofocus data-i18n-ph="pfHandlePh" placeholder="e.g. yuri_cd">
+        <p class="hint" data-i18n="pfHandleHint">3 to 20 letters, numbers or underscores. Each ID can belong to only one account.</p>
+        <p class="err" id="pf-handle-err" role="alert"></p>
+      </div>
+      <p class="hint" id="pf-email"></p>
+      <div class="actions">
+        <button class="btn" id="pf-save" type="submit" data-i18n="pfSave">Save profile</button>
+        <button class="btn quiet" id="pf-cancel" type="button" data-i18n="cancel">Cancel</button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<!-- Window: after signing in, what to do with CDs that are only on this computer -->
+<div class="overlay" id="win-firstsync" hidden>
+  <section class="panel narrow" role="dialog" aria-modal="true" aria-labelledby="fs-h">
+    <div class="panel-head">
+      <h2 id="fs-h" data-i18n="fsHead">CDs on this computer</h2>
+      <button type="button" class="iconbtn" id="close-firstsync" data-i18n-aria="fsSignOut" aria-label="Sign out instead">×</button>
+    </div>
+    <div class="fs" id="fs-ask">
+      <p id="fs-text"></p>
+      <div class="fs-choice">
+        <button type="button" class="btn" id="fs-merge" data-autofocus data-i18n="fsMerge">Add them to my account</button>
+        <p class="hint" data-i18n="fsMergeHint">They join your account's collection and appear on all your computers.</p>
+      </div>
+      <div class="fs-choice">
+        <button type="button" class="btn quiet" id="fs-discard" data-i18n="fsDiscard">Remove them from this computer</button>
+        <p class="hint" data-i18n="fsDiscardHint">This computer then shows only your account's collection.</p>
+      </div>
+      <button type="button" class="linkbtn" id="fs-signout" data-i18n="fsSignOut">Sign out instead</button>
+    </div>
+    <div class="fs" id="fs-confirm" hidden>
+      <p id="fs-confirm-text"></p>
+      <div class="btnrow">
+        <button type="button" class="btn small danger" id="fs-discard-yes" data-i18n="fsDiscardYes">Remove them</button>
+        <button type="button" class="btn small quiet" id="fs-back" data-i18n="fsBack">Back</button>
+      </div>
+    </div>
+  </section>
+</div>
+
 <!-- Window: create or edit an album -->
 <div class="overlay" id="win-album" hidden>
   <section class="panel narrow" role="dialog" aria-modal="true" aria-labelledby="album-h">
@@ -1041,6 +1185,43 @@ details.more[open] > summary { margin-bottom: 14px; }
       acctNote: "Your account comes from your Claude sign-in. To switch accounts, sign in to Claude with another one.", acctNoteDesktop: "This is your Windows user. Each Windows user has their own collection.",
       langSection: "Language", displaySection: "Display", cardSize: "Card size",
       sizeSmaller: "Smaller", sizeLarger: "Larger",
+      signInHead: "Sign in", signInBtn: "Sign in", signingIn: "Signing in…",
+      signInIntro: "Sign in to keep your collection in sync on all your computers. We'll email you a sign-in code; there is no password.",
+      signInPitch: "Sign in to keep your collection in sync on all your computers.",
+      signedOutExpired: "You were signed out. Sign in again to keep syncing.",
+      emailLabel: "Email", emailPh: "you@example.com", sendCode: "Send code", sending: "Sending…",
+      codeLabel: "Code", codeSent: "We sent a code to {email}. It may take a minute to arrive; check your spam folder too.",
+      resendCode: "Send a new code", resendIn: "Send a new code ({s} s)", otherEmail: "Use another email",
+      errEmail: "Enter a valid email address.", errCodeFormat: "Enter the code from the email (numbers only).",
+      errBadCode: "That code is wrong or has expired. Check it, or send a new one.",
+      errRate: "Too many tries. Wait a minute, then try again.",
+      errSendFail: "The email could not be sent. Try again later.",
+      errOffline: "Can't reach the sign-in service. Check your internet connection.",
+      errAuth: "Signing in didn't work. Try again.",
+      signedInAs: "Signed in as {email}", syncing: "Syncing…", syncedAt: "Synced at {time}", syncWaiting: "Not synced yet",
+      syncOffline: "Can't reach your account right now; changes will sync later.",
+      syncNow: "Sync now", signOut: "Sign out",
+      acctStorageCloud: "Your collection is saved on this computer and synced to your account.",
+      toastSignedIn: "Signed in as {email}. Your collection is syncing.", toastSignedOut: "Signed out. Your collection stays on this computer.",
+      toastCodeResent: "A new code is on its way.",
+      pfHead: "Your profile", pfEdit: "Edit profile", pfPhoto: "Profile photo", pfSave: "Save profile",
+      pfChoose: "Choose a photo", pfReplace: "Choose another photo", pfRemove: "Remove photo", pfZoom: "Zoom",
+      pfCropHint: "Drag the photo to choose the part inside the circle. Zoom with the slider or the mouse wheel.",
+      pfCropAria: "Photo position. Drag, or use the arrow keys; plus and minus zoom.",
+      pfHandle: "User ID", pfHandlePh: "e.g. yuri_cd",
+      pfHandleHint: "3 to 20 letters, numbers or underscores. Each ID can belong to only one account.",
+      pfIdLine: "User ID: {id}",
+      errHandle: "Use 3 to 20 letters, numbers or underscores, with no spaces.",
+      errHandleTaken: "That user ID is already taken. Try another one.",
+      toastProfileSaved: "Profile saved.",
+      fsHead: "CDs on this computer", fsAnd: " and ",
+      "fsCds.one": "1 CD", "fsCds.other": "{n} CDs", "fsFavs.one": "1 favorite", "fsFavs.other": "{n} favorites",
+      fsText: "This computer has {what} that aren't in your account ({email}). What would you like to do with them?",
+      fsMerge: "Add them to my account", fsMergeHint: "They join your account's collection and appear on all your computers.",
+      fsDiscard: "Remove them from this computer", fsDiscardHint: "This computer then shows only your account's collection.",
+      fsSignOut: "Sign out instead", fsDiscardYes: "Remove them", fsBack: "Back",
+      fsConfirm: "Remove {what} from this computer? They are not in your account, so this can't be undone.",
+      toastMerged: "Added {what} to your account.", toastDiscarded: "Removed {what} from this computer.",
       lookupHead: "Find this CD online", lookupPh: "Barcode, catalogue or matrix number", lookupGo: "Search",
       scanPhoto: "Scan a barcode from a photo", scanCamera: "Scan with the camera", scanStop: "Stop camera",
       lookupNote: "Details come from Discogs, an online music database. The release you choose replaces the details it has; nothing is saved until you add the CD.",
@@ -1144,6 +1325,43 @@ details.more[open] > summary { margin-bottom: 14px; }
       acctNote: "アカウントはClaudeのサインイン情報から取得しています。切り替えるには、別のアカウントでClaudeにサインインしてください。", acctNoteDesktop: "これはWindowsのユーザーです。Windowsユーザーごとに別のコレクションになります。",
       langSection: "言語", displaySection: "表示", cardSize: "カードのサイズ",
       sizeSmaller: "小さく", sizeLarger: "大きく",
+      signInHead: "サインイン", signInBtn: "サインイン", signingIn: "サインイン中…",
+      signInIntro: "サインインすると、お使いのすべてのパソコンでコレクションが同期されます。メールでサインインコードをお送りします。パスワードは不要です。",
+      signInPitch: "サインインすると、お使いのすべてのパソコンでコレクションが同期されます。",
+      signedOutExpired: "サインアウトされました。同期を続けるには、もう一度サインインしてください。",
+      emailLabel: "メールアドレス", emailPh: "you@example.com", sendCode: "コードを送信", sending: "送信中…",
+      codeLabel: "コード", codeSent: "{email} にコードを送りました。届くまで1分ほどかかることがあります。迷惑メールフォルダもご確認ください。",
+      resendCode: "コードを再送信", resendIn: "コードを再送信（{s} 秒）", otherEmail: "別のメールアドレスを使う",
+      errEmail: "正しいメールアドレスを入力してください。", errCodeFormat: "メールに記載されたコード（数字のみ）を入力してください。",
+      errBadCode: "コードが違うか、有効期限が切れています。確認するか、新しいコードを送信してください。",
+      errRate: "試行回数が多すぎます。1分ほど待ってから、もう一度お試しください。",
+      errSendFail: "メールを送信できませんでした。しばらくしてからお試しください。",
+      errOffline: "サインインのサービスに接続できません。インターネット接続を確認してください。",
+      errAuth: "サインインできませんでした。もう一度お試しください。",
+      signedInAs: "{email} でサインイン中", syncing: "同期中…", syncedAt: "{time} に同期済み", syncWaiting: "まだ同期していません",
+      syncOffline: "現在アカウントに接続できません。変更は後で同期されます。",
+      syncNow: "今すぐ同期", signOut: "サインアウト",
+      acctStorageCloud: "コレクションはこのパソコンに保存され、アカウントと同期されています。",
+      toastSignedIn: "{email} でサインインしました。コレクションを同期しています。", toastSignedOut: "サインアウトしました。コレクションはこのパソコンに残ります。",
+      toastCodeResent: "新しいコードを送信しました。",
+      pfHead: "プロフィール", pfEdit: "プロフィールを編集", pfPhoto: "プロフィール写真", pfSave: "プロフィールを保存",
+      pfChoose: "写真を選ぶ", pfReplace: "別の写真を選ぶ", pfRemove: "写真を削除", pfZoom: "拡大",
+      pfCropHint: "写真をドラッグして、円の中に表示する部分を選んでください。スライダーまたはマウスホイールで拡大できます。",
+      pfCropAria: "写真の位置。ドラッグするか矢印キーで移動し、プラスとマイナスで拡大・縮小します。",
+      pfHandle: "ユーザーID", pfHandlePh: "例：yuri_cd",
+      pfHandleHint: "半角英数字とアンダースコアで3〜20文字。同じIDは1つのアカウントだけが使えます。",
+      pfIdLine: "ユーザーID：{id}",
+      errHandle: "半角英数字とアンダースコアで3〜20文字にしてください（スペースは使えません）。",
+      errHandleTaken: "このユーザーIDはすでに使われています。別のIDをお試しください。",
+      toastProfileSaved: "プロフィールを保存しました。",
+      fsHead: "このパソコンにあるCD", fsAnd: "と",
+      "fsCds.one": "CD 1枚", "fsCds.other": "CD {n}枚", "fsFavs.one": "お気に入り 1件", "fsFavs.other": "お気に入り {n}件",
+      fsText: "このパソコンには、アカウント（{email}）にない{what}があります。どうしますか？",
+      fsMerge: "アカウントに追加する", fsMergeHint: "アカウントのコレクションに加わり、お使いのすべてのパソコンに表示されます。",
+      fsDiscard: "このパソコンから削除する", fsDiscardHint: "このパソコンにはアカウントのコレクションだけが表示されます。",
+      fsSignOut: "サインアウトする", fsDiscardYes: "削除する", fsBack: "戻る",
+      fsConfirm: "このパソコンから{what}を削除しますか？アカウントにはないため、元に戻せません。",
+      toastMerged: "{what}をアカウントに追加しました。", toastDiscarded: "このパソコンから{what}を削除しました。",
       lookupHead: "オンラインでCDを探す", lookupPh: "バーコード、規格品番、マトリクス番号", lookupGo: "検索",
       scanPhoto: "写真からバーコードを読み取る", scanCamera: "カメラで読み取る", scanStop: "カメラを止める",
       lookupNote: "情報はオンラインの音楽データベース Discogs から取得します。選んだリリースにある項目は置き換えられます。CDを追加するまで保存されません。",
@@ -1247,6 +1465,43 @@ details.more[open] > summary { margin-bottom: 14px; }
       acctNote: "账户信息来自你的 Claude 登录。如需切换账户，请使用另一个账户登录 Claude。", acctNoteDesktop: "这是你的 Windows 用户。每个 Windows 用户拥有各自的收藏。",
       langSection: "语言", displaySection: "显示", cardSize: "卡片大小",
       sizeSmaller: "更小", sizeLarger: "更大",
+      signInHead: "登录", signInBtn: "登录", signingIn: "正在登录…",
+      signInIntro: "登录后，你的收藏会在所有电脑上同步。我们会向你的邮箱发送登录验证码，无需密码。",
+      signInPitch: "登录后，你的收藏会在所有电脑上同步。",
+      signedOutExpired: "你已退出登录。请重新登录以继续同步。",
+      emailLabel: "邮箱", emailPh: "you@example.com", sendCode: "发送验证码", sending: "正在发送…",
+      codeLabel: "验证码", codeSent: "验证码已发送至 {email}。可能需要一分钟左右送达，也请查看垃圾邮件文件夹。",
+      resendCode: "重新发送验证码", resendIn: "重新发送验证码（{s} 秒）", otherEmail: "使用其他邮箱",
+      errEmail: "请输入有效的邮箱地址。", errCodeFormat: "请输入邮件中的验证码（仅数字）。",
+      errBadCode: "验证码错误或已过期。请核对，或重新发送。",
+      errRate: "尝试次数过多。请稍等一分钟后重试。",
+      errSendFail: "邮件发送失败。请稍后重试。",
+      errOffline: "无法连接登录服务。请检查网络连接。",
+      errAuth: "登录失败。请重试。",
+      signedInAs: "已登录：{email}", syncing: "正在同步…", syncedAt: "已于 {time} 同步", syncWaiting: "尚未同步",
+      syncOffline: "暂时无法连接你的账户，更改会在稍后同步。",
+      syncNow: "立即同步", signOut: "退出登录",
+      acctStorageCloud: "你的收藏保存在这台电脑上，并同步到你的账户。",
+      toastSignedIn: "已登录：{email}。正在同步你的收藏。", toastSignedOut: "已退出登录。你的收藏仍保留在这台电脑上。",
+      toastCodeResent: "新的验证码已发送。",
+      pfHead: "个人资料", pfEdit: "编辑个人资料", pfPhoto: "头像", pfSave: "保存个人资料",
+      pfChoose: "选择照片", pfReplace: "换一张照片", pfRemove: "删除头像", pfZoom: "缩放",
+      pfCropHint: "拖动照片，选择要显示在圆圈内的部分。可用滑块或鼠标滚轮缩放。",
+      pfCropAria: "照片位置。拖动或使用方向键移动，加号和减号缩放。",
+      pfHandle: "用户ID", pfHandlePh: "例如：yuri_cd",
+      pfHandleHint: "3 到 20 个英文字母、数字或下划线。每个 ID 只能属于一个账户。",
+      pfIdLine: "用户ID：{id}",
+      errHandle: "请使用 3 到 20 个英文字母、数字或下划线，不能有空格。",
+      errHandleTaken: "该用户ID已被使用，请换一个。",
+      toastProfileSaved: "个人资料已保存。",
+      fsHead: "这台电脑上的CD", fsAnd: "和",
+      "fsCds.one": "1 张CD", "fsCds.other": "{n} 张CD", "fsFavs.one": "1 个收藏夹", "fsFavs.other": "{n} 个收藏夹",
+      fsText: "这台电脑上有 {what} 不在你的账户（{email}）中。你想如何处理？",
+      fsMerge: "添加到我的账户", fsMergeHint: "它们会加入你账户中的收藏，并显示在你所有的电脑上。",
+      fsDiscard: "从这台电脑上删除", fsDiscardHint: "这台电脑之后只显示你账户中的收藏。",
+      fsSignOut: "改为退出登录", fsDiscardYes: "删除", fsBack: "返回",
+      fsConfirm: "要从这台电脑上删除 {what} 吗？它们不在你的账户中，删除后无法恢复。",
+      toastMerged: "已将 {what} 添加到你的账户。", toastDiscarded: "已从这台电脑上删除 {what}。",
       lookupHead: "在线查找这张CD", lookupPh: "条形码、目录编号或矩阵码", lookupGo: "搜索",
       scanPhoto: "从照片识别条形码", scanCamera: "用摄像头扫描", scanStop: "关闭摄像头",
       lookupNote: "信息来自在线音乐数据库 Discogs。所选版本中有的信息会替换现有内容；添加CD之前不会保存。",
@@ -1441,6 +1696,7 @@ details.more[open] > summary { margin-bottom: 14px; }
     var ov = $("win-" + id);
     if (ov.hidden) return;
     if (id === "cd") stopCamera();
+    if (id === "firstsync" && firstSync.resolve) { var ask = firstSync.resolve; firstSync.resolve = null; setTimeout(function () { ask("signout"); }, 0); }
     if (id === "cd" && editingId) { clearForm(); renderAll(); }
     if (id === "album") resetAlbumDlg();
     if (id === "detail") { detailId = null; detailConfirm = false; }
@@ -2122,18 +2378,23 @@ details.more[open] > summary { margin-bottom: 14px; }
     }
   };
 
-  /* Desktop app: the collection lives in a file on this computer. */
+  /* Desktop app: the collection lives in a file on this computer, which stays the working copy even
+     when signed in, so the app works offline. For syncing, every CD records when it last changed
+     (updatedAt), and the file also keeps `sync`: when favorites and settings last changed (metaAt)
+     and the CDs removed here that the account has not heard about yet (deleted: id -> time). */
   function desktopBackend() {
     var items = [];
+    var syncInfo = { metaAt: 0, deleted: {} };
     var saving = false, again = false;
-    function persist() {
+    function persist(fromSync) {
+      if (!fromSync) Cloud.changed();
       if (saving) { again = true; return Promise.resolve(); }
       saving = true;
-      return Store.save({ cds: items, meta: meta }).catch(function () {
+      return Store.save({ cds: items, meta: meta, sync: syncInfo }).catch(function () {
         toast(t("toastSaveFail"));
       }).then(function () {
         saving = false;
-        if (again) { again = false; return persist(); }
+        if (again) { again = false; return persist(true); }
       });
     }
     return {
@@ -2142,9 +2403,16 @@ details.more[open] > summary { margin-bottom: 14px; }
         Store.load().then(function (d) {
           items = Array.isArray(d && d.cds) ? d.cds : [];
           if (d && d.user) { acct.name = d.user; acct.loading = false; }
+          var s = d && d.sync;
+          syncInfo = {
+            metaAt: (s && s.metaAt) || 0,
+            deleted: (s && s.deleted && typeof s.deleted === "object") ? s.deleted : {},
+            account: (s && s.account) || ""
+          };
           meta = normMeta(d && d.meta);
           setCds(items.slice());
           applyMeta(d && d.meta);
+          Cloud.start();
         }).catch(function () {
           setCds([]);
           toast(t("toastSaveFail"));
@@ -2152,6 +2420,7 @@ details.more[open] > summary { margin-bottom: 14px; }
       },
       add: async function (cd) {
         cd.id = "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        cd.updatedAt = Date.now();
         items = [cd].concat(items);
         setCds(items.slice());
         await persist();
@@ -2162,6 +2431,7 @@ details.more[open] > summary { margin-bottom: 14px; }
           if (i.id !== id) return i;
           var n = Object.assign({}, cd);
           n.id = id;
+          n.updatedAt = Date.now();
           return n;
         });
         setCds(items.slice());
@@ -2169,12 +2439,348 @@ details.more[open] > summary { margin-bottom: 14px; }
       },
       remove: async function (id) {
         items = items.filter(function (i) { return i.id !== id; });
+        syncInfo.deleted[id] = Date.now();
         setCds(items.slice());
         await persist();
       },
-      saveMeta: function () { persist(); }
+      saveMeta: function () {
+        syncInfo.metaAt = Date.now();
+        persist();
+      },
+      /* For the sync engine: a copy of what is here now, and a way to take in what it found. */
+      snapshot: function () {
+        return { items: items.slice(), meta: clone(meta), metaAt: syncInfo.metaAt, deleted: Object.assign({}, syncInfo.deleted), account: syncInfo.account };
+      },
+      /* got: CDs from the account (newer than ours, or new to us); gone: ids removed elsewhere;
+         sent: removal markers the account now has; remoteMeta: favorites and settings to take in.
+         Anything changed here since the snapshot was taken is kept as it is. */
+      applySync: function (snap, got, gone, sent, remoteMeta, account) {
+        var changed = false;
+        if (syncInfo.account !== account) { syncInfo.account = account; changed = true; }
+        var before = {};
+        snap.items.forEach(function (c) { before[c.id] = c.updatedAt || c.addedAt || 0; });
+        var stillSame = function (c) { return (c.updatedAt || c.addedAt || 0) === before[c.id]; };
+        var byId = {};
+        items.forEach(function (c, i) { byId[c.id] = i; });
+        got.forEach(function (cd) {
+          var i = byId[cd.id];
+          if (i === undefined) {
+            if (syncInfo.deleted[cd.id] && syncInfo.deleted[cd.id] !== snap.deleted[cd.id]) return;
+            delete syncInfo.deleted[cd.id];
+            items.push(cd);
+            byId[cd.id] = items.length - 1;
+            changed = true;
+          } else if (stillSame(items[i])) {
+            items[i] = cd;
+            changed = true;
+          }
+        });
+        if (gone.length) {
+          var drop = {};
+          gone.forEach(function (id) { drop[id] = true; });
+          items = items.filter(function (c) {
+            if (drop[c.id] && stillSame(c)) { changed = true; return false; }
+            return true;
+          });
+        }
+        sent.forEach(function (id) {
+          if (syncInfo.deleted[id] === snap.deleted[id]) { delete syncInfo.deleted[id]; changed = true; }
+        });
+        if (remoteMeta && syncInfo.metaAt === snap.metaAt) {
+          meta = normMeta(remoteMeta.data);
+          syncInfo.metaAt = remoteMeta.at;
+          changed = true;
+          applyMeta(meta);
+        }
+        if (changed) {
+          items.sort(function (a, b) { return (b.addedAt || 0) - (a.addedAt || 0); });
+          setCds(items.slice());
+          return persist(true);
+        }
+      }
     };
   }
+  /* ---------- accounts and sync (Supabase) ----------
+     Optional: people sign in with a code sent to their email (6 to 10 digits, set in Supabase). While signed in, each change is
+     sent to their account and changes from their other devices are merged in; for each CD the newer
+     copy wins, and a CD removed anywhere is removed everywhere. Desktop app only. The project's
+     address and public (anon) key go below; setup steps are in supabase/README.md. The anon key is
+     meant to be public: row-level security limits it to each person's own rows. */
+  var SUPABASE_URL = "https://ogpzmnaqybxybybooebi.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_4uU6X3XQfbyZ0tG72AVz7g_aYleBdPq";
+  var Cloud = (function () {
+    var session = null;
+    try { session = JSON.parse(localStorage.getItem("cdc.session") || "null"); } catch (e) { session = null; }
+    var state = "idle", lastSync = 0, busy = false, again = false, timer = null, started = false;
+    function ready() { return !!(SUPABASE_URL && SUPABASE_KEY && window.CDC_DESKTOP); }
+    function signedIn() { return ready() && !!(session && session.access_token && session.user); }
+    function keep(s) {
+      session = s;
+      try {
+        if (s) localStorage.setItem("cdc.session", JSON.stringify(s));
+        else localStorage.removeItem("cdc.session");
+      } catch (e) { /* storage unavailable: signed in until the app closes */ }
+    }
+    function setState(s) { state = s; renderAccount(); }
+    function fail(code) { var e = new Error(code); e.code = code; return e; }
+
+    async function call(path, opts) {
+      var r;
+      try { r = await fetch(SUPABASE_URL.replace(/\/+$/, "") + path, opts); } catch (e) { throw fail("offline"); }
+      return r;
+    }
+    function authHeaders() { return { apikey: SUPABASE_KEY, "Content-Type": "application/json" }; }
+    async function authPost(path, body) {
+      var r = await call("/auth/v1/" + path, { method: "POST", headers: authHeaders(), body: JSON.stringify(body) });
+      var j = null;
+      try { j = await r.json(); } catch (e) { j = null; }
+      if (r.ok) return j;
+      if (r.status === 429) throw fail("rate");
+      var msg = String((j && (j.msg || j.message || j.error_description || j.error_code)) || "").toLowerCase();
+      if (/expired|invalid|otp|token/.test(msg)) throw fail("badcode");
+      if (/email|smtp|send/.test(msg) || r.status >= 500) throw fail("sendfail");
+      throw fail("auth");
+    }
+    function withExpiry(s) {
+      if (s && !s.expires_at && s.expires_in) s.expires_at = Math.floor(Date.now() / 1000) + s.expires_in;
+      return s;
+    }
+    async function refresh() {
+      if (!session || !session.refresh_token) throw fail("signedout");
+      try {
+        keep(withExpiry(await authPost("token?grant_type=refresh_token", { refresh_token: session.refresh_token })));
+      } catch (e) {
+        if (e.code !== "offline") { keep(null); setState("signedout"); }
+        throw e;
+      }
+    }
+    /* A request to the database as the signed-in person, renewing the sign-in when it runs out. */
+    async function rest(path, opts, retried) {
+      if (!session) throw fail("signedout");
+      if ((session.expires_at || 0) * 1000 < Date.now() + 60000) await refresh();
+      var o = Object.assign({ method: "GET" }, opts || {});
+      o.headers = Object.assign({ apikey: SUPABASE_KEY, Authorization: "Bearer " + session.access_token, "Content-Type": "application/json" }, o.headers || {});
+      var r = await call("/rest/v1/" + path, o);
+      if (r.status === 401 && !retried) { await refresh(); return rest(path, opts, true); }
+      if (!r.ok) throw fail(r.status === 401 ? "signedout" : r.status === 409 ? "taken" : r.status === 400 ? "invalid" : "server");
+      if (r.status === 204 || o.method !== "GET") return null;
+      return r.json();
+    }
+    /* Upload rows a few at a time, so covers do not make one request too big. */
+    async function upsert(table, conflict, rows) {
+      var batch = [], size = 0;
+      async function flush() {
+        if (!batch.length) return;
+        await rest(table + "?on_conflict=" + conflict, {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+          body: JSON.stringify(batch)
+        });
+        batch = []; size = 0;
+      }
+      for (var i = 0; i < rows.length; i++) {
+        var len = JSON.stringify(rows[i]).length;
+        if (batch.length && size + len > 700000) await flush();
+        batch.push(rows[i]);
+        size += len;
+      }
+      await flush();
+    }
+    async function fetchCds(ids) {
+      var out = [];
+      for (var i = 0; i < ids.length; i += 40) {
+        var list = ids.slice(i, i + 40).map(function (id) { return '"' + String(id).replace(/["\\]/g, "") + '"'; }).join(",");
+        out = out.concat(await rest("cds?select=id,data,deleted,updated_ms&id=in.(" + encodeURIComponent(list) + ")"));
+      }
+      return out;
+    }
+    /* Favorites from two places merged, for the first sync of a computer with an account: all
+       favorites from both, and each favorite holds the CDs either side put in it. Settings come
+       from the account. */
+    function mergeMeta(local, remote) {
+      var out = normMeta(remote);
+      var byId = {};
+      out.albums.forEach(function (a) { byId[a.id] = a; });
+      normMeta(local).albums.forEach(function (a) {
+        if (!byId[a.id]) { out.albums.push(a); return; }
+        a.cdIds.forEach(function (id) { if (byId[a.id].cdIds.indexOf(id) === -1) byId[a.id].cdIds.push(id); });
+      });
+      return out;
+    }
+
+    async function syncNow() {
+      if (!signedIn() || !backend || !backend.snapshot) return;
+      if (busy) { again = true; return; }
+      busy = true;
+      setState("syncing");
+      try {
+        var uid = session.user.id;
+        var at = function (c) { return c.updatedAt || c.addedAt || 0; };
+        var remote = await rest("cds?select=id,deleted,updated_ms");
+        var theirs = {};
+        remote.forEach(function (r) { theirs[r.id] = r; });
+        var rm = (await rest("meta?select=data,updated_ms"))[0];
+        var snap = backend.snapshot();
+
+        /* The first sync of this computer with this account: if the computer has CDs or favorites the
+           account doesn't, the person chooses to add them to the account or remove them from here. */
+        var firstTime = snap.account !== uid;
+        var discard = false;
+        if (firstTime) {
+          var known = {};
+          ((rm && rm.data && rm.data.albums) || []).forEach(function (a) { known[a.id] = true; });
+          var newCds = snap.items.filter(function (c) { return !theirs[c.id] || theirs[c.id].deleted; }).length;
+          var newFavs = normMeta(snap.meta).albums.filter(function (a) { return !known[a.id]; }).length;
+          if (newCds || newFavs) {
+            var choice = await askFirstSync(newCds, newFavs, session.user.email || "");
+            if (!session || session.user.id !== uid) return;
+            if (choice === "signout") { await signOutNow(); return; }
+            discard = choice === "discard";
+            snap = backend.snapshot();
+          }
+        }
+
+        var mine = {};
+        snap.items.forEach(function (c) { mine[c.id] = c; });
+        var push = [], pull = [], gone = [], sent = [];
+        snap.items.forEach(function (c) {
+          var r = theirs[c.id];
+          if (discard && (!r || r.deleted)) gone.push(c.id);
+          else if (!r || at(c) > r.updated_ms) push.push({ user_id: uid, id: c.id, data: c, deleted: false, updated_ms: at(c) });
+          else if (r.deleted) gone.push(c.id);
+          else if (at(c) < r.updated_ms) pull.push(c.id);
+        });
+        Object.keys(snap.deleted).forEach(function (id) {
+          var r = theirs[id], when = snap.deleted[id];
+          if (discard) {
+            sent.push(id); /* removals from before signing in mean nothing to this account */
+          } else if (!r || r.deleted || r.updated_ms <= when) {
+            push.push({ user_id: uid, id: id, data: null, deleted: true, updated_ms: when });
+            sent.push(id);
+          } else {
+            pull.push(id); /* changed elsewhere after it was removed here: it comes back */
+          }
+        });
+        remote.forEach(function (r) {
+          if (!r.deleted && !mine[r.id] && !(r.id in snap.deleted)) pull.push(r.id);
+        });
+        await upsert("cds", "user_id,id", push);
+        var got = (pull.length ? await fetchCds(pull) : []).filter(function (r) { return !r.deleted && r.data; })
+          .map(function (r) { var c = Object.assign({}, r.data); c.id = r.id; c.updatedAt = r.updated_ms; return c; });
+
+        /* Favorites and settings. On the first sync, removing this computer's things takes the
+           account's favorites as they are; adding them merges both sides, however recent each is.
+           After that the newer side wins. */
+        var remoteMeta = null;
+        if (firstTime && discard) {
+          if (rm) {
+            remoteMeta = { data: rm.data, at: rm.updated_ms };
+          } else {
+            remoteMeta = { data: { albums: [], settings: normMeta(snap.meta).settings }, at: Date.now() };
+            await upsert("meta", "user_id", [{ user_id: uid, data: remoteMeta.data, updated_ms: remoteMeta.at }]);
+          }
+        } else if (rm && firstTime) {
+          remoteMeta = { data: mergeMeta(snap.meta, rm.data), at: Date.now() };
+          await upsert("meta", "user_id", [{ user_id: uid, data: remoteMeta.data, updated_ms: remoteMeta.at }]);
+        } else if (!rm || snap.metaAt > rm.updated_ms) {
+          var sentAt = snap.metaAt || Date.now();
+          await upsert("meta", "user_id", [{ user_id: uid, data: snap.meta, updated_ms: sentAt }]);
+          if (!snap.metaAt) remoteMeta = { data: snap.meta, at: sentAt };
+        } else if (rm.updated_ms > snap.metaAt) {
+          remoteMeta = { data: rm.data, at: rm.updated_ms };
+        }
+        if (!session || session.user.id !== uid) return; /* signed out meanwhile: keep nothing from it */
+        await backend.applySync(snap, got, gone, sent, remoteMeta, uid);
+        lastSync = Date.now();
+        setState("ok");
+      } catch (e) {
+        /* Signing out while a sync was running is not an error to report. */
+        setState(!session ? "idle" : e.code === "signedout" ? "signedout" : "offline");
+      } finally {
+        busy = false;
+        if (again) { again = false; later(800); }
+      }
+    }
+    function later(ms) {
+      clearTimeout(timer);
+      timer = setTimeout(syncNow, ms);
+    }
+    /* The profile: the user ID people choose and a small round photo. Kept here as well, so the
+       top-right corner shows them straight away and while offline. */
+    var profile = null;
+    try { profile = JSON.parse(localStorage.getItem("cdc.profile") || "null"); } catch (e) { profile = null; }
+    function keepProfile(p) {
+      profile = p;
+      try {
+        if (p) localStorage.setItem("cdc.profile", JSON.stringify(p));
+        else localStorage.removeItem("cdc.profile");
+      } catch (e) { /* storage unavailable */ }
+      renderAccount();
+    }
+    async function loadProfile() {
+      if (!signedIn()) return;
+      var uid = session.user.id;
+      try {
+        var row = (await rest("profiles?select=handle,avatar"))[0];
+        if (session && session.user.id === uid) keepProfile({ uid: uid, handle: (row && row.handle) || "", avatar: (row && row.avatar) || "" });
+      } catch (e) { /* offline: keep showing the saved copy */ }
+    }
+    async function signOutNow() {
+      var s = session;
+      keep(null);
+      keepProfile(null);
+      setState("idle");
+      if (s && s.access_token) {
+        try { await call("/auth/v1/logout", { method: "POST", headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + s.access_token } }); }
+        catch (e) { /* signed out here either way */ }
+      }
+    }
+    return {
+      ready: ready,
+      signedIn: signedIn,
+      state: function () { return state; },
+      lastSync: function () { return lastSync; },
+      email: function () { return session && session.user ? session.user.email || "" : ""; },
+      /* Called when the collection loads: sync now, then every five minutes and when the app comes back. */
+      start: function () {
+        if (!signedIn()) return;
+        loadProfile();
+        syncNow();
+        if (started) return;
+        started = true;
+        setInterval(function () { if (signedIn()) syncNow(); }, 5 * 60 * 1000);
+        window.addEventListener("online", function () { if (signedIn()) later(500); });
+        window.addEventListener("focus", function () { if (signedIn() && Date.now() - lastSync > 60000) later(500); });
+      },
+      /* Called after every change made here; changes are sent shortly after, together. */
+      changed: function () { if (signedIn()) later(1500); },
+      syncNow: syncNow,
+      sendCode: function (email) { return authPost("otp", { email: email, create_user: true }); },
+      verify: async function (email, code) {
+        keep(withExpiry(await authPost("verify", { type: "email", email: email, token: code })));
+        renderAccount();
+        this.start();
+      },
+      signOut: signOutNow,
+      /* The signed-in person's profile: { handle, avatar }, both possibly empty. */
+      profile: function () {
+        if (!signedIn() || !profile || profile.uid !== session.user.id) return { handle: "", avatar: "" };
+        return { handle: profile.handle || "", avatar: profile.avatar || "" };
+      },
+      /* Save the user ID and photo. Fails with code "taken" when another account has that ID. */
+      saveProfile: async function (handle, avatar) {
+        if (!signedIn()) throw fail("signedout");
+        var uid = session.user.id;
+        await rest("profiles?on_conflict=user_id", {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+          body: JSON.stringify([{ user_id: uid, handle: handle || null, avatar: avatar || null, updated_ms: Date.now() }])
+        });
+        keepProfile({ uid: uid, handle: handle || "", avatar: avatar || "" });
+      }
+    };
+  })();
+
   async function init() {
     if (window.CDC_DESKTOP || IS_TAURI) {
       window.CDC_DESKTOP = true;
@@ -2502,19 +3108,368 @@ details.more[open] > summary { margin-bottom: 14px; }
 
   function renderAccount() {
     applyTheme(currentTheme());
-    var name = acct.loading ? "" : acct.name;
+    var signedIn = Cloud.signedIn();
+    /* Signed in: the user ID (or else the email) names the person, with their photo if they chose
+       one; otherwise the Windows user (or Claude account). */
+    var prof = Cloud.profile();
+    var name = signedIn ? (prof.handle || Cloud.email()) : acct.loading ? "" : acct.name;
     var initial = name ? Array.from(name)[0].toUpperCase() : "";
     $("acct-label").textContent = name || t("acctSection");
-    $("acct-initial").textContent = initial;
-    $("set-initial").textContent = initial;
+    [$("acct-initial"), $("set-initial")].forEach(function (n) {
+      n.textContent = "";
+      if (prof.avatar) {
+        var img = el("img");
+        img.src = prof.avatar;
+        img.alt = "";
+        n.appendChild(img);
+      } else {
+        n.textContent = initial;
+      }
+    });
     [$("acct-initial"), $("set-initial")].forEach(function (n) { n.style.borderColor = acct.color || ""; });
-    $("set-name").textContent = acct.loading ? t("acctLoading") : (name || t("acctName"));
+    $("set-name").textContent = acct.loading && !signedIn ? t("acctLoading") : (name || t("acctName"));
     if (window.CDC_DESKTOP) $("acct-note").textContent = t("acctNoteDesktop");
-    $("set-storage").textContent = !backend ? "" : t(backend.kind === "db" ? "acctStorageDb" : backend.kind === "desktop" ? "acctStorageDesktop" : "acctStorageLocal");
+    $("acct-note").hidden = signedIn;
+    $("set-storage").textContent = !backend ? "" : signedIn ? t("acctStorageCloud") :
+      t(backend.kind === "db" ? "acctStorageDb" : backend.kind === "desktop" ? "acctStorageDesktop" : "acctStorageLocal");
     $("set-stats").textContent = loaded ? t("acctStats", { cds: cds.length, albums: meta.albums.length }) : "";
+    renderCloud();
     if (document.activeElement !== $("card-size")) $("card-size").value = cardWidth();
     renderCardFields();
   }
+
+  /* The sign-in part of the account popover. */
+  function renderCloud() {
+    var box = $("acct-cloud");
+    box.hidden = !Cloud.ready();
+    if (box.hidden) return;
+    var keepId = box.contains(document.activeElement) ? document.activeElement.id : "";
+    box.textContent = "";
+    if (!Cloud.signedIn()) {
+      box.appendChild(el("p", "hint", t(Cloud.state() === "signedout" ? "signedOutExpired" : "signInPitch")));
+      var go = el("button", "btn small", t("signInBtn"));
+      go.type = "button";
+      go.id = "acct-signin";
+      go.addEventListener("click", function () { closeAccount(); openSignIn(); });
+      box.appendChild(go);
+    } else {
+      if (Cloud.profile().handle) box.appendChild(el("p", "who", t("pfIdLine", { id: Cloud.profile().handle })));
+      box.appendChild(el("p", "who", t("signedInAs", { email: Cloud.email() })));
+      var st = Cloud.state();
+      var line = el("p", "sync");
+      line.appendChild(el("span", "dot" + (st === "ok" ? " ok" : st === "offline" ? " warn" : "")));
+      var when = Cloud.lastSync() ? new Date(Cloud.lastSync()).toLocaleTimeString(LANGS[lang].tag, { hour: "2-digit", minute: "2-digit" }) : "";
+      line.appendChild(document.createTextNode(
+        st === "syncing" ? t("syncing") : st === "offline" ? t("syncOffline") : when ? t("syncedAt", { time: when }) : t("syncWaiting")));
+      box.appendChild(line);
+      var row = el("div", "btnrow");
+      var edit = el("button", "btn small quiet", t("pfEdit"));
+      edit.type = "button";
+      edit.id = "acct-profile";
+      edit.addEventListener("click", function () { closeAccount(); openProfile(); });
+      row.appendChild(edit);
+      var now = el("button", "btn small quiet", t("syncNow"));
+      now.type = "button";
+      now.id = "acct-sync";
+      now.disabled = st === "syncing";
+      now.addEventListener("click", function () { Cloud.syncNow(); });
+      var out = el("button", "btn small quiet", t("signOut"));
+      out.type = "button";
+      out.id = "acct-signout";
+      out.addEventListener("click", async function () {
+        await Cloud.signOut();
+        renderAccount();
+        toast(t("toastSignedOut"));
+        if ($("acct-signin")) $("acct-signin").focus({ preventScroll: true });
+      });
+      row.appendChild(now);
+      row.appendChild(out);
+      box.appendChild(row);
+    }
+    if (keepId && $(keepId)) $(keepId).focus({ preventScroll: true });
+  }
+
+  /* ---------- profile window: user ID and a round photo ----------
+     The photo is chosen, then positioned in a circle: drag to move it, zoom with the slider, the
+     mouse wheel or + and -. Only the part inside the circle is saved, as a 256 px JPEG. */
+  var CROP_VIEW = 168;
+  var CROP_OUT = 256;
+  var HANDLE = /^[A-Za-z0-9_]{3,20}$/;
+  var crop = { img: null, zoom: 1, x: 0, y: 0, changed: false, removed: false, drag: null };
+  function cropScale() { return CROP_VIEW / Math.min(crop.img.naturalWidth, crop.img.naturalHeight) * crop.zoom; }
+  /* Keep the photo covering the whole circle. */
+  function clampCrop() {
+    var s = cropScale();
+    var maxX = Math.max(0, (crop.img.naturalWidth * s - CROP_VIEW) / 2);
+    var maxY = Math.max(0, (crop.img.naturalHeight * s - CROP_VIEW) / 2);
+    crop.x = Math.max(-maxX, Math.min(maxX, crop.x));
+    crop.y = Math.max(-maxY, Math.min(maxY, crop.y));
+  }
+  function paintCrop(canvas, size) {
+    var ctx = canvas.getContext("2d");
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (!crop.img) return;
+    var k = size / CROP_VIEW, s = cropScale();
+    ctx.setTransform(k * s, 0, 0, k * s, k * (CROP_VIEW / 2 + crop.x), k * (CROP_VIEW / 2 + crop.y));
+    ctx.drawImage(crop.img, -crop.img.naturalWidth / 2, -crop.img.naturalHeight / 2);
+  }
+  function renderCrop() {
+    var has = !!crop.img;
+    $("crop").classList.toggle("empty", !has);
+    $("crop-canvas").hidden = !has;
+    $("crop-empty").hidden = has;
+    $("crop-zoom-row").hidden = !has;
+    $("crop-hint").hidden = !has;
+    $("pf-remove").hidden = !has;
+    $("pf-choose").textContent = t(has ? "pfReplace" : "pfChoose");
+    $("crop-zoom").value = crop.zoom;
+    if (has) { clampCrop(); paintCrop($("crop-canvas"), $("crop-canvas").width); }
+  }
+  function setZoom(z) {
+    var old = crop.zoom;
+    crop.zoom = Math.max(1, Math.min(4, z));
+    crop.x *= crop.zoom / old;
+    crop.y *= crop.zoom / old;
+    crop.changed = true;
+    renderCrop();
+  }
+  function openProfile() {
+    var p = Cloud.profile();
+    $("pf-handle").value = p.handle;
+    $("pf-email").textContent = t("signedInAs", { email: Cloud.email() });
+    $("crop-empty").textContent = (Array.from(p.handle || Cloud.email())[0] || "").toUpperCase();
+    ["pf-handle", "pf-photo"].forEach(function (f) { setErr(f, ""); });
+    crop = { img: null, zoom: 1, x: 0, y: 0, changed: false, removed: false, drag: null, saved: p.avatar };
+    renderCrop();
+    if (p.avatar) loadImage(p.avatar).then(function (img) { if (crop.saved === p.avatar && !crop.changed) { crop.img = img; renderCrop(); } });
+    openWin("profile");
+  }
+  $("pf-choose").addEventListener("click", function () { $("pf-file").click(); });
+  $("pf-file").addEventListener("change", async function (e) {
+    var f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    setErr("pf-photo", "");
+    try {
+      if (!f.type || f.type.indexOf("image/") !== 0) throw new Error("not_image");
+      crop.img = await loadImage(await fileToDataUrl(f));
+      crop.zoom = 1; crop.x = 0; crop.y = 0;
+      crop.changed = true; crop.removed = false;
+      renderCrop();
+      $("crop-canvas").focus({ preventScroll: true });
+    } catch (err) {
+      $("pf-photo-err").textContent = t("errPhoto");
+    }
+  });
+  $("pf-remove").addEventListener("click", function () {
+    crop.img = null; crop.removed = true; crop.changed = false;
+    renderCrop();
+    $("pf-choose").focus();
+  });
+  $("crop-zoom").addEventListener("input", function (e) { setZoom(parseFloat(e.target.value)); });
+  var cropCanvas = $("crop-canvas");
+  cropCanvas.addEventListener("pointerdown", function (e) {
+    if (!crop.img) return;
+    crop.drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    cropCanvas.setPointerCapture(e.pointerId);
+  });
+  cropCanvas.addEventListener("pointermove", function (e) {
+    if (!crop.drag || crop.drag.id !== e.pointerId) return;
+    /* The canvas is shown at CROP_VIEW pixels, so screen movement maps one to one. */
+    var k = CROP_VIEW / cropCanvas.getBoundingClientRect().width;
+    crop.x += (e.clientX - crop.drag.x) * k;
+    crop.y += (e.clientY - crop.drag.y) * k;
+    crop.drag.x = e.clientX; crop.drag.y = e.clientY;
+    crop.changed = true;
+    renderCrop();
+  });
+  ["pointerup", "pointercancel"].forEach(function (ev) {
+    cropCanvas.addEventListener(ev, function () { crop.drag = null; });
+  });
+  cropCanvas.addEventListener("wheel", function (e) {
+    if (!crop.img) return;
+    e.preventDefault();
+    setZoom(crop.zoom * Math.exp(-e.deltaY * 0.0015));
+  }, { passive: false });
+  cropCanvas.addEventListener("keydown", function (e) {
+    if (!crop.img) return;
+    var step = e.shiftKey ? 16 : 4;
+    var moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+    if (moves[e.key]) {
+      e.preventDefault();
+      crop.x += moves[e.key][0]; crop.y += moves[e.key][1];
+      crop.changed = true;
+      renderCrop();
+    } else if (e.key === "+" || e.key === "=") { e.preventDefault(); setZoom(crop.zoom * 1.1); }
+    else if (e.key === "-") { e.preventDefault(); setZoom(crop.zoom / 1.1); }
+  });
+  $("profile-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var handle = $("pf-handle").value.trim();
+    setErr("pf-handle", "");
+    if (handle && !HANDLE.test(handle)) { setErr("pf-handle", t("errHandle")); $("pf-handle").focus(); return; }
+    var avatar = crop.saved || "";
+    if (crop.removed) avatar = "";
+    if (crop.img && crop.changed) {
+      var out = document.createElement("canvas");
+      out.width = out.height = CROP_OUT;
+      paintCrop(out, CROP_OUT);
+      avatar = out.toDataURL("image/jpeg", 0.88);
+    }
+    var btn = $("pf-save");
+    btn.disabled = true;
+    btn.textContent = t("saving");
+    try {
+      await Cloud.saveProfile(handle, avatar);
+      closeWin("profile");
+      toast(t("toastProfileSaved"));
+    } catch (err) {
+      var code = err && err.code;
+      if (code === "taken") { setErr("pf-handle", t("errHandleTaken")); $("pf-handle").focus(); }
+      else if (code === "invalid") { setErr("pf-handle", t("errHandle")); $("pf-handle").focus(); }
+      else toast(t(code === "offline" ? "errOffline" : "toastSaveFail"));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = t("pfSave");
+    }
+  });
+  $("pf-cancel").addEventListener("click", function () { closeWin("profile"); });
+  $("close-profile").addEventListener("click", function () { closeWin("profile"); });
+
+  /* ---------- first sync with an account ----------
+     Asks what to do with CDs and favorites that are on this computer but not in the account.
+     Resolves to "merge", "discard" or "signout". Closing the window counts as signing out, which
+     changes nothing; the question comes back at the next sign-in. */
+  var firstSync = { resolve: null, cds: 0, favs: 0 };
+  function fsWhat() {
+    var parts = [];
+    if (firstSync.cds) parts.push(tn("fsCds", firstSync.cds));
+    if (firstSync.favs) parts.push(tn("fsFavs", firstSync.favs));
+    return parts.join(t("fsAnd"));
+  }
+  function askFirstSync(cdCount, favCount, email) {
+    return new Promise(function (resolve) {
+      firstSync = { resolve: resolve, cds: cdCount, favs: favCount };
+      $("fs-text").textContent = t("fsText", { what: fsWhat(), email: email });
+      $("fs-ask").hidden = false;
+      $("fs-confirm").hidden = true;
+      openWin("firstsync");
+    });
+  }
+  function answerFirstSync(choice) {
+    var done = firstSync.resolve;
+    firstSync.resolve = null;
+    if (!$("win-firstsync").hidden) closeWin("firstsync");
+    if (done) done(choice);
+    if (choice === "merge") toast(t("toastMerged", { what: fsWhat() }));
+    if (choice === "discard") toast(t("toastDiscarded", { what: fsWhat() }));
+    if (choice === "signout") toast(t("toastSignedOut"));
+  }
+  $("fs-merge").addEventListener("click", function () { answerFirstSync("merge"); });
+  $("fs-discard").addEventListener("click", function () {
+    $("fs-confirm-text").textContent = t("fsConfirm", { what: fsWhat() });
+    $("fs-ask").hidden = true;
+    $("fs-confirm").hidden = false;
+    $("fs-back").focus();
+  });
+  $("fs-back").addEventListener("click", function () {
+    $("fs-confirm").hidden = true;
+    $("fs-ask").hidden = false;
+    $("fs-discard").focus();
+  });
+  $("fs-discard-yes").addEventListener("click", function () { answerFirstSync("discard"); });
+  $("fs-signout").addEventListener("click", function () { answerFirstSync("signout"); });
+  $("close-firstsync").addEventListener("click", function () { answerFirstSync("signout"); });
+
+  /* ---------- sign-in window: email, then the code sent to it ---------- */
+  var signin = { email: "", cooldownUntil: 0, timer: null };
+  function signInStep(step) {
+    $("signin-email-form").hidden = step !== "email";
+    $("signin-code-form").hidden = step !== "code";
+    var first = step === "email" ? $("signin-email") : $("signin-code");
+    first.focus({ preventScroll: true });
+  }
+  function openSignIn() {
+    ["signin-email", "signin-code"].forEach(function (f) { setErr(f, ""); });
+    $("signin-code").value = "";
+    openWin("signin");
+    signInStep("email");
+  }
+  function cloudMessage(e) {
+    var code = e && e.code;
+    return t(code === "rate" ? "errRate" : code === "badcode" ? "errBadCode" : code === "sendfail" ? "errSendFail" : code === "offline" ? "errOffline" : "errAuth");
+  }
+  function resendCountdown() {
+    clearInterval(signin.timer);
+    var b = $("signin-resend");
+    function tick() {
+      var left = Math.ceil((signin.cooldownUntil - Date.now()) / 1000);
+      b.disabled = left > 0;
+      b.textContent = left > 0 ? t("resendIn", { s: left }) : t("resendCode");
+      if (left <= 0) clearInterval(signin.timer);
+    }
+    tick();
+    signin.timer = setInterval(tick, 1000);
+  }
+  async function sendSignInCode(errField) {
+    var email = $("signin-email").value.trim();
+    errField = errField || "signin-email";
+    setErr(errField, "");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setErr("signin-email", t("errEmail"));
+      $("signin-email").focus();
+      return false;
+    }
+    var btn = $("signin-send");
+    btn.disabled = true;
+    btn.textContent = t("sending");
+    try {
+      await Cloud.sendCode(email);
+      signin.email = email;
+      signin.cooldownUntil = Date.now() + 60000;
+      $("signin-sent").textContent = t("codeSent", { email: email });
+      $("signin-code").value = "";
+      setErr("signin-code", "");
+      signInStep("code");
+      resendCountdown();
+      return true;
+    } catch (e) {
+      setErr(errField, cloudMessage(e));
+      return false;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = t("sendCode");
+    }
+  }
+  $("signin-email-form").addEventListener("submit", function (e) { e.preventDefault(); sendSignInCode(); });
+  $("signin-code-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var code = $("signin-code").value.replace(/\s/g, "");
+    setErr("signin-code", "");
+    if (!/^\d{6,10}$/.test(code)) { setErr("signin-code", t("errCodeFormat")); $("signin-code").focus(); return; }
+    var btn = $("signin-verify");
+    btn.disabled = true;
+    btn.textContent = t("signingIn");
+    try {
+      await Cloud.verify(signin.email, code);
+      closeWin("signin");
+      toast(t("toastSignedIn", { email: signin.email }));
+    } catch (err) {
+      setErr("signin-code", cloudMessage(err));
+      $("signin-code").focus();
+    } finally {
+      btn.disabled = false;
+      btn.textContent = t("signInBtn");
+    }
+  });
+  $("signin-resend").addEventListener("click", async function () {
+    $("signin-email").value = signin.email;
+    if (await sendSignInCode("signin-code")) toast(t("toastCodeResent"));
+  });
+  $("signin-other").addEventListener("click", function () { signInStep("email"); });
+  $("close-signin").addEventListener("click", function () { closeWin("signin"); });
 
   /* Picker for what a card shows: a one-line summary with a Change button that unfolds the tick boxes.
      Once CARD_FIELD_MAX are ticked, the rest wait until one is unticked. `extra` goes under the boxes. */

@@ -20,7 +20,7 @@ CDC is an app for cataloguing the CDs a person owns. It started as a single-page
 
 ```
 { cds: [ { id, title, composer, performers: [{ role, name }], label, issuer,
-           recordingYear, releaseYear, photo (JPEG data URL, at most ~170 KB), addedAt,
+           recordingYear, releaseYear, photo (JPEG data URL, at most ~170 KB), addedAt, updatedAt (desktop, for sync),
            works: [ { title, composer, tracks: [ { title, duration ("m:ss" or "h:mm:ss") } ] } ],
            catalogNo (catalogue or matrix number), barcode, manufacturer, madeIn, recordingVenue,
            spars ("DDD" | "ADD" | "AAD"), ifpiMastering, ifpiMould, notes,
@@ -30,6 +30,7 @@ CDC is an app for cataloguing the CDs a person owns. It started as a single-page
           settings: { lang, theme ("light" | "dark"; missing = match system), cardWidth (140–320 px), cardFields: [field keys, at most 6] } } }
           // older files may still have size ("comfortable"/"compact") and show_performers/show_publisher/show_years;
           // cardWidth() and cardFields() read those when the new keys are missing
+  sync: { metaAt, deleted: { cdId: removedAtMs }, account: userId last synced with } }   // desktop file only; see "Accounts and sync"
 ```
 
 Internally, favorites are still called `albums`, in code, ids and translation keys. Users only ever see "Favorites" (お気に入り / 收藏夹).
@@ -62,6 +63,16 @@ Internally, favorites are still called `albums`, in code, ids and translation ke
 - Covers (`findCover`), best first: (1) in the desktop app, the release's own Discogs picture, downloaded by the Rust command `fetch_cover` (reqwest; only `https://i.discogs.com` / `img.discogs.com`, at most 5 MB) because Discogs doesn't let web pages load its pictures; (2) the Cover Art Archive via MusicBrainz: the release by barcode/catalogue number, then any edition of the same release group, then a title + artist search. Tested coverage of (2) alone on classical CDs was poor (about 2 in 12), which is why (1) exists. A cover the user chose is never replaced; one from an earlier lookup is.
 - `LOOKUP_SOURCES` is the extension point: a source has `search(q)` → candidates and `details(item, q)` → CD fields in CDC's shape. Planned later: an AI source that reads the cover photo, and MusicBrainz as another database.
 - Barcodes are read by our own EAN-13/UPC-A reader (`readBarcode`), because Windows browsers have no `BarcodeDetector`. It scans lines across and down in both directions with two edge finders (local-average threshold and peak/dip) and votes on check-digit-valid results.
+
+## Accounts and sync
+
+- Supabase, chosen by the owner (free tier, reachable from mainland China). Setup steps for the project owner: `supabase/README.md`; tables and row-level security: `supabase/schema.sql` (`cds`: one row per CD, `meta`: favorites and settings, `profiles`: user ID and photo). All three have been run in the owner's project `ogpzmnaqybxybybooebi`.
+- `SUPABASE_URL` and `SUPABASE_KEY` (the public anon key) are constants near `Cloud` in `src/index.html`. While either is empty, accounts are hidden. Never put the service_role key in the app.
+- Sign-in is a code sent by email (`/auth/v1/otp`, then `/auth/v1/verify` with `type: "email"`). The project sends 8 digits (Supabase's current default); the app accepts 6–10. Both the "Magic link or OTP" and the "Confirm sign up" email templates must contain `{{ .Token }}` (first-time users get the latter); editing templates needs custom SMTP (Gmail `cdcshelf.login@gmail.com` for now, a domain-based sender before launch). Phone sign-in is planned for later (needs a paid SMS provider). The session is kept in localStorage (`cdc.session`) and renewed with the refresh token.
+- Desktop only. The collection file stays the working copy, so the app works offline. `Cloud` talks to Supabase with plain `fetch` (no supabase-js). Each CD carries `updatedAt`; the file's `sync` object holds `metaAt` and `deleted` (removal markers until the account has them). Sync runs on start, about 1.5 s after a change, every 5 minutes, and on focus/online. Per CD the newer copy wins; a removal wins over an older edit. After that, the newer favorites/settings win.
+- First sync of a computer with an account (`sync.account` differs): if the computer has CDs or favorites the account doesn't, the owner's rule is to **ask** (`askFirstSync`, window `win-firstsync`): "Add them to my account" (merge; favorites merged from both sides), "Remove them from this computer" (with a confirm step, since it can't be undone; the computer then takes the account's collection and favorites as they are), or "Sign out instead" (also what closing the window does; nothing changes and the question comes back at the next sign-in). With nothing new on the computer, it syncs without asking.
+- Profile (signed-in only): table `profiles` with `handle` (the "User ID": 3–20 letters, digits or underscores, unique ignoring case via an index on `lower(handle)`, so a clash returns 409 → "taken") and `avatar` (a 256 px round-cropped JPEG data URL, under 200 KB). Edited in the profile window (`openProfile`): the photo is positioned in a circle by dragging, zoomed by slider, mouse wheel or +/−, and moved with the arrow keys; only the circle is saved. Cached in localStorage (`cdc.profile`) for the top-right corner, which shows the photo (or initial) and the user ID (or email).
+- Tested on 2026-10-25 with two local stand-ins for the desktop app (a PowerShell server serving `src/index.html` with `window.CDC_DESKTOP = true` and `/api/data` backed by a JSON file, on two ports so each has its own localStorage): first-sign-in merge, add/edit/remove both ways, newer-edit-wins, sign-out keeps the collection. Not yet tried in the installed Tauri app.
 
 ## Roadmap
 
