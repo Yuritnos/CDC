@@ -28,6 +28,7 @@ CDC is an app for cataloguing the CDs a person owns. It started as a single-page
            // everything after addedAt is optional and only saved when filled in
   meta: { albums: [ { id, name, cdIds: [] } ],      // shown to users as "Favorites"
           playlists: [ { id, name, items: [ { cdId, file } ] } ],   // saved playlists of tracks (desktop audio)
+          order: { all: [cdIds], music: [cdIds] },   // "Custom order" of All CDs and All music; a favorite's order is its cdIds
           settings: { lang, theme ("light" | "dark"; missing = match system), cardWidth (140–320 px), cardFields: [field keys, at most 6] } } }
           // older files may still have size ("comfortable"/"compact") and show_performers/show_publisher/show_years;
           // cardWidth() and cardFields() read those when the new keys are missing
@@ -52,6 +53,8 @@ Internally, favorites are still called `albums`, in code, ids and translation ke
 - The Settings choice is the default. Each CD's form has "Show on this card": a disc that never changes it follows the default (including later changes to it); once changed, it keeps its own `cardFields` until "Use the default" is pressed. Opening "Add a CD" always starts from the default, even after an unsaved form changed it.
 - Catalogue number examples use the form "410 084-2" / "410 084-2 01".
 - Composer sort uses the surname: the last word, or the text before a comma.
+- Sort options: Custom order (default), Recently added, Composer A–Z, Title A–Z (release year was removed by the owner). Saved per computer in localStorage `cdc.sort`. Only in Custom order, and not while searching, can cards be dragged (or moved with Alt + arrow keys) in All CDs, a favorite and All music (`moveCard`, `orderOf`; the grid gets class `arranging`). CDs not placed yet come first, newest first.
+- Dragging rows (`dragRows`, `rowBlock`) works in playlist views and the play queue (`moveQueue` keeps the current track current), with the same rules as the ↑/↓ buttons: discs and lone tracks move past whole rows, an unfolded disc's tracks only within it.
 - A disc holds works, each with its own tracks; track numbers run on across the whole disc, as printed on back covers. A work's composer is optional; when the disc has no composer, cards show the works' composers.
 - The form's fold-out "Disc details" section holds label, issuing corporation, both years, one "Catalogue / matrix number" field, manufacturer, country, venue, SPARS, barcode and IFPI codes. The profile shows them under the same heading.
 - "Notes" is free text and is the last field of "Disc details", in the form and in the profile. It is written only in the edit form (no separate edit button in the profile).
