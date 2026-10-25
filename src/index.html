@@ -256,7 +256,11 @@ label.lbl, legend, .sect h3 {
 }
 .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
 .drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
-.drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.drop canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.drop canvas:active { cursor: grabbing; }
+.drop canvas:focus-visible { outline: none; }
+.drop:has(canvas:not([hidden])) { border-style: solid; cursor: default; }
+.drop:has(canvas:not([hidden])):hover { background: var(--field); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .photo-side { flex: 1 1 140px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .photo-side strong { font-weight: 600; }
@@ -786,12 +790,17 @@ details.more[open] > summary { margin-bottom: 14px; }
         <div class="photo">
           <label class="drop" id="drop" for="photo">
             <span class="disc" id="drop-glyph" style="--s:72px" aria-hidden="true"></span>
-            <img id="drop-img" alt="Cover preview" hidden>
+            <canvas id="cover-canvas" width="480" height="480" tabindex="0" hidden data-i18n-aria="coverCropAria" aria-label="Cover position. Drag, or use the arrow keys; plus and minus zoom."></canvas>
             <input class="sr" type="file" id="photo" accept="image/*">
           </label>
           <div class="photo-side">
             <strong id="photo-title">Cover</strong>
             <p id="photo-hint">Drop an image here or choose one. A front cover or the disc itself both work.</p>
+            <div class="range" id="cover-zoom-row" hidden>
+              <span aria-hidden="true">−</span>
+              <input type="range" id="cover-zoom" min="1" max="4" step="0.01" value="1" data-i18n-aria="pfZoom" aria-label="Zoom">
+              <span aria-hidden="true">+</span>
+            </div>
             <div class="photo-actions" id="photo-actions" hidden>
               <button type="button" class="linkbtn" id="photo-replace" data-i18n="replace">Replace</button>
               <button type="button" class="linkbtn danger" id="photo-remove" data-i18n="remove">Remove</button>
@@ -1051,9 +1060,15 @@ details.more[open] > summary { margin-bottom: 14px; }
         </div>
       </div>
       <div class="field">
+        <label class="lbl" for="pf-nick" data-i18n="pfNick">Nickname</label>
+        <input class="input" id="pf-nick" type="text" maxlength="40" autocomplete="nickname" data-autofocus data-i18n-ph="pfNickPh" placeholder="e.g. Music lover">
+        <p class="hint" data-i18n="pfNickHint">Shown to others next to your photo. Up to 20 characters; other people may use the same nickname.</p>
+        <p class="err" id="pf-nick-err" role="alert"></p>
+      </div>
+      <div class="field">
         <label class="lbl" for="pf-handle" data-i18n="pfHandle">User ID</label>
-        <input class="input" id="pf-handle" type="text" maxlength="20" autocomplete="off" spellcheck="false" data-autofocus data-i18n-ph="pfHandlePh" placeholder="e.g. yuri_cd">
-        <p class="hint" data-i18n="pfHandleHint">3 to 20 letters, numbers or underscores. Each ID can belong to only one account.</p>
+        <input class="input" id="pf-handle" type="text" maxlength="20" autocomplete="off" spellcheck="false" data-i18n-ph="pfHandlePh" placeholder="e.g. user_id">
+        <p class="hint" data-i18n="pfHandleHint">Your unique code: 3 to 20 letters, numbers or underscores. Each ID can belong to only one account.</p>
         <p class="err" id="pf-handle-err" role="alert"></p>
       </div>
       <p class="hint" id="pf-email"></p>
@@ -1137,7 +1152,8 @@ details.more[open] > summary { margin-bottom: 14px; }
       settings: "Settings", collection: "Your collection", albumsBar: "Favorites",
       add: "Add a CD", edit: "Edit CD", close: "Close", cover: "Cover", coverAdded: "Cover added",
       coverHint: "Drop an image here or choose one. A front cover or the disc itself both work.",
-      coverHintAdded: "It will be cropped to a square on the shelf.",
+      coverHintAdded: "Drag the cover to choose the part shown on the card. Zoom with the slider or the mouse wheel.",
+      coverCropAria: "Cover position. Drag, or use the arrow keys; plus and minus zoom.",
       replace: "Replace", remove: "Remove",
       cdTitle: "Title of the CD", cdTitlePh: "e.g. Piano Concerto No. 2",
       composer: "Composer", composerPh: "e.g. Sergei Rachmaninoff (optional)",
@@ -1182,7 +1198,7 @@ details.more[open] > summary { margin-bottom: 14px; }
       acctStorageDb: "Your collection is saved to your Claude account.",
       acctStorageLocal: "Your collection is kept in this browser only.", acctStorageDesktop: "Your collection is saved on this computer.",
       acctStats: "{cds} CDs · {albums} favorites",
-      acctNote: "Your account comes from your Claude sign-in. To switch accounts, sign in to Claude with another one.", acctNoteDesktop: "This is your Windows user. Each Windows user has their own collection.",
+      acctNote: "Your account comes from your Claude sign-in. To switch accounts, sign in to Claude with another one.", acctNoteDesktop: "Each Windows user on this computer has their own collection.",
       langSection: "Language", displaySection: "Display", cardSize: "Card size",
       sizeSmaller: "Smaller", sizeLarger: "Larger",
       signInHead: "Sign in", signInBtn: "Sign in", signingIn: "Signing in…",
@@ -1208,8 +1224,11 @@ details.more[open] > summary { margin-bottom: 14px; }
       pfChoose: "Choose a photo", pfReplace: "Choose another photo", pfRemove: "Remove photo", pfZoom: "Zoom",
       pfCropHint: "Drag the photo to choose the part inside the circle. Zoom with the slider or the mouse wheel.",
       pfCropAria: "Photo position. Drag, or use the arrow keys; plus and minus zoom.",
-      pfHandle: "User ID", pfHandlePh: "e.g. yuri_cd",
-      pfHandleHint: "3 to 20 letters, numbers or underscores. Each ID can belong to only one account.",
+      pfHandle: "User ID", pfHandlePh: "e.g. user_id", acctUser: "User",
+      pfHandleHint: "Your unique code: 3 to 20 letters, numbers or underscores. Each ID can belong to only one account.",
+      pfNick: "Nickname", pfNickPh: "e.g. Music lover",
+      pfNickHint: "Shown to others next to your photo. Up to 20 characters; other people may use the same nickname.",
+      errNick: "Use at most 20 characters.",
       pfIdLine: "User ID: {id}",
       errHandle: "Use 3 to 20 letters, numbers or underscores, with no spaces.",
       errHandleTaken: "That user ID is already taken. Try another one.",
@@ -1277,7 +1296,8 @@ details.more[open] > summary { margin-bottom: 14px; }
       settings: "設定", collection: "コレクション", albumsBar: "お気に入り",
       add: "CDを追加", edit: "CDを編集", close: "閉じる", cover: "カバー", coverAdded: "カバーを追加しました",
       coverHint: "画像をここにドロップするか、ファイルを選んでください。ジャケットでもディスクの写真でも構いません。",
-      coverHintAdded: "棚では正方形に切り抜いて表示されます。",
+      coverHintAdded: "カバーをドラッグして、カードに表示する部分を選んでください。スライダーまたはマウスホイールで拡大できます。",
+      coverCropAria: "カバーの位置。ドラッグするか矢印キーで移動し、プラスとマイナスで拡大・縮小します。",
       replace: "差し替え", remove: "削除",
       cdTitle: "CDのタイトル", cdTitlePh: "例：ピアノ協奏曲第2番",
       composer: "作曲家", composerPh: "例：ラフマニノフ（任意）",
@@ -1322,7 +1342,7 @@ details.more[open] > summary { margin-bottom: 14px; }
       acctStorageDb: "コレクションはClaudeアカウントに保存されています。",
       acctStorageLocal: "コレクションはこのブラウザ内にのみ保管されています。", acctStorageDesktop: "コレクションはこのパソコンに保存されています。",
       acctStats: "CD {cds}枚 · お気に入り {albums}件",
-      acctNote: "アカウントはClaudeのサインイン情報から取得しています。切り替えるには、別のアカウントでClaudeにサインインしてください。", acctNoteDesktop: "これはWindowsのユーザーです。Windowsユーザーごとに別のコレクションになります。",
+      acctNote: "アカウントはClaudeのサインイン情報から取得しています。切り替えるには、別のアカウントでClaudeにサインインしてください。", acctNoteDesktop: "このパソコンでは、Windowsユーザーごとに別のコレクションになります。",
       langSection: "言語", displaySection: "表示", cardSize: "カードのサイズ",
       sizeSmaller: "小さく", sizeLarger: "大きく",
       signInHead: "サインイン", signInBtn: "サインイン", signingIn: "サインイン中…",
@@ -1348,8 +1368,11 @@ details.more[open] > summary { margin-bottom: 14px; }
       pfChoose: "写真を選ぶ", pfReplace: "別の写真を選ぶ", pfRemove: "写真を削除", pfZoom: "拡大",
       pfCropHint: "写真をドラッグして、円の中に表示する部分を選んでください。スライダーまたはマウスホイールで拡大できます。",
       pfCropAria: "写真の位置。ドラッグするか矢印キーで移動し、プラスとマイナスで拡大・縮小します。",
-      pfHandle: "ユーザーID", pfHandlePh: "例：yuri_cd",
-      pfHandleHint: "半角英数字とアンダースコアで3〜20文字。同じIDは1つのアカウントだけが使えます。",
+      pfHandle: "ユーザーID", pfHandlePh: "例：user_id", acctUser: "ユーザー",
+      pfHandleHint: "あなただけのコード：半角英数字とアンダースコアで3〜20文字。同じIDは1つのアカウントだけが使えます。",
+      pfNick: "ニックネーム", pfNickPh: "例：音楽好き",
+      pfNickHint: "写真の横に表示され、ほかの人にも見えます。20文字まで。ほかの人と同じニックネームでも構いません。",
+      errNick: "20文字以内にしてください。",
       pfIdLine: "ユーザーID：{id}",
       errHandle: "半角英数字とアンダースコアで3〜20文字にしてください（スペースは使えません）。",
       errHandleTaken: "このユーザーIDはすでに使われています。別のIDをお試しください。",
@@ -1417,7 +1440,8 @@ details.more[open] > summary { margin-bottom: 14px; }
       settings: "设置", collection: "你的CD", albumsBar: "收藏夹",
       add: "添加CD", edit: "编辑CD", close: "关闭", cover: "封面", coverAdded: "封面已添加",
       coverHint: "将图片拖到此处，或选择文件。封面或光盘照片均可。",
-      coverHintAdded: "在书架上将裁剪为正方形显示。",
+      coverHintAdded: "拖动封面，选择在卡片上显示的部分。可用滑块或鼠标滚轮缩放。",
+      coverCropAria: "封面位置。拖动或使用方向键移动，加号和减号缩放。",
       replace: "更换", remove: "删除",
       cdTitle: "CD标题", cdTitlePh: "例如：第二钢琴协奏曲",
       composer: "作曲家", composerPh: "例如：拉赫玛尼诺夫（可选）",
@@ -1462,7 +1486,7 @@ details.more[open] > summary { margin-bottom: 14px; }
       acctStorageDb: "你的收藏已保存到 Claude 账户。",
       acctStorageLocal: "你的收藏仅保存在此浏览器中。", acctStorageDesktop: "你的收藏保存在这台电脑上。",
       acctStats: "{cds} 张CD · {albums} 个收藏夹",
-      acctNote: "账户信息来自你的 Claude 登录。如需切换账户，请使用另一个账户登录 Claude。", acctNoteDesktop: "这是你的 Windows 用户。每个 Windows 用户拥有各自的收藏。",
+      acctNote: "账户信息来自你的 Claude 登录。如需切换账户，请使用另一个账户登录 Claude。", acctNoteDesktop: "在这台电脑上，每个 Windows 用户拥有各自的收藏。",
       langSection: "语言", displaySection: "显示", cardSize: "卡片大小",
       sizeSmaller: "更小", sizeLarger: "更大",
       signInHead: "登录", signInBtn: "登录", signingIn: "正在登录…",
@@ -1488,8 +1512,11 @@ details.more[open] > summary { margin-bottom: 14px; }
       pfChoose: "选择照片", pfReplace: "换一张照片", pfRemove: "删除头像", pfZoom: "缩放",
       pfCropHint: "拖动照片，选择要显示在圆圈内的部分。可用滑块或鼠标滚轮缩放。",
       pfCropAria: "照片位置。拖动或使用方向键移动，加号和减号缩放。",
-      pfHandle: "用户ID", pfHandlePh: "例如：yuri_cd",
-      pfHandleHint: "3 到 20 个英文字母、数字或下划线。每个 ID 只能属于一个账户。",
+      pfHandle: "用户ID", pfHandlePh: "例如：user_id", acctUser: "用户",
+      pfHandleHint: "你独有的代码：3 到 20 个英文字母、数字或下划线。每个 ID 只能属于一个账户。",
+      pfNick: "昵称", pfNickPh: "例如：古典乐迷",
+      pfNickHint: "显示在头像旁边，其他人也能看到。最多 20 个字，可以与他人重名。",
+      errNick: "最多 20 个字。",
       pfIdLine: "用户ID：{id}",
       errHandle: "请使用 3 到 20 个英文字母、数字或下划线，不能有空格。",
       errHandleTaken: "该用户ID已被使用，请换一个。",
@@ -1636,7 +1663,6 @@ details.more[open] > summary { margin-bottom: 14px; }
     qsa("[data-i18n-ph]").forEach(function (n) { n.placeholder = t(n.getAttribute("data-i18n-ph")); });
     qsa("[data-i18n-aria]").forEach(function (n) { n.setAttribute("aria-label", t(n.getAttribute("data-i18n-aria"))); });
     $("fab-text").textContent = t("add");
-    $("drop-img").alt = t("cover");
   }
   function fillComposers() {
     var dl = $("composers");
@@ -1785,12 +1811,25 @@ details.more[open] > summary { margin-bottom: 14px; }
     }
     return out;
   }
+  /* The cover sits in a square frame that can be dragged and zoomed like the profile photo
+     (makeCropper). photoData is the cover as it will be saved unless the person adjusts the frame;
+     then the framed square is saved instead (coverForSaving). A chosen file is cropped from its
+     full-size original, so zooming stays sharp. */
+  var coverCrop = makeCropper($("cover-canvas"), $("cover-zoom"), function () {});
+  var coverShown = null;
   function showPhoto() {
     var has = !!photoData;
-    var img = $("drop-img");
-    if (has) img.src = photoData; else img.removeAttribute("src");
-    img.hidden = !has;
+    if (!has) {
+      coverShown = null;
+      if (coverCrop.img) coverCrop.clear();
+    } else if (coverShown !== photoData) {
+      var want = photoData;
+      coverShown = want;
+      loadImage(want).then(function (img) { if (coverShown === want) coverCrop.set(img, false); });
+    }
+    $("cover-canvas").hidden = !has;
     $("drop-glyph").hidden = has;
+    $("cover-zoom-row").hidden = !has;
     $("photo-actions").hidden = !has;
     $("photo-title").textContent = has ? t("coverAdded") : t("cover");
     $("photo-hint").textContent = has ? t("coverHintAdded") : t("coverHint");
@@ -1800,12 +1839,30 @@ details.more[open] > summary { margin-bottom: 14px; }
     $("photo-err").textContent = "";
     $("drop").classList.remove("filled");
     try {
-      photoData = await prepareCover(file);
+      if (!file.type || file.type.indexOf("image/") !== 0) throw new Error("not_image");
+      var img = await loadImage(await fileToDataUrl(file));
+      photoData = imageToCover(img);
+      coverShown = photoData;
+      coverCrop.set(img, false);
     } catch (e) {
       photoData = null;
       $("photo-err").textContent = t("errPhoto");
     }
     showPhoto();
+  }
+  /* The cover to save: the framed square if the person moved or zoomed it (as a JPEG of at most
+     about 170 KB), otherwise photoData unchanged. */
+  function coverForSaving() {
+    if (!photoData || !coverCrop.img || !coverCrop.changed) return photoData;
+    var out = "";
+    var sizes = [800, 640, 512];
+    for (var i = 0; i < sizes.length; i++) {
+      for (var q = 0.88; q > 0.45; q -= 0.1) {
+        out = coverCrop.jpeg(sizes[i], q);
+        if (out.length <= 170000) return out;
+      }
+    }
+    return out;
   }
   var drop = $("drop");
   $("photo").addEventListener("change", function (e) {
@@ -2721,8 +2778,10 @@ details.more[open] > summary { margin-bottom: 14px; }
       if (!signedIn()) return;
       var uid = session.user.id;
       try {
-        var row = (await rest("profiles?select=handle,avatar"))[0];
-        if (session && session.user.id === uid) keepProfile({ uid: uid, handle: (row && row.handle) || "", avatar: (row && row.avatar) || "" });
+        var row = (await rest("profiles?select=handle,nickname,avatar"))[0];
+        if (session && session.user.id === uid) {
+          keepProfile({ uid: uid, handle: (row && row.handle) || "", nickname: (row && row.nickname) || "", avatar: (row && row.avatar) || "" });
+        }
       } catch (e) { /* offline: keep showing the saved copy */ }
     }
     async function signOutNow() {
@@ -2762,21 +2821,21 @@ details.more[open] > summary { margin-bottom: 14px; }
         this.start();
       },
       signOut: signOutNow,
-      /* The signed-in person's profile: { handle, avatar }, both possibly empty. */
+      /* The signed-in person's profile: { handle (user ID), nickname, avatar }, each possibly empty. */
       profile: function () {
-        if (!signedIn() || !profile || profile.uid !== session.user.id) return { handle: "", avatar: "" };
-        return { handle: profile.handle || "", avatar: profile.avatar || "" };
+        if (!signedIn() || !profile || profile.uid !== session.user.id) return { handle: "", nickname: "", avatar: "" };
+        return { handle: profile.handle || "", nickname: profile.nickname || "", avatar: profile.avatar || "" };
       },
-      /* Save the user ID and photo. Fails with code "taken" when another account has that ID. */
-      saveProfile: async function (handle, avatar) {
+      /* Save the profile. Fails with code "taken" when another account has that user ID. */
+      saveProfile: async function (p) {
         if (!signedIn()) throw fail("signedout");
         var uid = session.user.id;
         await rest("profiles?on_conflict=user_id", {
           method: "POST",
           headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-          body: JSON.stringify([{ user_id: uid, handle: handle || null, avatar: avatar || null, updated_ms: Date.now() }])
+          body: JSON.stringify([{ user_id: uid, handle: p.handle || null, nickname: p.nickname || null, avatar: p.avatar || null, updated_ms: Date.now() }])
         });
-        keepProfile({ uid: uid, handle: handle || "", avatar: avatar || "" });
+        keepProfile({ uid: uid, handle: p.handle || "", nickname: p.nickname || "", avatar: p.avatar || "" });
       }
     };
   })();
@@ -3109,11 +3168,12 @@ details.more[open] > summary { margin-bottom: 14px; }
   function renderAccount() {
     applyTheme(currentTheme());
     var signedIn = Cloud.signedIn();
-    /* Signed in: the user ID (or else the email) names the person, with their photo if they chose
-       one; otherwise the Windows user (or Claude account). */
+    /* Signed in: the nickname (or else the user ID, or the email) names the person, with their
+       photo if they chose one. Signed out on the desktop: just "User", with no initial. In claude.ai: the Claude account. */
     var prof = Cloud.profile();
-    var name = signedIn ? (prof.handle || Cloud.email()) : acct.loading ? "" : acct.name;
-    var initial = name ? Array.from(name)[0].toUpperCase() : "";
+    var plain = !signedIn && !!window.CDC_DESKTOP;
+    var name = signedIn ? (prof.nickname || prof.handle || Cloud.email()) : plain ? t("acctUser") : acct.loading ? "" : acct.name;
+    var initial = name && !plain ? Array.from(name)[0].toUpperCase() : "";
     $("acct-label").textContent = name || t("acctSection");
     [$("acct-initial"), $("set-initial")].forEach(function (n) {
       n.textContent = "";
@@ -3189,34 +3249,106 @@ details.more[open] > summary { margin-bottom: 14px; }
     if (keepId && $(keepId)) $(keepId).focus({ preventScroll: true });
   }
 
-  /* ---------- profile window: user ID and a round photo ----------
-     The photo is chosen, then positioned in a circle: drag to move it, zoom with the slider, the
-     mouse wheel or + and -. Only the part inside the circle is saved, as a 256 px JPEG. */
+  /* ---------- cropping a picture: profile photos (round) and covers (square) ----------
+     A picture is shown in a fixed frame of CROP_VIEW pixels and covers it completely. Drag to
+     move it, zoom with the slider, the mouse wheel or + and -, move with the arrow keys. Only the
+     part inside the frame is saved. `changed` turns true once the person moves or zooms it. */
   var CROP_VIEW = 168;
-  var CROP_OUT = 256;
+  function makeCropper(canvas, slider, onRender) {
+    var c = { img: null, zoom: 1, x: 0, y: 0, changed: false, drag: null };
+    function scale() { return CROP_VIEW / Math.min(c.img.naturalWidth, c.img.naturalHeight) * c.zoom; }
+    function clamp() {
+      var s = scale();
+      var maxX = Math.max(0, (c.img.naturalWidth * s - CROP_VIEW) / 2);
+      var maxY = Math.max(0, (c.img.naturalHeight * s - CROP_VIEW) / 2);
+      c.x = Math.max(-maxX, Math.min(maxX, c.x));
+      c.y = Math.max(-maxY, Math.min(maxY, c.y));
+    }
+    c.paint = function (target, size) {
+      var ctx = target.getContext("2d");
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, target.width, target.height);
+      if (!c.img) return;
+      var k = size / CROP_VIEW, s = scale();
+      ctx.setTransform(k * s, 0, 0, k * s, k * (CROP_VIEW / 2 + c.x), k * (CROP_VIEW / 2 + c.y));
+      ctx.drawImage(c.img, -c.img.naturalWidth / 2, -c.img.naturalHeight / 2);
+    };
+    c.render = function () {
+      if (c.img) { clamp(); c.paint(canvas, canvas.width); }
+      slider.value = c.zoom;
+      onRender();
+    };
+    c.set = function (img, changed) {
+      c.img = img; c.zoom = 1; c.x = 0; c.y = 0; c.changed = !!changed;
+      c.render();
+    };
+    c.clear = function () { c.set(null, false); };
+    c.setZoom = function (z) {
+      if (!c.img) return;
+      var old = c.zoom;
+      c.zoom = Math.max(1, Math.min(4, z));
+      c.x *= c.zoom / old;
+      c.y *= c.zoom / old;
+      c.changed = true;
+      c.render();
+    };
+    /* The framed part as a JPEG data URL, size pixels square. */
+    c.jpeg = function (size, quality) {
+      var out = document.createElement("canvas");
+      out.width = out.height = size;
+      c.paint(out, size);
+      return out.toDataURL("image/jpeg", quality);
+    };
+    slider.addEventListener("input", function () { c.setZoom(parseFloat(slider.value)); });
+    canvas.addEventListener("pointerdown", function (e) {
+      if (!c.img) return;
+      c.drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener("pointermove", function (e) {
+      if (!c.drag || c.drag.id !== e.pointerId) return;
+      var k = CROP_VIEW / canvas.getBoundingClientRect().width;
+      c.x += (e.clientX - c.drag.x) * k;
+      c.y += (e.clientY - c.drag.y) * k;
+      c.drag.x = e.clientX; c.drag.y = e.clientY;
+      c.changed = true;
+      c.render();
+    });
+    ["pointerup", "pointercancel"].forEach(function (ev) {
+      canvas.addEventListener(ev, function () { c.drag = null; });
+    });
+    /* A frame inside a <label> must not open the file picker when it is dragged or clicked. */
+    canvas.addEventListener("click", function (e) { e.preventDefault(); });
+    canvas.addEventListener("wheel", function (e) {
+      if (!c.img) return;
+      e.preventDefault();
+      c.setZoom(c.zoom * Math.exp(-e.deltaY * 0.0015));
+    }, { passive: false });
+    canvas.addEventListener("keydown", function (e) {
+      if (!c.img) return;
+      var step = e.shiftKey ? 16 : 4;
+      var moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+      if (moves[e.key]) {
+        e.preventDefault();
+        c.x += moves[e.key][0]; c.y += moves[e.key][1];
+        c.changed = true;
+        c.render();
+      } else if (e.key === "+" || e.key === "=") { e.preventDefault(); c.setZoom(c.zoom * 1.1); }
+      else if (e.key === "-") { e.preventDefault(); c.setZoom(c.zoom / 1.1); }
+    });
+    return c;
+  }
+
+  /* ---------- profile window: nickname, user ID and a round photo ----------
+     The nickname is what others see (up to 20 characters, any language, not unique). The user ID
+     is each person's unique code. The photo is saved as a 256 px JPEG of the circle. */
+  var AVATAR_OUT = 256;
   var HANDLE = /^[A-Za-z0-9_]{3,20}$/;
-  var crop = { img: null, zoom: 1, x: 0, y: 0, changed: false, removed: false, drag: null };
-  function cropScale() { return CROP_VIEW / Math.min(crop.img.naturalWidth, crop.img.naturalHeight) * crop.zoom; }
-  /* Keep the photo covering the whole circle. */
-  function clampCrop() {
-    var s = cropScale();
-    var maxX = Math.max(0, (crop.img.naturalWidth * s - CROP_VIEW) / 2);
-    var maxY = Math.max(0, (crop.img.naturalHeight * s - CROP_VIEW) / 2);
-    crop.x = Math.max(-maxX, Math.min(maxX, crop.x));
-    crop.y = Math.max(-maxY, Math.min(maxY, crop.y));
-  }
-  function paintCrop(canvas, size) {
-    var ctx = canvas.getContext("2d");
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    if (!crop.img) return;
-    var k = size / CROP_VIEW, s = cropScale();
-    ctx.setTransform(k * s, 0, 0, k * s, k * (CROP_VIEW / 2 + crop.x), k * (CROP_VIEW / 2 + crop.y));
-    ctx.drawImage(crop.img, -crop.img.naturalWidth / 2, -crop.img.naturalHeight / 2);
-  }
-  function renderCrop() {
-    var has = !!crop.img;
+  var NICK_MAX = 20;
+  var pf = { saved: "", removed: false };
+  var pfCrop = makeCropper($("crop-canvas"), $("crop-zoom"), function () {
+    var has = !!pfCrop.img;
     $("crop").classList.toggle("empty", !has);
     $("crop-canvas").hidden = !has;
     $("crop-empty").hidden = has;
@@ -3224,26 +3356,17 @@ details.more[open] > summary { margin-bottom: 14px; }
     $("crop-hint").hidden = !has;
     $("pf-remove").hidden = !has;
     $("pf-choose").textContent = t(has ? "pfReplace" : "pfChoose");
-    $("crop-zoom").value = crop.zoom;
-    if (has) { clampCrop(); paintCrop($("crop-canvas"), $("crop-canvas").width); }
-  }
-  function setZoom(z) {
-    var old = crop.zoom;
-    crop.zoom = Math.max(1, Math.min(4, z));
-    crop.x *= crop.zoom / old;
-    crop.y *= crop.zoom / old;
-    crop.changed = true;
-    renderCrop();
-  }
+  });
   function openProfile() {
     var p = Cloud.profile();
+    $("pf-nick").value = p.nickname;
     $("pf-handle").value = p.handle;
     $("pf-email").textContent = t("signedInAs", { email: Cloud.email() });
-    $("crop-empty").textContent = (Array.from(p.handle || Cloud.email())[0] || "").toUpperCase();
-    ["pf-handle", "pf-photo"].forEach(function (f) { setErr(f, ""); });
-    crop = { img: null, zoom: 1, x: 0, y: 0, changed: false, removed: false, drag: null, saved: p.avatar };
-    renderCrop();
-    if (p.avatar) loadImage(p.avatar).then(function (img) { if (crop.saved === p.avatar && !crop.changed) { crop.img = img; renderCrop(); } });
+    $("crop-empty").textContent = (Array.from(p.nickname || p.handle || Cloud.email())[0] || "").toUpperCase();
+    ["pf-nick", "pf-handle", "pf-photo"].forEach(function (f) { setErr(f, ""); });
+    pf = { saved: p.avatar, removed: false };
+    pfCrop.clear();
+    if (p.avatar) loadImage(p.avatar).then(function (img) { if (pf.saved === p.avatar && !pfCrop.img) pfCrop.set(img, false); });
     openWin("profile");
   }
   $("pf-choose").addEventListener("click", function () { $("pf-file").click(); });
@@ -3254,75 +3377,33 @@ details.more[open] > summary { margin-bottom: 14px; }
     setErr("pf-photo", "");
     try {
       if (!f.type || f.type.indexOf("image/") !== 0) throw new Error("not_image");
-      crop.img = await loadImage(await fileToDataUrl(f));
-      crop.zoom = 1; crop.x = 0; crop.y = 0;
-      crop.changed = true; crop.removed = false;
-      renderCrop();
+      pfCrop.set(await loadImage(await fileToDataUrl(f)), true);
+      pf.removed = false;
       $("crop-canvas").focus({ preventScroll: true });
     } catch (err) {
       $("pf-photo-err").textContent = t("errPhoto");
     }
   });
   $("pf-remove").addEventListener("click", function () {
-    crop.img = null; crop.removed = true; crop.changed = false;
-    renderCrop();
+    pfCrop.clear();
+    pf.removed = true;
     $("pf-choose").focus();
-  });
-  $("crop-zoom").addEventListener("input", function (e) { setZoom(parseFloat(e.target.value)); });
-  var cropCanvas = $("crop-canvas");
-  cropCanvas.addEventListener("pointerdown", function (e) {
-    if (!crop.img) return;
-    crop.drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
-    cropCanvas.setPointerCapture(e.pointerId);
-  });
-  cropCanvas.addEventListener("pointermove", function (e) {
-    if (!crop.drag || crop.drag.id !== e.pointerId) return;
-    /* The canvas is shown at CROP_VIEW pixels, so screen movement maps one to one. */
-    var k = CROP_VIEW / cropCanvas.getBoundingClientRect().width;
-    crop.x += (e.clientX - crop.drag.x) * k;
-    crop.y += (e.clientY - crop.drag.y) * k;
-    crop.drag.x = e.clientX; crop.drag.y = e.clientY;
-    crop.changed = true;
-    renderCrop();
-  });
-  ["pointerup", "pointercancel"].forEach(function (ev) {
-    cropCanvas.addEventListener(ev, function () { crop.drag = null; });
-  });
-  cropCanvas.addEventListener("wheel", function (e) {
-    if (!crop.img) return;
-    e.preventDefault();
-    setZoom(crop.zoom * Math.exp(-e.deltaY * 0.0015));
-  }, { passive: false });
-  cropCanvas.addEventListener("keydown", function (e) {
-    if (!crop.img) return;
-    var step = e.shiftKey ? 16 : 4;
-    var moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
-    if (moves[e.key]) {
-      e.preventDefault();
-      crop.x += moves[e.key][0]; crop.y += moves[e.key][1];
-      crop.changed = true;
-      renderCrop();
-    } else if (e.key === "+" || e.key === "=") { e.preventDefault(); setZoom(crop.zoom * 1.1); }
-    else if (e.key === "-") { e.preventDefault(); setZoom(crop.zoom / 1.1); }
   });
   $("profile-form").addEventListener("submit", async function (e) {
     e.preventDefault();
+    var nickname = $("pf-nick").value.trim();
     var handle = $("pf-handle").value.trim();
+    setErr("pf-nick", "");
     setErr("pf-handle", "");
+    if (Array.from(nickname).length > NICK_MAX) { setErr("pf-nick", t("errNick")); $("pf-nick").focus(); return; }
     if (handle && !HANDLE.test(handle)) { setErr("pf-handle", t("errHandle")); $("pf-handle").focus(); return; }
-    var avatar = crop.saved || "";
-    if (crop.removed) avatar = "";
-    if (crop.img && crop.changed) {
-      var out = document.createElement("canvas");
-      out.width = out.height = CROP_OUT;
-      paintCrop(out, CROP_OUT);
-      avatar = out.toDataURL("image/jpeg", 0.88);
-    }
+    var avatar = pf.removed ? "" : pf.saved || "";
+    if (pfCrop.img && pfCrop.changed) avatar = pfCrop.jpeg(AVATAR_OUT, 0.88);
     var btn = $("pf-save");
     btn.disabled = true;
     btn.textContent = t("saving");
     try {
-      await Cloud.saveProfile(handle, avatar);
+      await Cloud.saveProfile({ handle: handle, nickname: nickname, avatar: avatar });
       closeWin("profile");
       toast(t("toastProfileSaved"));
     } catch (err) {
@@ -4576,7 +4657,8 @@ details.more[open] > summary { margin-bottom: 14px; }
     var notes = $("notes").value.trim();
     if (notes) cd.notes = notes;
     if (Array.isArray(formCard.own)) cd.cardFields = formCard.own.slice();
-    if (photoData) cd.photo = photoData;
+    var cover = coverForSaving();
+    if (cover) cd.photo = cover;
     var chosenAlbums = readChecked();
 
     var wasEditing = !!editingId;

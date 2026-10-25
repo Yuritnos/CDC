@@ -32,16 +32,20 @@ create policy "own meta" on public.meta
   for all to authenticated
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- One row per user: the public profile. `handle` is the user ID people choose (3-20 letters,
--- digits or underscores, unique regardless of upper/lower case); `avatar` is a small cropped
--- JPEG as a data URL.
+-- One row per user: the profile. `handle` is the user ID, a unique code for each person (3-20
+-- letters, digits or underscores, unique regardless of upper/lower case). `nickname` is the name
+-- shown to others (up to 20 characters, any language, several people may share one). `avatar` is
+-- a small round-cropped JPEG as a data URL.
 create table if not exists public.profiles (
   user_id    uuid   primary key default auth.uid() references auth.users (id) on delete cascade,
   handle     text   check (handle ~ '^[A-Za-z0-9_]{3,20}$'),
+  nickname   text   check (nickname is null or char_length(nickname) <= 20),
   avatar     text   check (avatar is null or length(avatar) < 200000),
   updated_ms bigint not null
 );
 create unique index if not exists profiles_handle_unique on public.profiles (lower(handle));
+-- For a project created before nicknames existed:
+alter table public.profiles add column if not exists nickname text check (nickname is null or char_length(nickname) <= 20);
 
 alter table public.profiles enable row level security;
 
