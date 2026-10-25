@@ -442,6 +442,7 @@ details.more[open] > summary { margin-bottom: 14px; }
 .fpick .linkbtn { padding: 2px 0; font-size: 13.5px; }
 .fpick-list { display: flex; flex-direction: column; gap: 8px; }
 .fpick-list[hidden] { display: none; }
+.fpick-list .fav-tags { align-self: flex-start; }
 .card .notes-line { margin: 0; font-size: 13.5px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* Albums bar and collection */
@@ -519,6 +520,11 @@ details.more[open] > summary { margin-bottom: 14px; }
 .plv-tools .iconbtn { width: 30px; height: 30px; font-size: 14px; }
 .plv-tools .iconbtn.rm:hover { color: var(--danger); border-color: var(--danger); }
 .plv-tools .iconbtn:disabled { opacity: 0.35; cursor: default; }
+.plv-tools .fold-space { width: 30px; flex: none; }
+.plv-disc { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.plv-list li.sub { background: var(--field); }
+.plv-list li.sub.playing { background: var(--accent-soft); }
+.plv-list li.sub .plv-text strong { font-weight: 500; font-size: 14px; }
 @media (max-width: 640px) {
   .plv-list li { grid-template-columns: 22px 32px minmax(0, 1fr) auto; }
   .plv-len { display: none; }
@@ -683,8 +689,10 @@ details.more[open] > summary { margin-bottom: 14px; }
 .pl-count { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-right: auto; }
 .pl-list-head .linkbtn { padding: 0; font-size: 13px; }
 .pl-items { list-style: none; margin: 0; padding: 6px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
-.pl-items li { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 6px; align-items: center; border-radius: 3px; }
-.pl-items li.current { background: var(--accent-soft); }
+.pl-items li { display: grid; grid-template-columns: minmax(0, 1fr) 32px 32px; gap: 4px; align-items: center; border-radius: 3px; }
+.pl-items li.current, .pl-items li.current-in { background: var(--accent-soft); }
+.pl-items li.sub .pl-item { padding-left: 20px; }
+.pl-items li.sub .pl-text strong { font-weight: 500; font-size: 13.5px; }
 .pl-item { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 6px 8px; background: transparent; border: 0; border-radius: 3px; text-align: left; cursor: pointer; }
 .pl-item:hover { background: var(--accent-soft); }
 .pl-mark { width: 22px; flex: none; text-align: center; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
@@ -694,7 +702,16 @@ li.current .pl-mark { color: var(--accent); }
 .pl-text strong { font-size: 14px; font-weight: 600; }
 .pl-text span { font-size: 12px; color: var(--muted); }
 .pl-items .iconbtn { width: 32px; height: 32px; font-size: 16px; }
-.pl-items .iconbtn:hover { color: var(--danger); border-color: var(--danger); }
+.pl-items .iconbtn.rm:hover { color: var(--danger); border-color: var(--danger); }
+/* Disc rows in the queue and in playlists: a small cover, and a button that unfolds the tracks */
+.thumb { position: relative; width: 34px; height: 34px; flex: none; display: grid; place-items: center; overflow: hidden; border-radius: 2px; background: var(--field); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb-state { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.5); color: #fff; font-family: var(--font-mono); font-size: 11px; }
+.iconbtn.fold { display: grid; place-items: center; padding: 0; }
+.iconbtn.fold svg { transform: rotate(-90deg); transition: transform 0.15s; }
+.iconbtn.fold.open svg { transform: none; }
+.iconbtn.fold.open { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .iconbtn.fold svg { transition: none; } }
 body.with-player .shell { padding-bottom: 170px; }
 body.with-player .fab { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
 body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
@@ -727,6 +744,42 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 .card:hover .music-play, .card:focus-visible .music-play { opacity: 1; transform: scale(1); }
 .card.nowplaying { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .card.nowplaying .music-badge { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.card-addpl {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+.card-addpl:hover, .card-addpl[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); }
+.cardpl-menu {
+  position: fixed;
+  z-index: 60;
+  width: 250px;
+  max-height: min(60vh, 360px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+}
+.cardpl-menu[hidden] { display: none; }
+.cardpl-head { margin: 4px 10px 6px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.cardpl-menu .linkbtn { padding: 8px 10px; font-size: 13.5px; text-align: left; }
 @media (prefers-reduced-motion: reduce) { .music-play { transition: none; } }
 
 /* Audio section of the CD profile */
@@ -1435,6 +1488,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       plNothingHere: "None of this playlist's tracks have audio on this computer.",
       plAdded: "Added to “{name}”", plAlready: "Already in “{name}”", plRemovedFrom: "Removed from “{name}”",
       plSaveQueue: "Save as playlist", plAddTrack: "+ Playlist", plNewWithTrack: "+ New playlist with this track",
+      plAddDisc: "Add {title} to a playlist", plMenuHead: "Add to playlist", plNewWithDisc: "+ New playlist with this disc",
+      "plAddedTracks.one": "Added 1 track to “{name}”", "plAddedTracks.other": "Added {n} tracks to “{name}”",
+      qShowTracks: "Show the tracks of {title}", qHideTracks: "Hide the tracks of {title}",
+      cardFavField: "Favorites it's in (not counted)",
       "musicTracks.one": "1 track", "musicTracks.other": "{n} tracks",
       musicEmpty: "No audio on this computer yet. Open a CD and use “Add audio files” in its profile; it then appears here, and clicking it plays it.",
       pfNick: "Nickname", pfNickPh: "e.g. Music lover",
@@ -1605,6 +1662,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       plNothingHere: "このプレイリストの曲には、このパソコンにある音源がありません。",
       plAdded: "「{name}」に追加しました", plAlready: "すでに「{name}」にあります", plRemovedFrom: "「{name}」から削除しました",
       plSaveQueue: "プレイリストとして保存", plAddTrack: "+ プレイリスト", plNewWithTrack: "+ この曲で新しいプレイリスト",
+      plAddDisc: "{title} をプレイリストに追加", plMenuHead: "プレイリストに追加", plNewWithDisc: "+ このCDで新しいプレイリスト",
+      "plAddedTracks.one": "「{name}」に1曲追加しました", "plAddedTracks.other": "「{name}」に{n}曲追加しました",
+      qShowTracks: "{title} の曲を表示", qHideTracks: "{title} の曲を隠す",
+      cardFavField: "入っているお気に入り（数に含めない）",
       "musicTracks.one": "1曲", "musicTracks.other": "{n}曲",
       musicEmpty: "このパソコンにはまだ音源がありません。CDのプロフィールで「音源ファイルを追加」すると、ここに表示され、クリックで再生できます。",
       pfNick: "ニックネーム", pfNickPh: "例：音楽好き",
@@ -1775,6 +1836,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       plNothingHere: "这个播放列表中的曲目在这台电脑上都没有音频。",
       plAdded: "已添加到“{name}”", plAlready: "已在“{name}”中", plRemovedFrom: "已从“{name}”中删除",
       plSaveQueue: "保存为播放列表", plAddTrack: "+ 播放列表", plNewWithTrack: "+ 用此曲新建播放列表",
+      plAddDisc: "将 {title} 添加到播放列表", plMenuHead: "添加到播放列表", plNewWithDisc: "+ 用此CD新建播放列表",
+      "plAddedTracks.one": "已将 1 首添加到“{name}”", "plAddedTracks.other": "已将 {n} 首添加到“{name}”",
+      qShowTracks: "显示 {title} 的曲目", qHideTracks: "收起 {title} 的曲目",
+      cardFavField: "所在的收藏夹（不计入）",
       "musicTracks.one": "1 首", "musicTracks.other": "{n} 首",
       musicEmpty: "这台电脑上还没有音频。在CD的档案中使用“添加音频文件”后，它就会出现在这里，点击即可播放。",
       pfNick: "昵称", pfNickPh: "例如：古典乐迷",
@@ -2520,9 +2585,18 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     ["notes", "notes"]
   ];
   var CARD_FIELD_MAX = 6;
+  /* The favorites a disc is in show as tags at the bottom of its card. They don't count toward
+     CARD_FIELD_MAX and are on unless turned off; turning them off puts FAV_TAGS_OFF in the same list,
+     so lists saved before this choice existed keep showing them. */
+  var FAV_TAGS_OFF = "-albums";
+  function capFields(list) {
+    var out = list.filter(function (f) { return f !== FAV_TAGS_OFF; }).slice(0, CARD_FIELD_MAX);
+    if (list.indexOf(FAV_TAGS_OFF) !== -1) out.push(FAV_TAGS_OFF);
+    return out;
+  }
   function cardFields() {
     var s = meta.settings;
-    if (Array.isArray(s.cardFields)) return s.cardFields.slice(0, CARD_FIELD_MAX);
+    if (Array.isArray(s.cardFields)) return capFields(s.cardFields);
     /* Older settings had three tick boxes, all on unless turned off. */
     var out = ["composer"];
     if (s.show_performers !== false) out.push("performers");
@@ -2533,7 +2607,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   /* A disc can choose its own card fields; one that has not follows the default in Settings,
      including later changes to that default. */
   function fieldsFor(cd) {
-    return Array.isArray(cd.cardFields) ? cd.cardFields.slice(0, CARD_FIELD_MAX) : cardFields();
+    return Array.isArray(cd.cardFields) ? capFields(cd.cardFields) : cardFields();
   }
   /* Card width in pixels. Older settings had "comfortable" (210) and "compact" (150). */
   function cardWidth() {
@@ -3261,6 +3335,16 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       go.setAttribute("aria-hidden", "true");
       go.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>';
       cover.appendChild(go);
+      var addPl = el("button", "card-addpl");
+      addPl.type = "button";
+      addPl.id = "card-addpl-" + cd.id;
+      addPl.title = t("plMenuHead");
+      addPl.setAttribute("aria-label", t("plAddDisc", { title: cd.title }));
+      addPl.setAttribute("aria-haspopup", "true");
+      addPl.setAttribute("aria-expanded", cardPl && cardPl.cdId === cd.id ? "true" : "false");
+      addPl.innerHTML = '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 6h11M4 11h11M4 16h7M18 13v8M14 17h8"/></svg>';
+      addPl.addEventListener("click", function (e) { e.stopPropagation(); toggleCardPlMenu(cd.id); });
+      cover.appendChild(addPl);
     }
     if (cd.photo) {
       var img = el("img");
@@ -3322,7 +3406,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     });
 
     var mine = albumsOf(cd.id);
-    if (mine.length) {
+    if (mine.length && !picked[FAV_TAGS_OFF]) {
       var tags = el("div", "tags");
       mine.forEach(function (a) { tags.appendChild(el("span", "chip tag", a.name)); });
       body.appendChild(tags);
@@ -3503,6 +3587,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var emptyNote = $("empty-note");
     var sortWrap = $("sort-wrap");
     emptyNote.hidden = true;
+    if (cardPl && cardPl.cdId && currentAlbum !== "music") closeCardPlMenu();
 
     if (!loaded) {
       count.textContent = t("loading");
@@ -3539,6 +3624,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       return;
     }
     list.forEach(function (cd) { grid.appendChild(card(cd)); });
+    if (cardPl && cardPl.cdId) renderCardPlMenu();
   }
 
   function renderAccount() {
@@ -3936,11 +4022,14 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   function fieldPicker(box, idBase, chosen, state, onChange, extra) {
     var keep = box.contains(document.activeElement) ? document.activeElement.id : "";
-    var full = chosen.length >= CARD_FIELD_MAX;
+    var tagsOn = chosen.indexOf(FAV_TAGS_OFF) === -1;
+    var count = chosen.length - (tagsOn ? 0 : 1);
+    var full = count >= CARD_FIELD_MAX;
     box.textContent = "";
     var wrap = el("div", "fpick");
     var row = el("div", "favrow");
     var ordered = CARD_FIELDS.filter(function (p) { return chosen.indexOf(p[0]) !== -1; }).map(function (p) { return fieldName(p[0]); });
+    if (tagsOn) ordered.push(t("albumsField"));
     row.appendChild(el("span", "fsum", ordered.length ? ordered.join(" · ") : t("cardFieldsNone")));
     var btn = el("button", "linkbtn", t(state.open ? "hideFields" : "changeFields"));
     btn.type = "button";
@@ -3952,7 +4041,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var list = el("div", "fpick-list");
     list.id = idBase + "-list";
     list.hidden = !state.open;
-    list.appendChild(el("p", "hint", t("cardFieldsNote", { n: chosen.length, max: CARD_FIELD_MAX })));
+    list.appendChild(el("p", "hint", t("cardFieldsNote", { n: count, max: CARD_FIELD_MAX })));
     var checks = el("div", "checks");
     CARD_FIELDS.forEach(function (pair) {
       var on = chosen.indexOf(pair[0]) !== -1;
@@ -3965,13 +4054,26 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       cb.addEventListener("change", function () {
         var next = chosen.filter(function (f) { return f !== pair[0]; });
         if (cb.checked) next.push(pair[0]);
-        onChange(next.slice(0, CARD_FIELD_MAX));
+        onChange(capFields(next));
       });
       lab.appendChild(cb);
       lab.appendChild(el("span", null, t(pair[1])));
       checks.appendChild(lab);
     });
     list.appendChild(checks);
+    var favLab = el("label", "check fav-tags");
+    var favCb = el("input");
+    favCb.type = "checkbox";
+    favCb.id = idBase + "-albums";
+    favCb.checked = tagsOn;
+    favCb.addEventListener("change", function () {
+      var next = chosen.filter(function (f) { return f !== FAV_TAGS_OFF; });
+      if (!favCb.checked) next.push(FAV_TAGS_OFF);
+      onChange(capFields(next));
+    });
+    favLab.appendChild(favCb);
+    favLab.appendChild(el("span", null, t("cardFavField")));
+    list.appendChild(favLab);
     if (extra) list.appendChild(extra);
     wrap.appendChild(list);
     btn.addEventListener("click", function () {
@@ -4389,7 +4491,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     } else {
       addRow("Conductor");
     }
-    formCard = { open: false, own: Array.isArray(cd.cardFields) ? cd.cardFields.slice(0, CARD_FIELD_MAX) : null };
+    formCard = { open: false, own: Array.isArray(cd.cardFields) ? capFields(cd.cardFields) : null };
     renderFormCard();
     renderAlbumChecks(albumsOf(cd.id).map(function (a) { return a.id; }));
     renderGrid();
@@ -5232,42 +5334,139 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (currentAlbum === "music" || currentPlaylistId()) renderGrid();
   }
 
-  /* The playlist panel, opened by the playlist button in the player bar. */
+  /* Neighbouring tracks from the same CD are shown together, as one disc row that unfolds to its
+     tracks (in the play queue and in playlists). A lone track stays a plain row. Each run is
+     { cdId, start, end } over the list's indexes; openRuns remembers which disc rows are unfolded. */
+  function discRuns(items) {
+    var runs = [];
+    items.forEach(function (x, i) {
+      var last = runs[runs.length - 1];
+      if (last && last.cdId === x.cdId) last.end = i + 1;
+      else runs.push({ cdId: x.cdId, start: i, end: i + 1 });
+    });
+    return runs;
+  }
+  var openRuns = {};
+  function foldButton(id, key, title, onToggle) {
+    var open = !!openRuns[key];
+    var b = el("button", "iconbtn fold" + (open ? " open" : ""));
+    b.type = "button";
+    b.id = id;
+    b.setAttribute("aria-expanded", open ? "true" : "false");
+    b.setAttribute("aria-label", t(open ? "qHideTracks" : "qShowTracks", { title: title }));
+    b.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>';
+    b.addEventListener("click", function () {
+      openRuns[key] = !open;
+      onToggle();
+      if ($(id)) $(id).focus({ preventScroll: true });
+    });
+    return b;
+  }
+  /* A small cover for list rows, with the play state over it when `state` is "▶" or "❚❚". */
+  function thumb(cd, state) {
+    var box = el("span", "thumb");
+    if (cd && cd.photo) {
+      var img = el("img");
+      img.src = cd.photo;
+      img.alt = "";
+      box.appendChild(img);
+    } else {
+      var d = el("span", "disc");
+      d.style.setProperty("--s", "34px");
+      box.appendChild(d);
+    }
+    if (state) box.appendChild(el("span", "thumb-state", state));
+    box.setAttribute("aria-hidden", "true");
+    return box;
+  }
+  function focusFirst(ids) {
+    for (var i = 0; i < ids.length; i++) if ($(ids[i]) && !$(ids[i]).disabled) { $(ids[i]).focus({ preventScroll: true }); return; }
+  }
+
+  /* The play queue panel, opened by the queue button in the player bar. */
   function renderPlaylist() {
     var ul = $("pl-items");
     var keep = ul.contains(document.activeElement) ? document.activeElement.id : "";
     ul.textContent = "";
-    player.queue.forEach(function (e, i) {
-      var info = entryText(e);
-      var li = el("li", i === player.index ? "current" : "");
+    var state = audioEl.paused ? "❚❚" : "▶";
+    function removeButton(id, label, from, to) {
+      var rm = el("button", "iconbtn rm", "×");
+      rm.type = "button";
+      rm.id = id;
+      rm.setAttribute("aria-label", label);
+      rm.addEventListener("click", function () {
+        var gone = player.queue.slice(from, to);
+        dropEntries(function (x) { return gone.indexOf(x) !== -1; });
+        focusFirst(["pl-disc-rm-" + from, "pl-remove-" + from, "pl-remove-" + (from - 1), "pl-disc-rm-" + (from - 1), "pl-clear"]);
+      });
+      return rm;
+    }
+    /* One track: a top-level row (with cover and CD title) or, inside an unfolded disc, a short one. */
+    function trackRow(i, inDisc) {
+      var info = entryText(player.queue[i]);
+      var cur = i === player.index;
+      var li = el("li", (cur ? "current" : "") + (inDisc ? " sub" : ""));
       var go = el("button", "pl-item");
       go.type = "button";
       go.id = "pl-item-" + i;
-      if (i === player.index) go.setAttribute("aria-current", "true");
-      var mark = el("span", "pl-mark", i === player.index ? (audioEl.paused ? "❚❚" : "▶") : String(i + 1));
-      mark.setAttribute("aria-hidden", "true");
-      go.appendChild(mark);
+      if (cur) go.setAttribute("aria-current", "true");
+      if (inDisc) {
+        var mark = el("span", "pl-mark", cur ? state : "");
+        mark.setAttribute("aria-hidden", "true");
+        go.appendChild(mark);
+      } else {
+        go.appendChild(thumb(info.cd, cur ? state : ""));
+      }
       var txt = el("span", "pl-text");
       txt.appendChild(el("strong", null, info.title));
-      txt.appendChild(el("span", null, info.sub));
+      if (!inDisc) txt.appendChild(el("span", null, info.sub));
       go.appendChild(txt);
       go.addEventListener("click", function () { player.index = i; loadTrack(true); });
-      var rm = el("button", "iconbtn", "×");
-      rm.type = "button";
-      rm.id = "pl-remove-" + i;
-      rm.setAttribute("aria-label", t("playlistRemove", { title: info.title }));
-      rm.addEventListener("click", function () {
-        var target = player.queue[i];
-        dropEntries(function (x) { return x === target; });
-        var next = $("pl-remove-" + Math.min(i, player.queue.length - 1));
-        if (next) next.focus({ preventScroll: true });
+      li.appendChild(go);
+      li.appendChild(el("span"));
+      li.appendChild(removeButton("pl-remove-" + i, t("playlistRemove", { title: info.title }), i, i + 1));
+      ul.appendChild(li);
+    }
+    discRuns(player.queue).forEach(function (run) {
+      if (run.end - run.start === 1) { trackRow(run.start, false); return; }
+      var cd = cdById(run.cdId) || {};
+      var inside = player.index >= run.start && player.index < run.end;
+      var key = "q:" + run.cdId;
+      var li = el("li", "disc-row" + (inside ? " current-in" : ""));
+      var go = el("button", "pl-item");
+      go.type = "button";
+      go.id = "pl-disc-" + run.start;
+      go.appendChild(thumb(cd, inside ? state : ""));
+      var txt = el("span", "pl-text");
+      txt.appendChild(el("strong", null, cd.title || ""));
+      var n = tn("plTracks", run.end - run.start);
+      txt.appendChild(el("span", null, inside
+        ? entryText(player.queue[player.index]).title + " · " + n
+        : [discComposer(cd), n].filter(Boolean).join(" · ")));
+      go.appendChild(txt);
+      /* The disc that is playing pauses and resumes; another one plays from its first track. */
+      go.addEventListener("click", function () {
+        if (inside) togglePlay(); else { player.index = run.start; loadTrack(true); }
       });
       li.appendChild(go);
-      li.appendChild(rm);
+      li.appendChild(foldButton("pl-fold-" + run.start, key, cd.title || "", renderPlaylist));
+      li.appendChild(removeButton("pl-disc-rm-" + run.start, t("playlistRemove", { title: cd.title || "" }), run.start, run.end));
       ul.appendChild(li);
+      if (openRuns[key]) for (var i = run.start; i < run.end; i++) trackRow(i, true);
     });
     $("pl-count").textContent = tn("playlistCount", player.queue.length);
     if (keep && $(keep)) $(keep).focus({ preventScroll: true });
+  }
+  /* The row that shows the current track: its own, or its folded disc's. */
+  function queueRowId(i) {
+    var runs = discRuns(player.queue);
+    for (var k = 0; k < runs.length; k++) {
+      var r = runs[k];
+      if (i >= r.start && i < r.end) {
+        return r.end - r.start === 1 || openRuns["q:" + r.cdId] ? "pl-item-" + i : "pl-disc-" + r.start;
+      }
+    }
+    return "";
   }
   function togglePlaylist(open) {
     var list = $("pl-list");
@@ -5276,7 +5475,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("pl-list-btn").setAttribute("aria-expanded", show ? "true" : "false");
     if (show) {
       renderPlaylist();
-      var cur = $("pl-item-" + player.index);
+      var cur = $(queueRowId(player.index));
       if (cur) { cur.scrollIntoView({ block: "nearest" }); cur.focus({ preventScroll: true }); }
     }
   }
@@ -5325,6 +5524,107 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     changePlaylist(id, function (p) { p.items.push({ cdId: item.cdId, file: item.file }); });
     toast(t("plAdded", { name: pl.name }));
   }
+
+  /* Music view: each card's playlist button opens a small menu by it. A ticked playlist already
+     holds all the disc's tracks; clicking it takes them out again. Otherwise clicking adds the
+     tracks it doesn't have yet, in track order. */
+  var cardPl = { cdId: null };
+  function discItems(cd) {
+    return audioSorted(cd).map(function (a) { return { cdId: cd.id, file: a.file }; });
+  }
+  function inPlaylist(p, x) {
+    return p.items.some(function (y) { return y.cdId === x.cdId && y.file === x.file; });
+  }
+  function toggleCardPlMenu(cdId) {
+    if (cardPl.cdId === cdId) { closeCardPlMenu(true); return; }
+    if (cardPl.cdId) closeCardPlMenu();
+    cardPl.cdId = cdId;
+    renderCardPlMenu();
+    var first = $("cardpl-menu").querySelector("button");
+    if (first) first.focus({ preventScroll: true });
+  }
+  function closeCardPlMenu(refocus) {
+    var menu = $("cardpl-menu");
+    var id = cardPl.cdId;
+    cardPl.cdId = null;
+    if (menu) menu.hidden = true;
+    var anchor = id && $("card-addpl-" + id);
+    if (anchor) {
+      anchor.setAttribute("aria-expanded", "false");
+      if (refocus) anchor.focus({ preventScroll: true });
+    }
+  }
+  function placeCardPlMenu() {
+    var menu = $("cardpl-menu");
+    var anchor = cardPl.cdId && $("card-addpl-" + cardPl.cdId);
+    if (!menu || menu.hidden) return;
+    if (!anchor) { closeCardPlMenu(); return; }
+    var r = anchor.getBoundingClientRect();
+    var w = menu.offsetWidth;
+    var h = menu.offsetHeight;
+    var left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
+    var top = r.bottom + 6;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
+    menu.style.left = left + "px";
+    menu.style.top = top + "px";
+  }
+  function renderCardPlMenu() {
+    var cd = cdById(cardPl.cdId);
+    if (!cd || currentAlbum !== "music") { closeCardPlMenu(); return; }
+    var menu = $("cardpl-menu");
+    if (!menu) {
+      menu = el("div", "cardpl-menu");
+      menu.id = "cardpl-menu";
+      menu.setAttribute("role", "dialog");
+      document.body.appendChild(menu);
+    }
+    var keep = menu.contains(document.activeElement) ? document.activeElement.id : "";
+    menu.setAttribute("aria-label", t("plAddDisc", { title: cd.title }));
+    menu.textContent = "";
+    menu.appendChild(el("p", "cardpl-head", t("plMenuHead")));
+    var items = discItems(cd);
+    meta.playlists.forEach(function (p, k) {
+      var all = items.length > 0 && items.every(function (x) { return inPlaylist(p, x); });
+      var b = el("button", "favitem");
+      b.type = "button";
+      b.id = "cardpl-" + k;
+      b.setAttribute("aria-pressed", all ? "true" : "false");
+      b.appendChild(el("span", "tick", all ? "✓" : ""));
+      b.appendChild(el("span", "nm", p.name));
+      b.addEventListener("click", function () {
+        if (all) {
+          changePlaylist(p.id, function (q) { q.items = q.items.filter(function (y) { return !(y.cdId === cd.id && items.some(function (x) { return x.file === y.file; })); }); });
+          toast(t("plRemovedFrom", { name: p.name }));
+        } else {
+          var missing = items.filter(function (x) { return !inPlaylist(p, x); });
+          changePlaylist(p.id, function (q) { missing.forEach(function (x) { q.items.push(x); }); });
+          toast(t("plAddedTracks." + (missing.length === 1 ? "one" : "other"), { n: missing.length, name: p.name }));
+        }
+      });
+      menu.appendChild(b);
+    });
+    var mk = el("button", "linkbtn", t("plNewWithDisc"));
+    mk.type = "button";
+    mk.id = "cardpl-new";
+    mk.addEventListener("click", function () {
+      closeCardPlMenu();
+      openAlbumDlg("new", null, "playlist", items);
+    });
+    menu.appendChild(mk);
+    menu.hidden = false;
+    var anchor = $("card-addpl-" + cd.id);
+    if (anchor) anchor.setAttribute("aria-expanded", "true");
+    placeCardPlMenu();
+    if (keep && $(keep)) $(keep).focus({ preventScroll: true });
+  }
+  document.addEventListener("mousedown", function (e) {
+    if (cardPl.cdId && !e.target.closest("#cardpl-menu") && !e.target.closest(".card-addpl")) closeCardPlMenu();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && cardPl.cdId) { e.preventDefault(); e.stopPropagation(); closeCardPlMenu(true); }
+  }, true);
+  window.addEventListener("resize", placeCardPlMenu);
+  window.addEventListener("scroll", placeCardPlMenu, true);
   function playlistView(pl) {
     var box = el("section", "plview");
     var files = pl.items.map(function (x) { return x.file; });
@@ -5362,55 +5662,124 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       return box;
     }
     var ul = el("ol", "plv-list");
-    pl.items.forEach(function (x, i) {
+    var PLAY_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M7 4v16l13-8z"/></svg>';
+    var PAUSE_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+    function itemTrack(x) {
+      var cd = cdById(x.cdId);
+      var a = ((cd && cd.audio) || []).filter(function (y) { return y.file === x.file; })[0];
+      return a && discTracks(cd)[(a.track || 0) - 1];
+    }
+    function playButton(id, label, enabled, cur, action) {
+      var play = el("button", "pa-play");
+      play.type = "button";
+      play.id = id;
+      play.disabled = !enabled;
+      play.setAttribute("aria-label", label);
+      play.innerHTML = cur && !audioEl.paused ? PAUSE_SVG : PLAY_SVG;
+      play.addEventListener("click", action);
+      return play;
+    }
+    function tool(tools, id, label, text, cls, disabled, action) {
+      var b = el("button", "iconbtn" + (cls ? " " + cls : ""), text);
+      b.type = "button";
+      b.id = id;
+      b.disabled = disabled;
+      b.setAttribute("aria-label", label);
+      b.addEventListener("click", action);
+      tools.appendChild(b);
+    }
+    /* Move `len` items starting at `from` so they start at `to` (counted after taking them out). */
+    function moveItems(from, len, to, focusIds) {
+      changePlaylist(pl.id, function (p) {
+        var block = p.items.splice(from, len);
+        p.items.splice.apply(p.items, [to, 0].concat(block));
+      });
+      focusFirst(focusIds);
+    }
+    function removeItems(from, len) {
+      changePlaylist(pl.id, function (p) { p.items.splice(from, len); });
+      focusFirst(["plv-drm-" + from, "plv-rm-" + from, "plv-rm-" + (from - 1), "plv-drm-" + (from - 1), "plv-edit"]);
+    }
+    var runs = discRuns(pl.items);
+    /* Discs and lone tracks move past each other as whole rows; a disc's own tracks move within it. */
+    function unitMoves(tools, k, idUp, idDown, title) {
+      var run = runs[k];
+      var len = run.end - run.start;
+      tool(tools, idUp + run.start, t("plMoveUp", { title: title }), "↑", "", k === 0, function () {
+        var to = runs[k - 1].start;
+        moveItems(run.start, len, to, [idUp + to, idDown + to]);
+      });
+      tool(tools, idDown + run.start, t("plMoveDown", { title: title }), "↓", "", k === runs.length - 1, function () {
+        var to = runs[k + 1].end - len;
+        moveItems(run.start, len, to, [idDown + to, idUp + to]);
+      });
+    }
+    function trackRow(i, k, run) {
+      var x = pl.items[i];
+      var inDisc = run.end - run.start > 1;
       var info = entryText(x);
       var ok = plItemPlayable(x);
       var known = x.file in AudioLib.present || !cdById(x.cdId);
       var cur = isCurrent(x.cdId, x.file);
-      var li = el("li", (cur ? "playing" : "") + (ok || !known ? "" : " gone"));
-      li.appendChild(el("span", "plv-no", String(i + 1)));
-      var play = el("button", "pa-play");
-      play.type = "button";
-      play.id = "plv-play-" + i;
-      play.disabled = !ok;
-      play.setAttribute("aria-label", t("audioPlay", { title: info.title }));
-      play.innerHTML = cur && !audioEl.paused
-        ? '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>'
-        : '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M7 4v16l13-8z"/></svg>';
-      play.addEventListener("click", function () { if (cur) togglePlay(); else playPlaylist(pl, i); });
-      li.appendChild(play);
+      var li = el("li", (cur ? "playing" : "") + (ok || !known ? "" : " gone") + (inDisc ? " sub" : ""));
+      li.appendChild(el("span", "plv-no", inDisc ? "" : String(k + 1)));
+      li.appendChild(playButton("plv-play-" + i, t("audioPlay", { title: info.title }), ok, cur,
+        function () { if (cur) togglePlay(); else playPlaylist(pl, i); }));
       var txt = el("span", "plv-text");
       txt.appendChild(el("strong", null, info.title || t("plTrackGone")));
-      txt.appendChild(el("span", null, !cdById(x.cdId) ? t("plTrackGone") : known && !ok ? t("plNotHere", { disc: info.sub || info.title }) : info.sub));
+      var sub = !cdById(x.cdId) ? t("plTrackGone") : known && !ok ? t("plNotHere", { disc: info.sub || info.title }) : inDisc ? "" : info.sub;
+      if (sub) txt.appendChild(el("span", null, sub));
       li.appendChild(txt);
-      var a = ((info.cd && info.cd.audio) || []).filter(function (y) { return y.file === x.file; })[0];
-      var tr = a && discTracks(info.cd)[(a.track || 0) - 1];
+      var tr = itemTrack(x);
       li.appendChild(el("span", "plv-len", tr ? tr.duration : ""));
       var tools = el("span", "plv-tools");
-      function tool(id, label, text, cls, disabled, action) {
-        var b = el("button", "iconbtn" + (cls ? " " + cls : ""), text);
-        b.type = "button";
-        b.id = id;
-        b.disabled = disabled;
-        b.setAttribute("aria-label", label);
-        b.addEventListener("click", action);
-        tools.appendChild(b);
+      tools.appendChild(el("span", "fold-space"));
+      if (inDisc) {
+        tool(tools, "plv-up-" + i, t("plMoveUp", { title: info.title }), "↑", "", i === run.start, function () { moveItems(i, 1, i - 1, ["plv-up-" + (i - 1), "plv-down-" + (i - 1)]); });
+        tool(tools, "plv-down-" + i, t("plMoveDown", { title: info.title }), "↓", "", i === run.end - 1, function () { moveItems(i, 1, i + 1, ["plv-down-" + (i + 1), "plv-up-" + (i + 1)]); });
+      } else {
+        unitMoves(tools, k, "plv-up-", "plv-down-", info.title);
       }
-      tool("plv-up-" + i, t("plMoveUp", { title: info.title }), "↑", "", i === 0, function () {
-        changePlaylist(pl.id, function (p) { var it = p.items.splice(i, 1)[0]; p.items.splice(i - 1, 0, it); });
-        if ($("plv-up-" + (i - 1))) $("plv-up-" + (i - 1)).focus({ preventScroll: true });
-      });
-      tool("plv-down-" + i, t("plMoveDown", { title: info.title }), "↓", "", i === pl.items.length - 1, function () {
-        changePlaylist(pl.id, function (p) { var it = p.items.splice(i, 1)[0]; p.items.splice(i + 1, 0, it); });
-        if ($("plv-down-" + (i + 1))) $("plv-down-" + (i + 1)).focus({ preventScroll: true });
-      });
-      tool("plv-rm-" + i, t("plRemoveTrack", { title: info.title, name: pl.name }), "×", "rm", false, function () {
-        changePlaylist(pl.id, function (p) { p.items.splice(i, 1); });
-        var next = $("plv-rm-" + Math.min(i, pl.items.length - 2));
-        if (next) next.focus({ preventScroll: true });
-      });
+      tool(tools, "plv-rm-" + i, t("plRemoveTrack", { title: info.title, name: pl.name }), "×", "rm", false, function () { removeItems(i, 1); });
       li.appendChild(tools);
       ul.appendChild(li);
+    }
+    runs.forEach(function (run, k) {
+      if (run.end - run.start === 1) { trackRow(run.start, k, run); return; }
+      var cd = cdById(run.cdId) || {};
+      var items = pl.items.slice(run.start, run.end);
+      var curAt = -1;
+      items.forEach(function (x, j) { if (isCurrent(x.cdId, x.file)) curAt = run.start + j; });
+      var firstOk = -1;
+      items.forEach(function (x, j) { if (firstOk === -1 && plItemPlayable(x)) firstOk = run.start + j; });
+      var key = pl.id + ":" + run.cdId;
+      var li = el("li", "disc-row" + (curAt !== -1 ? " playing" : "") + (firstOk === -1 ? " gone" : ""));
+      li.appendChild(el("span", "plv-no", String(k + 1)));
+      li.appendChild(playButton("plv-dplay-" + run.start, t("audioPlay", { title: cd.title || "" }), firstOk !== -1, curAt !== -1,
+        function () { if (curAt !== -1) togglePlay(); else playPlaylist(pl, firstOk); }));
+      var main = el("span", "plv-disc");
+      main.appendChild(thumb(cd, ""));
+      var txt = el("span", "plv-text");
+      txt.appendChild(el("strong", null, cd.title || ""));
+      var n = tn("plTracks", items.length);
+      txt.appendChild(el("span", null, curAt !== -1
+        ? entryText(pl.items[curAt]).title + " · " + n
+        : firstOk === -1 && items.some(function (x) { return x.file in AudioLib.present; })
+          ? t("plNotHere", { disc: n })
+          : [discComposer(cd), n].filter(Boolean).join(" · ")));
+      main.appendChild(txt);
+      li.appendChild(main);
+      var secs = 0;
+      items.forEach(function (x) { var tr = itemTrack(x); if (tr && DURATION.test(tr.duration)) secs += toSeconds(tr.duration); });
+      li.appendChild(el("span", "plv-len", secs ? fmtSeconds(secs) : ""));
+      var tools = el("span", "plv-tools");
+      tools.appendChild(foldButton("plv-fold-" + run.start, key, cd.title || "", renderGrid));
+      unitMoves(tools, k, "plv-dup-", "plv-ddown-", cd.title || "");
+      tool(tools, "plv-drm-" + run.start, t("plRemoveTrack", { title: cd.title || "", name: pl.name }), "×", "rm", false,
+        function () { removeItems(run.start, items.length); });
+      li.appendChild(tools);
+      ul.appendChild(li);
+      if (openRuns[key]) for (var i = run.start; i < run.end; i++) trackRow(i, k, run);
     });
     box.appendChild(ul);
     return box;
