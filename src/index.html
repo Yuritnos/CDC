@@ -209,17 +209,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
 @keyframes panel-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(6px) scale(0.985); } }
 @keyframes pop-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
 @keyframes unfold-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes unfold-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-4px); } }
 .overlay:not([hidden]) { animation: ov-in 0.16s ease-out; }
 .overlay:not([hidden]) > .panel { animation: panel-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .overlay.is-closing { animation: ov-out 0.16s ease-in forwards; }
 .overlay.is-closing > .panel { animation: panel-out 0.16s ease-in forwards; }
 .acct-pop:not([hidden]), .pl-list:not([hidden]), .cardpl-menu:not([hidden]) { animation: pop-in 0.16s ease-out; }
-.favgroup:not([hidden]), .filters:not([hidden]), .selbar:not([hidden]), .fpick-list:not([hidden]), .pl-items li.sub { animation: unfold-in 0.16s ease-out; }
+.favgroup:not([hidden]), .filters:not([hidden]), .selbar:not([hidden]), .fpick-list:not([hidden]), .pl-items li.sub,
+.custom-select-menu:not([hidden]) { animation: unfold-in 0.16s ease-out; }
+.is-folding { animation: unfold-out 0.14s ease-in forwards !important; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
   .overlay:not([hidden]), .overlay:not([hidden]) > .panel,
   .overlay.is-closing, .overlay.is-closing > .panel,
   .acct-pop:not([hidden]), .pl-list:not([hidden]), .cardpl-menu:not([hidden]),
-  .favgroup:not([hidden]), .filters:not([hidden]), .selbar:not([hidden]), .fpick-list:not([hidden]), .pl-items li.sub { animation: none; }
+  .favgroup:not([hidden]), .filters:not([hidden]), .selbar:not([hidden]), .fpick-list:not([hidden]), .pl-items li.sub,
+  .custom-select-menu:not([hidden]), .is-folding { animation: none !important; }
 }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .panel h2 {
@@ -598,7 +602,22 @@ details.more[open] > summary { margin-bottom: 14px; }
 .tools .input { width: 260px; max-width: 100%; }
 .sort { display: flex; align-items: center; gap: 8px; }
 .sort span { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); }
-.sort select.input { width: auto; max-width: 100%; }
+.animated-select { position: relative; min-width: 0; }
+.animated-select.native-sort { width: auto; max-width: 100%; }
+.animated-select.native-language { width: 100%; }
+.animated-select-native { display: none !important; }
+.animated-select-trigger { display: flex; align-items: center; justify-content: space-between; gap: 18px; text-align: left; cursor: pointer; }
+.animated-select-trigger::after { content: ""; width: 8px; height: 8px; flex: none; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); transition: transform 0.15s ease; }
+.animated-select-trigger[aria-expanded="true"]::after { transform: translateY(2px) rotate(225deg); }
+.animated-select-trigger:focus:not([aria-expanded="true"]) { outline: none; }
+.native-sort .animated-select-trigger { width: auto; min-width: 150px; }
+.native-language .animated-select-trigger { width: 100%; }
+.custom-select-menu { position: fixed; z-index: 80; max-height: min(240px, 45vh); overflow-y: auto; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 10px 28px rgba(0,0,0,.28); }
+.custom-select-menu[hidden] { display: none; }
+.custom-select-option { display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: 2px; background: transparent; color: var(--ink); text-align: left; font: inherit; cursor: pointer; }
+.custom-select-option:hover, .custom-select-option:focus-visible { background: var(--accent-soft); outline: none; }
+.custom-select-option[aria-selected="true"] { color: var(--accent); }
+.custom-select-menu.is-folding { animation: unfold-out 0.14s ease-in forwards !important; }
 /* Card width comes from the Card size slider in Settings; small cards get tighter type. */
 /* Cards are exactly --card-w wide (never wider than the shelf), so the slider resizes them smoothly
    instead of only when the number of columns changes. Spacing and type scale with the width. */
@@ -1070,15 +1089,15 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     <div class="tools">
       <span class="count" id="count">Loading</span>
       <input class="input" id="search" type="search" data-i18n-ph="searchPh" placeholder="Search title, composer or performer" data-i18n-aria="searchAria" aria-label="Search your collection" hidden>
-      <label class="sort" id="sort-wrap" for="sort" hidden>
-        <span data-i18n="sort">Sort</span>
+      <div class="sort" id="sort-wrap" hidden>
+        <span id="sort-label" data-i18n="sort">Sort</span>
         <select class="input" id="sort">
           <option value="custom" data-i18n="sort.custom">Custom order</option>
           <option value="added" data-i18n="sort.added">Recently added</option>
           <option value="composer" data-i18n="sort.composer">Composer A–Z</option>
           <option value="title" data-i18n="sort.title">Title A–Z</option>
         </select>
-      </label>
+      </div>
       <div class="viewsw" id="viewsw" role="group" data-i18n-aria="viewAria" aria-label="View" hidden>
         <button type="button" class="iconbtn" id="view-cards" aria-pressed="true" data-i18n-aria="viewCards" aria-label="Cards">
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>
@@ -1298,7 +1317,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     </div>
 
     <div class="sect">
-      <h3 data-i18n="langSection">Language</h3>
+      <h3 id="lang-section-label" data-i18n="langSection">Language</h3>
       <select class="input" id="lang-set" data-i18n-aria="langLabel" aria-label="Language">
         <option value="en">English</option>
         <option value="ja">日本語</option>
@@ -2347,11 +2366,148 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   var UNDO_MS = 9000;
 
   /* ---------- translating the page ---------- */
+  var animatedSelects = {};
+  var FOLD_ANIM_MS = 150;
+  function setFoldVisibility(node, open) {
+    if (!node) return;
+    clearTimeout(node._foldTimer);
+    if (open) {
+      node.hidden = false;
+      node.classList.remove("is-folding");
+    } else if (!node.hidden) {
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        node.hidden = true;
+        node.classList.remove("is-folding");
+        return;
+      }
+      node.classList.add("is-folding");
+      node._foldTimer = setTimeout(function () {
+        node.hidden = true;
+        node.classList.remove("is-folding");
+      }, FOLD_ANIM_MS);
+    }
+  }
+  function positionAnimatedSelect(id) {
+    var entry = animatedSelects[id];
+    if (!entry || entry.menu.hidden) return;
+    var rect = entry.trigger.getBoundingClientRect();
+    var menu = entry.menu;
+    menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8)) + "px";
+    menu.style.width = rect.width + "px";
+    menu.style.top = Math.min(rect.bottom + 4, Math.max(8, window.innerHeight - Math.min(menu.scrollHeight, 240) - 8)) + "px";
+    if (rect.bottom + menu.scrollHeight + 8 > window.innerHeight && rect.top > menu.scrollHeight + 8) {
+      menu.style.top = Math.max(8, rect.top - menu.scrollHeight - 4) + "px";
+    }
+  }
+  function closeAnimatedSelect(id, restoreFocus) {
+    var entry = animatedSelects[id];
+    if (!entry || entry.menu.hidden) return;
+    entry.trigger.setAttribute("aria-expanded", "false");
+    setFoldVisibility(entry.menu, false);
+    if (restoreFocus) entry.trigger.focus({ preventScroll: true });
+  }
+  function syncAnimatedSelect(id) {
+    var entry = animatedSelects[id];
+    if (!entry) return;
+    var selected = entry.select.value;
+    entry.trigger.firstChild.textContent = entry.select.options[entry.select.selectedIndex].text;
+    qsa(".custom-select-option", entry.menu).forEach(function (option) {
+      for (var i = 0; i < entry.select.options.length; i++) {
+        if (entry.select.options[i].value === option.dataset.value) { option.textContent = entry.select.options[i].text; break; }
+      }
+      option.setAttribute("aria-selected", option.dataset.value === selected ? "true" : "false");
+    });
+  }
+  function initAnimatedSelect(id, kind, labelledBy) {
+    var select = $(id);
+    if (!select || animatedSelects[id]) return;
+    var wrap = el("div", "animated-select native-" + kind);
+    var trigger = el("button", "input animated-select-trigger");
+    trigger.type = "button";
+    trigger.id = id + "-trigger";
+    trigger.setAttribute("aria-haspopup", "listbox");
+    trigger.setAttribute("aria-expanded", "false");
+    trigger.setAttribute("aria-controls", id + "-options");
+    trigger.setAttribute("aria-labelledby", labelledBy);
+    trigger.appendChild(document.createTextNode(""));
+    var menu = el("div", "custom-select-menu");
+    menu.id = id + "-options";
+    menu.setAttribute("role", "listbox");
+    menu.setAttribute("aria-labelledby", labelledBy);
+    menu.hidden = true;
+    var entry = animatedSelects[id] = { select: select, trigger: trigger, menu: menu, wrap: wrap };
+    Array.prototype.forEach.call(select.options, function (opt) {
+      var option = el("button", "custom-select-option", opt.textContent);
+      option.type = "button";
+      option.setAttribute("role", "option");
+      option.dataset.value = opt.value;
+      option.addEventListener("click", function () {
+        select.value = option.dataset.value;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        syncAnimatedSelect(id);
+        closeAnimatedSelect(id, true);
+      });
+      menu.appendChild(option);
+    });
+    trigger.addEventListener("click", function () {
+      if (!menu.hidden && !menu.classList.contains("is-folding")) {
+        closeAnimatedSelect(id, false);
+        return;
+      }
+      setFoldVisibility(menu, true);
+      trigger.setAttribute("aria-expanded", "true");
+      positionAnimatedSelect(id);
+      var current = qsa(".custom-select-option", menu).filter(function (o) { return o.dataset.value === select.value; })[0];
+      if (current) current.focus({ preventScroll: true });
+    });
+    trigger.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (menu.hidden || menu.classList.contains("is-folding")) trigger.click();
+        else {
+          var opts = qsa(".custom-select-option", menu);
+          var at = opts.findIndex(function (o) { return o.dataset.value === select.value; });
+          opts[(at + (e.key === "ArrowUp" ? -1 : 1) + opts.length) % opts.length].focus();
+        }
+      }
+    });
+    menu.addEventListener("keydown", function (e) {
+      var opts = qsa(".custom-select-option", menu);
+      var at = opts.indexOf(document.activeElement);
+      if (e.key === "Escape") { e.preventDefault(); closeAnimatedSelect(id, true); }
+      else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        opts[(at + (e.key === "ArrowUp" ? -1 : 1) + opts.length) % opts.length].focus();
+      } else if (e.key === "Home" || e.key === "End") {
+        e.preventDefault();
+        opts[e.key === "Home" ? 0 : opts.length - 1].focus();
+      }
+    });
+    select.classList.add("animated-select-native");
+    select.parentNode.insertBefore(wrap, select);
+    wrap.appendChild(select);
+    wrap.appendChild(trigger);
+    wrap.appendChild(menu);
+    syncAnimatedSelect(id);
+  }
+  document.addEventListener("pointerdown", function (e) {
+    Object.keys(animatedSelects).forEach(function (id) {
+      var entry = animatedSelects[id];
+      if (!entry.menu.hidden && !entry.wrap.contains(e.target)) closeAnimatedSelect(id, false);
+    });
+  });
+  window.addEventListener("resize", function () {
+    Object.keys(animatedSelects).forEach(positionAnimatedSelect);
+  });
+  window.addEventListener("scroll", function () {
+    Object.keys(animatedSelects).forEach(positionAnimatedSelect);
+  }, true);
   function applyI18n() {
     document.documentElement.lang = LANGS[lang].tag;
     qsa("[data-i18n]").forEach(function (n) { n.textContent = t(n.getAttribute("data-i18n")); });
     qsa("[data-i18n-ph]").forEach(function (n) { n.placeholder = t(n.getAttribute("data-i18n-ph")); });
     qsa("[data-i18n-aria]").forEach(function (n) { n.setAttribute("aria-label", t(n.getAttribute("data-i18n-aria"))); });
+    Object.keys(animatedSelects).forEach(syncAnimatedSelect);
     renderFab();
   }
   /* The round button at the bottom right: "Add a CD" on the shelf, "Add music" in a playlist,
@@ -2397,9 +2553,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     applyMode();
     showPhoto();
     $("lang-set").value = lang;
+    syncAnimatedSelect("lang-set");
     renderAll();
   }
   $("lang-set").addEventListener("change", function (e) { setLang(e.target.value, true); });
+  initAnimatedSelect("lang-set", "language", "lang-section-label");
 
   /* ---------- windows ---------- */
   var winState = {};
@@ -4151,7 +4309,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("filter-btn").setAttribute("aria-expanded", filterOpen ? "true" : "false");
     $("filter-btn").setAttribute("aria-pressed", filterOpen || n > 0 ? "true" : "false");
     $("filter-count").textContent = n ? " · " + n : "";
-    $("filters").hidden = !filterOpen;
+    setFoldVisibility($("filters"), filterOpen);
     if (!filterOpen) return;
     var sets = { composer: {}, performer: {}, label: {}, decade: {} };
     base.forEach(function (cd) {
@@ -4326,7 +4484,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function renderSelBar(list) {
     var bar = $("selbar");
     $("select-btn").setAttribute("aria-pressed", selecting ? "true" : "false");
-    bar.hidden = !selecting;
+    setFoldVisibility(bar, selecting);
     if (!selecting) return;
     /* Ticks on CDs no longer shown (after a filter or search) are dropped. */
     var shown = {};
@@ -4609,7 +4767,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       head.appendChild(el("span", "n", String(count)));
       head.addEventListener("click", function () {
         toggle();
-        renderAlbums();
+        var nowOpen = id === "fav" ? favOpen : plOpen;
+        head.setAttribute("aria-expanded", nowOpen ? "true" : "false");
+        head.querySelector(".chev").textContent = nowOpen ? "▾" : "▸";
+        head.classList.toggle("has-active", !!active && !nowOpen);
+        setFoldVisibility($(id + "-group"), nowOpen);
         $(id + "-head").focus({ preventScroll: true });
       });
       return head;
@@ -5270,7 +5432,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     wrap.appendChild(list);
     btn.addEventListener("click", function () {
       state.open = !state.open;
-      list.hidden = !state.open;
+      setFoldVisibility(list, state.open);
       btn.textContent = t(state.open ? "hideFields" : "changeFields");
       btn.setAttribute("aria-expanded", state.open ? "true" : "false");
     });
@@ -5302,6 +5464,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     try { localStorage.setItem("cdc.sort", sortKey); } catch (err) { /* storage unavailable */ }
     renderGrid();
   });
+  initAnimatedSelect("sort", "sort", "sort-label");
   /* ---------- settings window ---------- */
   $("open-settings").addEventListener("click", function () {
     closeAccount();
@@ -6824,9 +6987,27 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     b.setAttribute("aria-label", t(open ? "qHideTracks" : "qShowTracks", { title: title }));
     b.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>';
     b.addEventListener("click", function () {
-      openRuns[key] = !open;
-      onToggle();
-      if ($(id)) $(id).focus({ preventScroll: true });
+      if (open) {
+        b.disabled = true;
+        b.setAttribute("aria-expanded", "false");
+        b.setAttribute("aria-label", t("qShowTracks", { title: title }));
+        b.classList.remove("open");
+        var row = b.closest("li");
+        var sub = row && row.nextElementSibling;
+        while (sub && sub.classList.contains("sub")) {
+          sub.classList.add("is-folding");
+          sub = sub.nextElementSibling;
+        }
+        setTimeout(function () {
+          openRuns[key] = false;
+          onToggle();
+          if ($(id)) $(id).focus({ preventScroll: true });
+        }, window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : FOLD_ANIM_MS);
+      } else {
+        openRuns[key] = true;
+        onToggle();
+        if ($(id)) $(id).focus({ preventScroll: true });
+      }
     });
     return b;
   }
