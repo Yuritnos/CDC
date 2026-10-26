@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>:root{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>CDC</title>
+<!-- Written by the GitHub build (build number and date for Settings → About); absent elsewhere. -->
+<script src="build.js"></script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -199,6 +201,18 @@ button, input, select, textarea { font: inherit; color: inherit; }
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
 }
 .panel.narrow { width: min(460px, 100%); }
+/* Opening a window: the backdrop fades in and the panel rises and grows slightly. Popovers and
+   menus get a shorter version of the same. */
+@keyframes ov-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes panel-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+.overlay:not([hidden]) { animation: ov-in 0.16s ease-out; }
+.overlay:not([hidden]) > .panel { animation: panel-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.acct-pop:not([hidden]), .pl-list:not([hidden]), .cardpl-menu:not([hidden]) { animation: pop-in 0.16s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .overlay:not([hidden]), .overlay:not([hidden]) > .panel,
+  .acct-pop:not([hidden]), .pl-list:not([hidden]), .cardpl-menu:not([hidden]) { animation: none; }
+}
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .panel h2 {
   margin: 0;
@@ -233,6 +247,12 @@ label.lbl, legend, .sect h3 {
 .input[aria-invalid="true"] { border-color: var(--danger); }
 .err { margin: 0; color: var(--danger); font-size: 13px; }
 .err:empty { display: none; }
+.dup-warn { margin: 0 0 12px; padding: 10px 12px; font-size: 13.5px; color: var(--ink); background: var(--accent-soft); border-left: 3px solid var(--danger); border-radius: 3px; }
+.dup-warn[hidden] { display: none; }
+.restore { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.restore[hidden], .ask-box[hidden] { display: none; }
+.restore select.input { width: auto; flex: 1 1 200px; min-width: 0; height: 36px; font-size: 14px; }
+.ask-box { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: var(--accent-soft); border-radius: 3px; }
 .hint { margin: 0; font-size: 13px; color: var(--muted); }
 .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .actions { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -547,6 +567,23 @@ details.more[open] > summary { margin-bottom: 14px; }
   color: var(--ink);
 }
 .setbtn:hover { border-color: var(--accent); color: var(--accent); }
+/* Statistics window: headline numbers, then ranked bars (one series, in the accent colour) */
+.panel.stats-panel { width: min(720px, 100%); }
+.stat-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(110px, 100%), 1fr)); gap: 10px; margin-bottom: 22px; }
+.stat-tile { padding: 12px 14px; background: var(--field); border: 1px solid var(--line); border-radius: 4px; }
+.stat-tile b { display: block; font-family: var(--font-display); font-size: 28px; font-weight: 600; line-height: 1.1; }
+.stat-tile span { font-size: 12.5px; color: var(--muted); }
+.stat-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 22px 28px; }
+.stat-group h3 { margin: 0 0 10px; font-family: var(--font-mono); font-size: 11px; font-weight: 400; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); }
+.bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.bars li { display: grid; grid-template-columns: minmax(0, 9em) minmax(0, 1fr) 2.5em; gap: 10px; align-items: center; font-size: 13.5px; }
+.bars .bl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bars .bl .namelink { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bars .track { height: 10px; }
+.bars .fill { height: 100%; min-width: 3px; background: var(--accent); border-radius: 0 4px 4px 0; }
+.bars li:hover .fill { filter: brightness(1.12); }
+.bars .bv { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: right; }
+.stat-empty { color: var(--muted); font-size: 13.5px; margin: 0; }
 
 .tools { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
 .tools .count { font-family: var(--font-mono); font-size: 12px; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); margin-right: auto; }
@@ -574,6 +611,51 @@ details.more[open] > summary { margin-bottom: 14px; }
 }
 .card.sample { border-style: dashed; background: transparent; }
 /* Custom order: cards are dragged, with a bar showing where the card will go */
+#filter-btn.on, #select-btn[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.viewsw { display: flex; }
+.viewsw[hidden] { display: none; }
+.viewsw .iconbtn { width: 36px; height: 34px; display: grid; place-items: center; padding: 0; }
+.viewsw .iconbtn:first-child { border-radius: 3px 0 0 3px; }
+.viewsw .iconbtn:last-child { border-radius: 0 3px 3px 0; margin-left: -1px; }
+.viewsw .iconbtn[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); position: relative; }
+.selbar { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 12px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 4px; }
+.selbar[hidden] { display: none; }
+.selbar strong { font-size: 14px; margin-right: auto; }
+.selbar select.input { width: auto; height: 34px; font-size: 14px; }
+.selbar .linkbtn { padding: 0; font-size: 13.5px; }
+.sel-ask { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.sel-ask[hidden] { display: none; }
+.danger-text { color: var(--danger); }
+.selmark { position: absolute; top: 8px; right: 8px; z-index: 1; width: 24px; height: 24px; display: grid; place-items: center; border: 2px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--accent-ink); font-size: 13px; font-weight: 700; }
+.card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.card.selected .selmark, .lrow.selected .selmark { background: var(--accent); border-color: var(--accent); }
+/* List view of the shelf */
+.grid.as-table { display: block; overflow-x: auto; }
+.ltable { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; font-size: 14px; }
+.ltable th { text-align: left; font-family: var(--font-mono); font-size: 11px; font-weight: 400; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); padding: 10px 10px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.ltable td { padding: 6px 10px; border-top: 1px solid var(--line); vertical-align: middle; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ltable tbody tr:first-child td { border-top: 0; }
+.lrow { cursor: pointer; }
+.lrow:hover, .lrow:focus-visible { background: var(--accent-soft); }
+.lrow:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.lrow.selected { background: var(--accent-soft); }
+.lrow.dragging { opacity: 0.4; }
+.lrow.drop-before td { box-shadow: inset 0 3px 0 var(--accent); }
+.lrow.drop-after td { box-shadow: inset 0 -3px 0 var(--accent); }
+.grid.arranging .lrow { cursor: grab; }
+.lcover { width: 34px; position: relative; }
+.lcover .selmark { position: static; }
+.ltitle strong { font-weight: 600; }
+.lnum { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
+@media (max-width: 640px) { .ltable .lperf, .ltable th:nth-child(4) { display: none; } }
+.filters { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+.filters[hidden] { display: none; }
+.fsel { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fsel span { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); }
+.fsel select.input { width: 180px; max-width: 100%; height: 36px; font-size: 14px; }
+.filters .linkbtn { padding: 8px 0; font-size: 13.5px; }
+.namelink { padding: 0; background: transparent; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.namelink:hover { color: var(--accent); text-decoration-color: currentColor; }
 .drag-hint { font-size: 12.5px; color: var(--muted); flex-basis: 100%; margin-top: -8px; }
 .drag-hint[hidden] { display: none; }
 .grid.arranging .card { cursor: grab; }
@@ -584,6 +666,9 @@ li[draggable="true"] { cursor: grab; }
 li.dragging { opacity: 0.4; }
 li.drop-before { box-shadow: inset 0 3px 0 var(--accent); }
 li.drop-after { box-shadow: inset 0 -3px 0 var(--accent); }
+.achip.dragging { opacity: 0.4; }
+.achip.drop-before { box-shadow: inset 0 3px 0 var(--accent); }
+.achip.drop-after { box-shadow: inset 0 -3px 0 var(--accent); }
 .card.editing { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .cover {
   --hole: var(--accent-soft);
@@ -658,7 +743,7 @@ li.drop-after { box-shadow: inset 0 -3px 0 var(--accent); }
   bottom: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto minmax(160px, 2fr) 36px;
+  grid-template-columns: 48px minmax(0, 1fr) auto minmax(160px, 2fr) auto 36px;
   align-items: center;
   gap: 14px;
   padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
@@ -679,6 +764,12 @@ li.drop-after { box-shadow: inset 0 -3px 0 var(--accent); }
 .pl-btn.main { width: 44px; height: 44px; background: var(--accent); color: var(--accent-ink); }
 .pl-btn.main:hover { filter: brightness(1.08); background: var(--accent); color: var(--accent-ink); }
 .pl-btn:disabled { opacity: 0.4; cursor: default; background: transparent; }
+.pl-btn.small { position: relative; width: 32px; height: 32px; color: var(--muted); }
+.pl-btn.small[aria-pressed="true"], .pl-btn.small.on { color: var(--accent); }
+.pl-one { position: absolute; right: 3px; bottom: 3px; font-family: var(--font-mono); font-size: 9px; font-weight: 700; line-height: 1; color: var(--accent); }
+.pl-one[hidden] { display: none; }
+.pl-vol { display: flex; align-items: center; gap: 4px; }
+.pl-vol input { width: 90px; accent-color: var(--accent); cursor: pointer; }
 .pl-seek { display: flex; align-items: center; gap: 10px; min-width: 0; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
 .pl-seek input { flex: 1; min-width: 0; accent-color: var(--accent); cursor: pointer; }
 #pl-list-btn[aria-expanded="true"] { color: var(--accent); background: var(--accent-soft); }
@@ -731,6 +822,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   .player { grid-template-columns: 40px minmax(0, 1fr) auto 36px; gap: 10px; }
   .pl-cover { width: 40px; height: 40px; }
   .pl-seek { grid-column: 1 / -1; grid-row: 2; }
+  .pl-vol { display: none; }
   body.with-player .fab { bottom: calc(124px + env(safe-area-inset-bottom, 0px)); }
 }
 
@@ -842,6 +934,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   z-index: 40;
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.show.with-action { pointer-events: auto; display: flex; align-items: center; gap: 16px; }
+.toast-btn { padding: 0; background: transparent; border: 0; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 
 /* Favorites picker */
@@ -948,6 +1042,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   <div class="layout">
   <aside class="side">
     <nav class="albums" id="albums" data-i18n-aria="navLabel" aria-label="Browse"></nav>
+    <button type="button" class="setbtn" id="open-stats">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>
+      <span data-i18n="statsBtn">Statistics</span>
+    </button>
     <button type="button" class="setbtn" id="open-settings" data-i18n-aria="settings" aria-label="Settings">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
         <path d="M4 7h9M17 7h3M4 17h3M11 17h9"/>
@@ -973,6 +1071,35 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           <option value="title" data-i18n="sort.title">Title A–Z</option>
         </select>
       </label>
+      <div class="viewsw" id="viewsw" role="group" data-i18n-aria="viewAria" aria-label="View" hidden>
+        <button type="button" class="iconbtn" id="view-cards" aria-pressed="true" data-i18n-aria="viewCards" aria-label="Cards">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>
+        </button>
+        <button type="button" class="iconbtn" id="view-list" aria-pressed="false" data-i18n-aria="viewList" aria-label="List">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M4 5h16v2.5H4zM4 10.75h16v2.5H4zM4 16.5h16V19H4z"/></svg>
+        </button>
+      </div>
+      <button type="button" class="btn small quiet" id="select-btn" data-i18n="selectBtn" hidden>Select</button>
+      <button type="button" class="btn small quiet" id="filter-btn" aria-expanded="false" aria-controls="filters" hidden><span data-i18n="filterBtn">Filter</span><span class="fcount" id="filter-count"></span></button>
+      <div class="filters" id="filters" hidden>
+        <label class="fsel"><span data-i18n="composer">Composer</span><select class="input" id="f-composer"></select></label>
+        <label class="fsel"><span data-i18n="performers">Performers</span><select class="input" id="f-performer"></select></label>
+        <label class="fsel"><span data-i18n="label">Label</span><select class="input" id="f-label"></select></label>
+        <label class="fsel"><span data-i18n="fDecade">Decade</span><select class="input" id="f-decade"></select></label>
+        <button type="button" class="linkbtn" id="f-clear" data-i18n="fClear">Clear filters</button>
+      </div>
+      <div class="selbar" id="selbar" role="region" data-i18n-aria="selRegion" aria-label="Selected CDs" hidden>
+        <strong id="sel-count"></strong>
+        <button type="button" class="linkbtn" id="sel-all" data-i18n="selAll">Select all</button>
+        <select class="input" id="sel-fav" data-i18n-aria="selAddFav" aria-label="Add to a favorite"></select>
+        <button type="button" class="btn small quiet danger-text" id="sel-remove" data-i18n="remove">Remove</button>
+        <span class="sel-ask" id="sel-ask" hidden>
+          <span id="sel-ask-text"></span>
+          <button type="button" class="btn small danger" id="sel-remove-yes" data-i18n="remove">Remove</button>
+          <button type="button" class="btn small quiet" id="sel-remove-no" data-i18n="keep">Keep</button>
+        </span>
+        <button type="button" class="btn small" id="sel-done" data-i18n="done">Done</button>
+      </div>
       <span class="drag-hint" id="drag-hint" hidden></span>
     </div>
     <div class="grid" id="grid" aria-live="polite"></div>
@@ -1145,6 +1272,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         <div id="album-checks"></div>
       </fieldset>
 
+      <p class="dup-warn" id="dup-warn" role="alert" hidden></p>
       <div class="actions">
         <button class="btn" id="submit" type="submit">Add to collection</button>
         <button class="btn quiet" id="cancel-edit" type="button" hidden data-i18n="cancel">Cancel</button>
@@ -1196,6 +1324,45 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         <button type="button" class="btn small quiet" id="export-csv" data-i18n="exportCsv">Export list (CSV)</button>
       </div>
       <p class="hint" data-i18n="exportNote">JSON includes cover images and favorites. CSV is a plain list for spreadsheets.</p>
+      <div class="restore" id="import-box" hidden>
+        <div class="btnrow">
+          <button type="button" class="btn small quiet" id="import-btn" data-i18n="importBtn">Import a CDC file (JSON)…</button>
+        </div>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+        <div class="ask-box" id="import-ask" hidden>
+          <p class="hint" id="import-ask-text"></p>
+          <div class="btnrow">
+            <button type="button" class="btn small" id="import-merge" data-i18n="importMerge">Add to my collection</button>
+            <button type="button" class="btn small quiet danger-text" id="import-replace" data-i18n="importReplace">Replace my collection</button>
+            <button type="button" class="linkbtn" id="import-cancel" data-i18n="cancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <div class="restore" id="backup-box" hidden>
+        <label class="hint" for="backup-list" data-i18n="backupsHead">Go back to a backup</label>
+        <div class="btnrow">
+          <select class="input" id="backup-list"></select>
+          <button type="button" class="btn small quiet" id="backup-restore" data-i18n="backupRestore">Restore…</button>
+        </div>
+        <div class="ask-box" id="backup-ask" hidden>
+          <p class="hint" id="backup-ask-text"></p>
+          <div class="btnrow">
+            <button type="button" class="btn small danger" id="backup-yes" data-i18n="backupRestoreYes">Restore this backup</button>
+            <button type="button" class="btn small quiet" id="backup-no" data-i18n="keep">Keep</button>
+          </div>
+        </div>
+        <p class="hint" data-i18n="backupNote">CDC keeps a copy of your collection from each of the last 14 days you changed it, on this computer.</p>
+      </div>
+    </div>
+
+    <div class="sect" id="about-sect">
+      <h3 data-i18n="aboutSection">About CDC</h3>
+      <p class="hint" id="app-version"></p>
+      <div class="btnrow" id="update-row" hidden>
+        <button type="button" class="btn small quiet" id="check-update" data-i18n="checkUpdate">Check for a new version</button>
+      </div>
+      <p class="hint" id="update-msg" role="status"></p>
+      <button type="button" class="linkbtn" id="open-releases" data-i18n="openReleases" hidden>Open the download page</button>
     </div>
 
     <div class="actions" style="margin-top:22px">
@@ -1361,6 +1528,17 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   </section>
 </div>
 
+<!-- Window: statistics about the collection -->
+<div class="overlay" id="win-stats" hidden>
+  <section class="panel stats-panel" role="dialog" aria-modal="true" aria-labelledby="stats-h">
+    <div class="panel-head">
+      <h2 id="stats-h" data-i18n="statsHead">Your collection in numbers</h2>
+      <button type="button" class="iconbtn" id="close-stats" data-autofocus data-i18n-aria="close" aria-label="Close">×</button>
+    </div>
+    <div id="stats-body"></div>
+  </section>
+</div>
+
 <!-- Window: add tracks from All music to the playlist on screen -->
 <div class="overlay" id="win-addmusic" hidden>
   <section class="panel narrow" role="dialog" aria-modal="true" aria-labelledby="am-h">
@@ -1385,6 +1563,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     <span id="pl-disc"></span>
   </div>
   <div class="pl-controls">
+    <button type="button" class="pl-btn small" id="pl-shuffle" aria-pressed="false" data-i18n-aria="playerShuffle" aria-label="Shuffle">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 4h4v4M4 20 20 4M20 16v4h-4M15 15l5 5M4 4l5 5"/></svg>
+    </button>
     <button type="button" class="pl-btn" id="pl-prev" data-i18n-aria="playerPrev" aria-label="Previous track">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>
     </button>
@@ -1395,11 +1576,21 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     <button type="button" class="pl-btn" id="pl-next" data-i18n-aria="playerNext" aria-label="Next track">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>
     </button>
+    <button type="button" class="pl-btn small" id="pl-repeat" aria-label="Repeat">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4"/></svg>
+      <span class="pl-one" id="pl-repeat-one" hidden>1</span>
+    </button>
   </div>
   <div class="pl-seek">
     <span id="pl-time">0:00</span>
     <input type="range" id="pl-seek" min="0" max="1000" step="1" value="0" data-i18n-aria="playerSeek" aria-label="Position">
     <span id="pl-dur">0:00</span>
+  </div>
+  <div class="pl-vol">
+    <button type="button" class="pl-btn small" id="pl-mute" aria-pressed="false" aria-label="Mute">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 9h4l5-4v14l-5-4H4z"/><path id="pl-vol-waves" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/><path id="pl-vol-x" hidden fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M16 9l5 6M21 9l-5 6"/></svg>
+    </button>
+    <input type="range" id="pl-volume" min="0" max="100" step="1" value="100" data-i18n-aria="playerVolume" aria-label="Volume">
   </div>
   <button type="button" class="pl-btn" id="pl-list-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="pl-list" data-i18n-aria="playlist" aria-label="Playlist">
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M3 6h12v2H3zM3 11h12v2H3zM3 16h8v2H3zM17 6h2v8.2A3 3 0 1 1 17 17z"/></svg>
@@ -1456,12 +1647,41 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       "count.one": "1 disc", "count.other": "{n} discs", countOf: "{a} of {b} discs",
       searchPh: "Search title, composer or performer", searchAria: "Search your collection",
       sort: "Sort", "sort.added": "Recently added", "sort.composer": "Composer A–Z", "sort.title": "Title A–Z", "sort.custom": "Custom order",
-      dragCards: "Drag cards to arrange them (or Alt + arrow keys).", dragNoSearch: "Clear the search to arrange cards.",
+      dragCards: "Drag cards to arrange them (or Alt + arrow keys).", dragNoSearch: "Clear the search and filters to arrange cards.",
+      filterBtn: "Filter", fDecade: "Decade", fClear: "Clear filters", fAny: "Any", fDecadeName: "{d}s",
+      fShowAll: "Show all CDs with {name}", fNoMatch: "No CDs match these filters.",
+      importBtn: "Import a CDC file (JSON)…", importMerge: "Add to my collection", importReplace: "Replace my collection",
+      "importAsk.one": "“{name}” has 1 CD. Add it to your collection, or replace your collection with it?",
+      "importAsk.other": "“{name}” has {n} CDs. Add them to your collection, or replace your collection with them?",
+      importBad: "That file isn't a CDC export.", "importAdded.one": "Imported 1 CD", "importAdded.other": "Imported {n} CDs",
+      "importReplaced.one": "Your collection now has the 1 CD from the file", "importReplaced.other": "Your collection now has the {n} CDs from the file",
+      backupsHead: "Go back to a backup", backupRestore: "Restore…", backupRestoreYes: "Restore this backup",
+      "backupDaily.one": "{date} · 1 CD", "backupDaily.other": "{date} · {n} CDs",
+      "backupPrevious.one": "Before the last change ({date}) · 1 CD", "backupPrevious.other": "Before the last change ({date}) · {n} CDs",
+      "backupAsk.one": "Replace your collection with the backup from {date} (1 CD)? Changes made since then are undone.",
+      "backupAsk.other": "Replace your collection with the backup from {date} ({n} CDs)? Changes made since then are undone.",
+      backupRestored: "Backup restored", backupFail: "The backup could not be restored.",
+      backupNote: "CDC keeps a copy of your collection from each of the last 14 days you changed it, on this computer.",
+      aboutSection: "About CDC", aboutVersion: "Version {v}", aboutBuild: "build {n}, {d}", aboutWeb: "Web version",
+      checkUpdate: "Check for a new version", updChecking: "Checking…", updNone: "No version has been published yet.",
+      updAvailable: "Version {v} is available.", updLatest: "You have the newest version.",
+      updFail: "Couldn't reach GitHub. Try again later.", openReleases: "Open the download page",
+      statsBtn: "Statistics", statsHead: "Your collection in numbers", statsCds: "CDs", statsWorks: "Works",
+      statsTracks: "Tracks", statsTime: "Total playing time", statsHours: "{h} h {m} min", statsMins: "{m} min", statsWithAudio: "CDs with audio here",
+      statsNone: "Nothing to show yet.", statsComposers: "Composers", statsLabels: "Labels",
+      statsDecades: "Release decades", statsAdded: "CDs added each year",
+      viewAria: "View", viewCards: "Cards", viewList: "List", lTitle: "Title", fYear: "Year", lCatalog: "Cat. no.",
+      selectBtn: "Select", selRegion: "Selected CDs", selAll: "Select all", selNone: "Select none",
+      selAddFav: "Add to a favorite…", selNewFav: "+ New favorite", selToggle: "Select {title}",
+      "selCount.one": "1 selected", "selCount.other": "{n} selected",
+      "selRemoveAsk.one": "Remove this CD?", "selRemoveAsk.other": "Remove these {n} CDs?",
+      selAdded: "Added {n} to “{name}”", toastRemovedN: "Removed {n} CDs", toastRestoredN: "Brought back {n} CDs",
       dragRows: "Drag rows to change the order.",
       noMatch: "No CD matches “{q}”.",
       emptyNote: "Nothing on the shelf yet. Select Add a CD and your first CD will appear here, laid out like this.",
       localNote: "Saving to your account is not available in this view, so CDs are kept in this browser only.",
-      removeAsk: "Remove this CD?", keep: "Keep", toastRemoved: "Removed “{title}”",
+      removeAsk: "Remove this CD?", keep: "Keep", toastRemoved: "Removed “{title}”", undo: "Undo",
+      dupWarn: "“{title}” in your collection has the same barcode or catalogue number. Add this one as well?", addAnyway: "Add anyway", toastRestored: "Brought back “{title}”",
       toastRemoveFail: "Could not remove that CD. Try again.",
       editBtn: "Edit", editingBtn: "Editing",
       issuedBy: "Issued by {x}", recorded: "Recorded {y}", released: "Released {y}", example: "Example",
@@ -1512,6 +1732,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       toastAudioAdded: "Added {n} audio files.", toastAudioAdded1: "Added 1 audio file.",
       toastAudioFail: "The audio files could not be added.", audioPlayError: "This audio file can't be played.",
       playerRegion: "Player", playerPlay: "Play", playerPause: "Pause", playerPrev: "Previous track", playerNext: "Next track",
+      playerShuffle: "Shuffle", "playerRepeat.off": "Repeat: off", "playerRepeat.all": "Repeat: all", "playerRepeat.one": "Repeat: this track",
+      playerMute: "Mute", playerUnmute: "Unmute", playerVolume: "Volume",
       playerSeek: "Position", playerClose: "Stop and close the player",
       playlist: "Play queue", playlistClear: "Clear queue", playlistRemove: "Remove {title} from the queue",
       "playlistCount.one": "1 track", "playlistCount.other": "{n} tracks",
@@ -1634,12 +1856,41 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       "count.one": "1枚", "count.other": "{n}枚", countOf: "{b}枚中 {a}枚",
       searchPh: "タイトル・作曲家・演奏者で検索", searchAria: "コレクションを検索",
       sort: "並び替え", "sort.added": "追加順（新しい順）", "sort.composer": "作曲家順", "sort.title": "タイトル順", "sort.custom": "カスタム",
-      dragCards: "カードをドラッグして並べ替えられます（Alt + 矢印キーでも可）。", dragNoSearch: "並べ替えるには検索を消してください。",
+      dragCards: "カードをドラッグして並べ替えられます（Alt + 矢印キーでも可）。", dragNoSearch: "並べ替えるには検索と絞り込みを解除してください。",
+      filterBtn: "絞り込み", fDecade: "年代", fClear: "絞り込みを解除", fAny: "すべて", fDecadeName: "{d}年代",
+      fShowAll: "{name} のCDをすべて表示", fNoMatch: "条件に合うCDはありません。",
+      importBtn: "CDCファイル（JSON）を読み込む…", importMerge: "コレクションに追加", importReplace: "コレクションを置き換える",
+      "importAsk.one": "「{name}」には{n}枚のCDがあります。コレクションに追加しますか、それともコレクションを置き換えますか？",
+      "importAsk.other": "「{name}」には{n}枚のCDがあります。コレクションに追加しますか、それともコレクションを置き換えますか？",
+      importBad: "CDCで書き出したファイルではありません。", "importAdded.one": "{n}枚のCDを読み込みました", "importAdded.other": "{n}枚のCDを読み込みました",
+      "importReplaced.one": "コレクションをファイルの{n}枚に置き換えました", "importReplaced.other": "コレクションをファイルの{n}枚に置き換えました",
+      backupsHead: "バックアップに戻す", backupRestore: "復元…", backupRestoreYes: "このバックアップを復元",
+      "backupDaily.one": "{date} · {n}枚", "backupDaily.other": "{date} · {n}枚",
+      "backupPrevious.one": "最後の変更の前（{date}）· {n}枚", "backupPrevious.other": "最後の変更の前（{date}）· {n}枚",
+      "backupAsk.one": "コレクションを{date}のバックアップ（{n}枚）に置き換えますか？それ以降の変更は元に戻ります。",
+      "backupAsk.other": "コレクションを{date}のバックアップ（{n}枚）に置き換えますか？それ以降の変更は元に戻ります。",
+      backupRestored: "バックアップを復元しました", backupFail: "バックアップを復元できませんでした。",
+      backupNote: "CDCは、変更のあった直近14日分のコレクションのコピーをこのパソコンに保存しています。",
+      aboutSection: "CDCについて", aboutVersion: "バージョン {v}", aboutBuild: "ビルド {n}、{d}", aboutWeb: "Web版",
+      checkUpdate: "新しいバージョンを確認", updChecking: "確認中…", updNone: "公開されたバージョンはまだありません。",
+      updAvailable: "バージョン {v} があります。", updLatest: "最新のバージョンです。",
+      updFail: "GitHubに接続できませんでした。後でもう一度お試しください。", openReleases: "ダウンロードページを開く",
+      statsBtn: "統計", statsHead: "コレクションの数字", statsCds: "CD", statsWorks: "作品",
+      statsTracks: "トラック", statsTime: "総再生時間", statsHours: "{h}時間{m}分", statsMins: "{m}分", statsWithAudio: "音声のあるCD（このPC）",
+      statsNone: "まだ表示するものがありません。", statsComposers: "作曲家", statsLabels: "レーベル",
+      statsDecades: "発売年代", statsAdded: "年ごとの追加枚数",
+      viewAria: "表示", viewCards: "カード", viewList: "リスト", lTitle: "タイトル", fYear: "年", lCatalog: "カタログ番号",
+      selectBtn: "選択", selRegion: "選択したCD", selAll: "すべて選択", selNone: "選択を解除",
+      selAddFav: "お気に入りに追加…", selNewFav: "+ 新しいお気に入り", selToggle: "{title} を選択",
+      "selCount.one": "1枚選択中", "selCount.other": "{n}枚選択中",
+      "selRemoveAsk.one": "このCDを削除しますか？", "selRemoveAsk.other": "この{n}枚のCDを削除しますか？",
+      selAdded: "「{name}」に{n}枚追加しました", toastRemovedN: "{n}枚のCDを削除しました", toastRestoredN: "{n}枚のCDを元に戻しました",
       dragRows: "行をドラッグして順番を変えられます。",
       noMatch: "「{q}」に一致するCDはありません。",
       emptyNote: "棚はまだ空です。「CDを追加」を押すと、最初のCDがこのように表示されます。",
       localNote: "この表示ではアカウントへの保存ができないため、CDはこのブラウザ内にのみ保管されます。",
-      removeAsk: "このCDを削除しますか？", keep: "残す", toastRemoved: "「{title}」を削除しました",
+      removeAsk: "このCDを削除しますか？", keep: "残す", toastRemoved: "「{title}」を削除しました", undo: "元に戻す",
+      dupWarn: "コレクションの「{title}」と同じバーコードまたはカタログ番号です。こちらも追加しますか？", addAnyway: "それでも追加", toastRestored: "「{title}」を元に戻しました",
       toastRemoveFail: "CDを削除できませんでした。もう一度お試しください。",
       editBtn: "編集", editingBtn: "編集中",
       issuedBy: "発売元：{x}", recorded: "録音 {y}", released: "発売 {y}", example: "サンプル",
@@ -1690,6 +1941,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       toastAudioAdded: "音源ファイルを{n}件追加しました。", toastAudioAdded1: "音源ファイルを1件追加しました。",
       toastAudioFail: "音源ファイルを追加できませんでした。", audioPlayError: "この音源ファイルは再生できません。",
       playerRegion: "プレーヤー", playerPlay: "再生", playerPause: "一時停止", playerPrev: "前のトラック", playerNext: "次のトラック",
+      playerShuffle: "シャッフル", "playerRepeat.off": "リピート：オフ", "playerRepeat.all": "リピート：すべて", "playerRepeat.one": "リピート：この曲",
+      playerMute: "ミュート", playerUnmute: "ミュート解除", playerVolume: "音量",
       playerSeek: "再生位置", playerClose: "停止してプレーヤーを閉じる",
       playlist: "再生キュー", playlistClear: "キューを空にする", playlistRemove: "{title} をキューから削除",
       "playlistCount.one": "1曲", "playlistCount.other": "{n}曲",
@@ -1812,12 +2065,41 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       "count.one": "1张", "count.other": "{n}张", countOf: "共{b}张，显示{a}张",
       searchPh: "搜索标题、作曲家或演奏者", searchAria: "搜索收藏",
       sort: "排序", "sort.added": "最近添加", "sort.composer": "按作曲家", "sort.title": "按标题", "sort.custom": "自定义",
-      dragCards: "拖动卡片即可排列（也可用 Alt + 方向键）。", dragNoSearch: "清除搜索后即可排列卡片。",
+      dragCards: "拖动卡片即可排列（也可用 Alt + 方向键）。", dragNoSearch: "清除搜索和筛选后即可排列卡片。",
+      filterBtn: "筛选", fDecade: "年代", fClear: "清除筛选", fAny: "全部", fDecadeName: "{d}年代",
+      fShowAll: "显示 {name} 的所有CD", fNoMatch: "没有符合筛选条件的CD。",
+      importBtn: "导入 CDC 文件（JSON）…", importMerge: "添加到我的收藏", importReplace: "替换我的收藏",
+      "importAsk.one": "“{name}”中有 {n} 张CD。要添加到你的收藏，还是用它替换你的收藏？",
+      "importAsk.other": "“{name}”中有 {n} 张CD。要添加到你的收藏，还是用它替换你的收藏？",
+      importBad: "这不是 CDC 导出的文件。", "importAdded.one": "已导入 {n} 张CD", "importAdded.other": "已导入 {n} 张CD",
+      "importReplaced.one": "你的收藏已替换为文件中的 {n} 张CD", "importReplaced.other": "你的收藏已替换为文件中的 {n} 张CD",
+      backupsHead: "恢复到备份", backupRestore: "恢复…", backupRestoreYes: "恢复此备份",
+      "backupDaily.one": "{date} · {n} 张", "backupDaily.other": "{date} · {n} 张",
+      "backupPrevious.one": "最近一次更改之前（{date}）· {n} 张", "backupPrevious.other": "最近一次更改之前（{date}）· {n} 张",
+      "backupAsk.one": "用 {date} 的备份（{n} 张CD）替换你的收藏？此后的更改将被撤销。",
+      "backupAsk.other": "用 {date} 的备份（{n} 张CD）替换你的收藏？此后的更改将被撤销。",
+      backupRestored: "已恢复备份", backupFail: "无法恢复备份。",
+      backupNote: "CDC 会在这台电脑上保留最近 14 个有更改的日子里各一份收藏副本。",
+      aboutSection: "关于 CDC", aboutVersion: "版本 {v}", aboutBuild: "构建 {n}，{d}", aboutWeb: "网页版",
+      checkUpdate: "检查新版本", updChecking: "正在检查…", updNone: "尚未发布任何版本。",
+      updAvailable: "有新版本 {v}。", updLatest: "已是最新版本。",
+      updFail: "无法连接 GitHub，请稍后再试。", openReleases: "打开下载页面",
+      statsBtn: "统计", statsHead: "收藏数据一览", statsCds: "CD", statsWorks: "作品",
+      statsTracks: "曲目", statsTime: "总时长", statsHours: "{h}小时{m}分", statsMins: "{m}分钟", statsWithAudio: "本机有音频的CD",
+      statsNone: "暂无数据。", statsComposers: "作曲家", statsLabels: "唱片公司",
+      statsDecades: "发行年代", statsAdded: "每年添加数量",
+      viewAria: "显示方式", viewCards: "卡片", viewList: "列表", lTitle: "标题", fYear: "年份", lCatalog: "目录号",
+      selectBtn: "选择", selRegion: "已选的CD", selAll: "全选", selNone: "取消全选",
+      selAddFav: "添加到收藏夹…", selNewFav: "+ 新建收藏夹", selToggle: "选择《{title}》",
+      "selCount.one": "已选 1 张", "selCount.other": "已选 {n} 张",
+      "selRemoveAsk.one": "删除这张CD？", "selRemoveAsk.other": "删除这 {n} 张CD？",
+      selAdded: "已将 {n} 张添加到“{name}”", toastRemovedN: "已删除 {n} 张CD", toastRestoredN: "已恢复 {n} 张CD",
       dragRows: "拖动行即可调整顺序。",
       noMatch: "没有与“{q}”匹配的CD。",
       emptyNote: "书架还是空的。点击“添加CD”，你的第一张CD将按此样式显示在这里。",
       localNote: "当前视图无法保存到账户，CD 仅保存在此浏览器中。",
-      removeAsk: "删除这张CD？", keep: "保留", toastRemoved: "已删除《{title}》",
+      removeAsk: "删除这张CD？", keep: "保留", toastRemoved: "已删除《{title}》", undo: "撤销",
+      dupWarn: "收藏中的《{title}》条码或目录号相同。仍要添加这张吗？", addAnyway: "仍然添加", toastRestored: "已恢复《{title}》",
       toastRemoveFail: "无法删除该CD，请重试。",
       editBtn: "编辑", editingBtn: "编辑中",
       issuedBy: "发行：{x}", recorded: "录音 {y}", released: "发行 {y}", example: "示例",
@@ -1868,6 +2150,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       toastAudioAdded: "已添加 {n} 个音频文件。", toastAudioAdded1: "已添加 1 个音频文件。",
       toastAudioFail: "无法添加音频文件。", audioPlayError: "无法播放此音频文件。",
       playerRegion: "播放器", playerPlay: "播放", playerPause: "暂停", playerPrev: "上一首", playerNext: "下一首",
+      playerShuffle: "随机播放", "playerRepeat.off": "循环：关", "playerRepeat.all": "循环：全部", "playerRepeat.one": "循环：单曲",
+      playerMute: "静音", playerUnmute: "取消静音", playerVolume: "音量",
       playerSeek: "播放位置", playerClose: "停止并关闭播放器",
       playlist: "播放队列", playlistClear: "清空队列", playlistRemove: "从队列中删除 {title}",
       "playlistCount.one": "1 首", "playlistCount.other": "{n} 首",
@@ -2002,6 +2286,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     return s;
   }
   function tn(base, n) { return t(base + (n === 1 ? ".one" : ".other"), { n: n }); }
+  /* Like tn, with more values to fill in; vars.n picks the form. */
+  function tnv(base, vars) { return t(base + (Number(vars.n) === 1 ? ".one" : ".other"), vars); }
 
   /* ---------- state ---------- */
   var cds = [];
@@ -2019,6 +2305,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   var detailId = null;
   var detailConfirm = false;
   var photoData = null;
+  var editCover = { file: null, touched: false };
   var rowCounter = 0;
   var toastTimer = null;
   var editingId = null;
@@ -2029,13 +2316,27 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (["custom", "added", "composer", "title"].indexOf(savedSort) !== -1) sortKey = savedSort;
   } catch (e) { /* storage unavailable */ }
 
-  function toast(msg) {
+  /* A short message at the bottom. `action` ({ label, run }) adds a button (such as Undo), and the
+     message then stays a little longer. */
+  function toast(msg, action) {
     var n = $("toast");
     n.textContent = msg;
+    n.classList.toggle("with-action", !!action);
+    if (action) {
+      var b = el("button", "toast-btn", action.label);
+      b.type = "button";
+      b.id = "toast-action";
+      b.addEventListener("click", function () {
+        n.classList.remove("show");
+        action.run();
+      });
+      n.appendChild(b);
+    }
     n.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { n.classList.remove("show"); }, 3800);
+    toastTimer = setTimeout(function () { n.classList.remove("show"); }, action ? UNDO_MS : 3800);
   }
+  var UNDO_MS = 9000;
 
   /* ---------- translating the page ---------- */
   function applyI18n() {
@@ -2226,6 +2527,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   async function handleFile(file) {
     if (!file) return;
+    editCover.touched = true;
     $("photo-err").textContent = "";
     $("drop").classList.remove("filled");
     try {
@@ -2271,7 +2573,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     handleFile(f);
   });
   $("photo-replace").addEventListener("click", function () { $("photo").click(); });
-  $("photo-remove").addEventListener("click", function () { photoData = null; $("drop").classList.remove("filled"); showPhoto(); });
+  $("photo-remove").addEventListener("click", function () { editCover.touched = true; photoData = null; $("drop").classList.remove("filled"); showPhoto(); });
 
   /* ---------- performer rows ---------- */
   function addRow(role, name) {
@@ -2747,6 +3049,87 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       m.albums.forEach(function (a) { a.cdIds = a.cdIds.filter(function (x) { return x !== cdId; }); });
     });
   }
+  /* Favorites and playlists from two places together: all of each, and each one holds what either
+     side put in it. Settings and custom orders come from `base`. */
+  function mergeLists(base, add) {
+    var out = normMeta(clone(base));
+    var favs = {};
+    out.albums.forEach(function (a) { favs[a.id] = a; });
+    add.albums.forEach(function (a) {
+      if (!favs[a.id]) { out.albums.push(a); return; }
+      a.cdIds.forEach(function (id) { if (favs[a.id].cdIds.indexOf(id) === -1) favs[a.id].cdIds.push(id); });
+    });
+    var pls = {};
+    out.playlists.forEach(function (p) { pls[p.id] = p; });
+    add.playlists.forEach(function (p) {
+      if (!pls[p.id]) { out.playlists.push(p); return; }
+      p.items.forEach(function (x) {
+        if (!pls[p.id].items.some(function (y) { return y.cdId === x.cdId && y.file === x.file; })) pls[p.id].items.push(x);
+      });
+    });
+    return out;
+  }
+  /* Remove CDs (from a profile, or several selected ones), with Undo offered for a few seconds.
+     Their audio copies are deleted only once Undo is no longer offered. */
+  async function removeCds(list) {
+    var before = clone(meta);
+    var copies = list.map(clone);
+    for (var i = 0; i < list.length; i++) await backend.remove(list[i].id);
+    var gone = {};
+    list.forEach(function (cd) { gone[cd.id] = true; });
+    if (albumsHaveAny(gone)) {
+      commitMeta(function (m) {
+        m.albums.forEach(function (a) { a.cdIds = a.cdIds.filter(function (x) { return !gone[x]; }); });
+      });
+    }
+    dropEntries(function (e) { return gone[e.cdId]; });
+    prunePlaylists(function (x) { return gone[x.cdId]; });
+    var audioTimer = AudioLib.ready ? setTimeout(function () {
+      list.forEach(function (cd) { AudioLib.call("remove_cd_audio", { cdId: cd.id }).catch(function () {}); });
+    }, backend.restore ? UNDO_MS + 1000 : 0) : null;
+    var msg = list.length === 1 ? t("toastRemoved", { title: list[0].title }) : t("toastRemovedN", { n: list.length });
+    toast(msg, backend.restore ? {
+      label: t("undo"),
+      run: async function () {
+        clearTimeout(audioTimer);
+        for (var j = 0; j < copies.length; j++) await undoRemove(copies[j], before, true);
+        toast(copies.length === 1 ? t("toastRestored", { title: copies[0].title }) : t("toastRestoredN", { n: copies.length }));
+      }
+    } : null);
+  }
+  function albumsHaveAny(ids) {
+    return meta.albums.some(function (a) { return a.cdIds.some(function (x) { return ids[x]; }); });
+  }
+  /* Undo removing a CD: it comes back, with its places in favorites, playlists and the custom
+     orders as they were (`before` is the favorites/playlists data from just before the removal). */
+  async function undoRemove(cd, before, quiet) {
+    try { await backend.restore(cd); } catch (e) { toast(t("toastSaveFail")); return; }
+    var id = cd.id;
+    /* Each entry of the CD in the old list goes back at its old position (or the end). */
+    function putBack(list, old, mine, same) {
+      old.forEach(function (x, i) {
+        if (mine(x) && !list.some(function (y) { return same(x, y); })) list.splice(Math.min(i, list.length), 0, x);
+      });
+    }
+    var isId = function (x) { return x === id; };
+    var sameId = function (a, b) { return a === b; };
+    commitMeta(function (m) {
+      m.albums.forEach(function (a) {
+        var old = (before.albums || []).filter(function (b) { return b.id === a.id; })[0];
+        if (old) putBack(a.cdIds, old.cdIds, isId, sameId);
+      });
+      m.playlists.forEach(function (p) {
+        var old = (before.playlists || []).filter(function (b) { return b.id === p.id; })[0];
+        if (old) putBack(p.items, old.items, function (x) { return x.cdId === id; },
+          function (a, b) { return a.cdId === b.cdId && a.file === b.file; });
+      });
+      m.order = m.order || { all: [], music: [] };
+      ["all", "music"].forEach(function (k) {
+        if (before.order && before.order[k]) putBack(m.order[k], before.order[k], isId, sameId);
+      });
+    });
+    if (!quiet) toast(t("toastRestored", { title: cd.title }));
+  }
   function applyMeta(raw) {
     meta = normMeta(raw);
     if (meta.settings.lang && LANGS[meta.settings.lang] && meta.settings.lang !== lang) {
@@ -2871,15 +3254,62 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
      when signed in, so the app works offline. For syncing, every CD records when it last changed
      (updatedAt), and the file also keeps `sync`: when favorites and settings last changed (metaAt)
      and the CDs removed here that the account has not heard about yet (deleted: id -> time). */
+  /* Covers in the desktop app are image files in <app data dir>/covers, named after their content,
+     and a CD keeps only the file name (photoFile) instead of the picture itself (photo, a data URL).
+     That keeps collection.json small. New or changed covers arrive as data URLs (the form, a lookup,
+     sync, an import) and are written to files when the collection is saved. Sync and exports send
+     the picture itself, read back with Covers.data. */
+  var Covers = {
+    ready: IS_TAURI,
+    root: "",
+    call: function (cmd, args) { return window.__TAURI__.core.invoke(cmd, args || {}); },
+    rootDir: async function () {
+      if (!this.root) this.root = await this.call("covers_root_dir");
+      return this.root;
+    },
+    url: function (file) { return window.__TAURI__.core.convertFileSrc(this.root + "\\" + file); },
+    save: function (dataUrl) { return this.call("save_cover", { data: dataUrl }); },
+    data: function (file) { return this.call("cover_data", { file: file }); }
+  };
+  /* What an <img> shows for a CD's cover, or "" for none. */
+  function coverSrc(cd) {
+    if (!cd) return "";
+    if (cd.photo) return cd.photo;
+    return cd.photoFile && Covers.root ? Covers.url(cd.photoFile) : "";
+  }
+  /* A copy of the CD with its cover as a picture (for sync and exports). */
+  async function withCoverData(cd) {
+    if (!cd || !cd.photoFile || !Covers.ready) return cd;
+    var c = Object.assign({}, cd);
+    try { c.photo = await Covers.data(c.photoFile); } catch (e) { /* the file is missing: no cover */ }
+    delete c.photoFile;
+    return c;
+  }
+
   function desktopBackend() {
     var items = [];
     var syncInfo = { metaAt: 0, deleted: {} };
     var saving = false, again = false;
+    /* Write covers that are still pictures to files (the CD's updatedAt stays as it is). */
+    async function storeCovers() {
+      if (!Covers.ready) return;
+      for (var i = 0; i < items.length; i++) {
+        var c = items[i];
+        if (c.photo && /^data:image\//.test(c.photo)) {
+          try {
+            c.photoFile = await Covers.save(c.photo);
+            delete c.photo;
+          } catch (e) { /* keep the picture inside the collection */ }
+        }
+      }
+    }
     function persist(fromSync) {
       if (!fromSync) Cloud.changed();
       if (saving) { again = true; return Promise.resolve(); }
       saving = true;
-      return Store.save({ cds: items, meta: meta, sync: syncInfo }).catch(function () {
+      return storeCovers().then(function () {
+        return Store.save({ cds: items, meta: meta, sync: syncInfo });
+      }).catch(function () {
         toast(t("toastSaveFail"));
       }).then(function () {
         saving = false;
@@ -2889,7 +3319,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     return {
       kind: "desktop",
       start: function () {
-        Store.load().then(function (d) {
+        Store.load().then(async function (d) {
+          if (Covers.ready) { try { await Covers.rootDir(); } catch (e) { Covers.ready = false; } }
           items = Array.isArray(d && d.cds) ? d.cds : [];
           if (d && d.user) { acct.name = d.user; acct.loading = false; }
           var s = d && d.sync;
@@ -2902,6 +3333,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           setCds(items.slice());
           applyMeta(d && d.meta);
           Cloud.start();
+          if (Covers.ready) {
+            /* Collections saved before covers became files: move the pictures out once. Then cover
+               files that neither the collection nor a backup uses any more are deleted. */
+            if (items.some(function (c) { return c.photo && /^data:image\//.test(c.photo); })) await persist(true);
+            Covers.call("tidy_covers").catch(function () { /* tidied next time */ });
+          }
         }).catch(function () {
           setCds([]);
           toast(t("toastSaveFail"));
@@ -2932,9 +3369,63 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         setCds(items.slice());
         await persist();
       },
+      /* Undo a removal: the CD comes back with its own id, as a newer change than the removal. */
+      restore: async function (cd) {
+        var c = Object.assign({}, cd);
+        c.updatedAt = Date.now();
+        delete syncInfo.deleted[c.id];
+        items = items.filter(function (i) { return i.id !== c.id; }).concat([c]);
+        items.sort(function (a, b) { return (b.addedAt || 0) - (a.addedAt || 0); });
+        setCds(items.slice());
+        await persist();
+      },
       saveMeta: function () {
         syncInfo.metaAt = Date.now();
         persist();
+      },
+      /* Take in CDs and favorites/playlists from a backup or an exported file. replace: the
+         collection becomes exactly that (CDs not in it are removed, also from the account when
+         signed in); otherwise new CDs are added and a CD already here is replaced only when the
+         file's copy is newer. Everything taken in counts as changed now, so it syncs. */
+      importDoc: async function (list, rawMeta, replace) {
+        var now = Date.now();
+        var stamp = function (c) { return c.updatedAt || c.addedAt || 0; };
+        var incoming = (list || []).filter(function (c) { return c && typeof c === "object" && c.title; }).map(function (c) {
+          var n = Object.assign({}, c);
+          if (!n.id) n.id = "d" + now.toString(36) + Math.random().toString(36).slice(2, 6);
+          n.id = String(n.id);
+          return n;
+        });
+        if (replace) {
+          var keep = {};
+          incoming.forEach(function (c) { keep[c.id] = true; });
+          items.forEach(function (c) { if (!keep[c.id]) syncInfo.deleted[c.id] = now; });
+          items = incoming.map(function (c) { delete syncInfo.deleted[c.id]; c.updatedAt = now; return c; });
+          var m = normMeta(rawMeta);
+          m.settings = Object.keys(m.settings).length ? m.settings : meta.settings;
+          meta = m;
+        } else {
+          var at = {};
+          items.forEach(function (c, i) { at[c.id] = i; });
+          incoming.forEach(function (c) {
+            var i = at[c.id];
+            if (i === undefined) {
+              delete syncInfo.deleted[c.id];
+              c.updatedAt = now;
+              items.push(c);
+            } else if (stamp(c) > stamp(items[i])) {
+              c.updatedAt = now;
+              items[i] = c;
+            }
+          });
+          meta = mergeLists(meta, normMeta(rawMeta));
+        }
+        items.sort(function (a, b) { return (b.addedAt || 0) - (a.addedAt || 0); });
+        syncInfo.metaAt = now;
+        setCds(items.slice());
+        applyMeta(meta);
+        await persist();
+        return incoming.length;
       },
       /* For the sync engine: a copy of what is here now, and a way to take in what it found. */
       snapshot: function () {
@@ -3169,6 +3660,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         remote.forEach(function (r) {
           if (!r.deleted && !mine[r.id] && !(r.id in snap.deleted)) pull.push(r.id);
         });
+        /* The account gets the cover pictures themselves, not this computer's file names. */
+        for (var pi = 0; pi < push.length; pi++) {
+          if (push[pi].data && push[pi].data.photoFile) push[pi].data = await withCoverData(push[pi].data);
+        }
         await upsert("cds", "user_id,id", push);
         var got = (pull.length ? await fetchCds(pull) : []).filter(function (r) { return !r.deleted && r.data; })
           .map(function (r) { var c = Object.assign({}, r.data); c.id = r.id; c.updatedAt = r.updated_ms; return c; });
@@ -3392,7 +3887,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     art.dataset.id = cd.id;
     var arranging = $("grid").classList.contains("arranging");
     if (arranging) art.draggable = true;
-    var act = function () { if (music) playAudio(cd); else openDetail(cd.id); };
+    var act = cardAction(cd, music);
+    if (selecting) {
+      art.classList.add("selectable");
+      art.classList.toggle("selected", !!selected[cd.id]);
+      art.setAttribute("aria-pressed", selected[cd.id] ? "true" : "false");
+      art.setAttribute("aria-label", t("selToggle", { title: cd.title }));
+    }
     art.addEventListener("click", act);
     art.addEventListener("keydown", function (e) {
       if (e.target === art && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); act(); }
@@ -3408,7 +3909,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       }
     });
     var cover = el("div", "cover");
-    if (music) {
+    if (selecting) cover.appendChild(el("span", "selmark", selected[cd.id] ? "✓" : ""));
+    if (music && !selecting) {
       var n = (cd.audio || []).filter(function (a) { return AudioLib.present[a.file]; }).length;
       cover.appendChild(el("span", "chip music-badge", nowCd
         ? t(audioEl.paused ? "musicPaused" : "musicNow")
@@ -3436,9 +3938,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       cover.appendChild(info);
       cover.appendChild(addPl);
     }
-    if (cd.photo) {
+    if (coverSrc(cd)) {
       var img = el("img");
-      img.src = cd.photo;
+      img.src = coverSrc(cd);
       img.alt = cd.title;
       img.draggable = false;
       cover.appendChild(img);
@@ -3584,9 +4086,365 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     return cds.filter(function (c) { return ids[c.id]; });
   }
 
+  /* ---------- filters ----------
+     Narrow the shelf by composer (the disc's or a work's), performer, label or decade (of the
+     release year, else the recording year). Kept until cleared, not saved. Names in a CD's profile
+     set them too. */
+  var filters = { composer: "", performer: "", label: "", decade: "" };
+  var filterOpen = false;
+  function cdComposers(cd) {
+    var out = [];
+    if (cd.composer) out.push(cd.composer);
+    (cd.works || []).forEach(function (w) { if (w.composer && out.indexOf(w.composer) === -1) out.push(w.composer); });
+    return out;
+  }
+  function cdDecade(cd) {
+    var y = parseInt(cd.releaseYear || cd.recordingYear || cd.year, 10);
+    return y ? String(Math.floor(y / 10) * 10) : "";
+  }
+  function filterMatch(cd) {
+    if (filters.composer && cdComposers(cd).indexOf(filters.composer) === -1) return false;
+    if (filters.performer && !(cd.performers || []).some(function (p) { return p.name === filters.performer; })) return false;
+    if (filters.label && (cd.label || "") !== filters.label) return false;
+    if (filters.decade && cdDecade(cd) !== filters.decade) return false;
+    return true;
+  }
+  function filterCount() {
+    return Object.keys(filters).filter(function (k) { return filters[k]; }).length;
+  }
+  /* The menus offer the values found in the current view; a chosen value stays listed. */
+  function renderFilters(base) {
+    var n = filterCount();
+    $("filter-btn").setAttribute("aria-expanded", filterOpen ? "true" : "false");
+    $("filter-btn").classList.toggle("on", n > 0);
+    $("filter-count").textContent = n ? " · " + n : "";
+    $("filters").hidden = !filterOpen;
+    if (!filterOpen) return;
+    var sets = { composer: {}, performer: {}, label: {}, decade: {} };
+    base.forEach(function (cd) {
+      cdComposers(cd).forEach(function (c) { sets.composer[c] = true; });
+      (cd.performers || []).forEach(function (p) { if (p.name) sets.performer[p.name] = true; });
+      if (cd.label) sets.label[cd.label] = true;
+      var d = cdDecade(cd);
+      if (d) sets.decade[d] = true;
+    });
+    Object.keys(sets).forEach(function (k) {
+      if (filters[k]) sets[k][filters[k]] = true;
+      var vals = Object.keys(sets[k]);
+      if (k === "composer") vals.sort(function (a, b) { return cmpText(surnameKey(a), surnameKey(b)) || cmpText(a, b); });
+      else if (k === "decade") vals.sort(function (a, b) { return b - a; });
+      else vals.sort(cmpText);
+      var sel = $("f-" + k);
+      sel.textContent = "";
+      var any = el("option", null, t("fAny"));
+      any.value = "";
+      sel.appendChild(any);
+      vals.forEach(function (v) {
+        var o = el("option", null, k === "decade" ? t("fDecadeName", { d: v }) : v);
+        o.value = v;
+        sel.appendChild(o);
+      });
+      sel.value = filters[k];
+    });
+    $("f-clear").hidden = !n;
+  }
+  function showFiltered(kind, value) {
+    filters = { composer: "", performer: "", label: "", decade: "" };
+    filters[kind] = value;
+    filterOpen = true;
+    query = "";
+    $("search").value = "";
+    currentAlbum = "all";
+    if (!$("win-detail").hidden) closeWin("detail");
+    if (!$("win-stats").hidden) closeWin("stats");
+    renderAlbums();
+    renderGrid();
+    $("f-" + kind).focus({ preventScroll: true });
+    $("filters").scrollIntoView({ block: "nearest" });
+  }
+  ["composer", "performer", "label", "decade"].forEach(function (k) {
+    $("f-" + k).addEventListener("change", function (e) {
+      filters[k] = e.target.value;
+      renderGrid();
+      $("f-" + k).focus({ preventScroll: true });
+    });
+  });
+  $("filter-btn").addEventListener("click", function () {
+    filterOpen = !filterOpen;
+    renderGrid();
+    if (filterOpen) $("f-composer").focus({ preventScroll: true });
+  });
+  $("f-clear").addEventListener("click", function () {
+    filters = { composer: "", performer: "", label: "", decade: "" };
+    renderGrid();
+    $("filter-btn").focus({ preventScroll: true });
+  });
+
+  /* ---------- statistics ----------
+     Headline numbers, then ranked bars: composers and labels (names lead to filtered shelves),
+     release decades and CDs added each year. */
+  function renderStats() {
+    var box = $("stats-body");
+    box.textContent = "";
+    var works = 0, tracks = 0, secs = 0;
+    cds.forEach(function (cd) {
+      works += (cd.works || []).length;
+      (cd.works || []).forEach(function (w) { tracks += (w.tracks || []).length; });
+      secs += totalSeconds(cd);
+    });
+    var tiles = el("div", "stat-tiles");
+    function tile(value, label) {
+      var d = el("div", "stat-tile");
+      d.appendChild(el("b", null, String(value)));
+      d.appendChild(el("span", null, label));
+      tiles.appendChild(d);
+    }
+    tile(cds.length, t("statsCds"));
+    tile(works, t("statsWorks"));
+    tile(tracks, t("statsTracks"));
+    var mins = Math.max(1, Math.round(secs / 60));
+    tile(!secs ? "—" : mins >= 60 ? t("statsHours", { h: Math.floor(mins / 60), m: mins % 60 }) : t("statsMins", { m: mins }), t("statsTime"));
+    tile(meta.albums.length, t("albumsBar"));
+    if (AudioLib.ready) tile(musicCds().length, t("statsWithAudio"));
+    box.appendChild(tiles);
+
+    function count(keysOf) {
+      var n = {};
+      cds.forEach(function (cd) { keysOf(cd).forEach(function (k) { if (k) n[k] = (n[k] || 0) + 1; }); });
+      return n;
+    }
+    function top(n, limit) {
+      return Object.keys(n).sort(function (a, b) { return n[b] - n[a] || cmpText(a, b); }).slice(0, limit)
+        .map(function (k) { return [k, n[k]]; });
+    }
+    var groups = el("div", "stat-groups");
+    function group(title, rows, kind, labelOf) {
+      var g = el("section", "stat-group");
+      g.appendChild(el("h3", null, title));
+      if (!rows.length) {
+        g.appendChild(el("p", "stat-empty", t("statsNone")));
+        groups.appendChild(g);
+        return;
+      }
+      var max = Math.max.apply(null, rows.map(function (r) { return r[1]; }));
+      var ul = el("ul", "bars");
+      rows.forEach(function (r) {
+        var name = labelOf ? labelOf(r[0]) : r[0];
+        var li = el("li");
+        li.title = name + ": " + tn("count", r[1]);
+        var lab = el("span", "bl");
+        if (kind) lab.appendChild(nameLink(kind, r[0], name)); else lab.textContent = name;
+        li.appendChild(lab);
+        var track = el("span", "track");
+        var fill = el("span", "fill");
+        fill.style.display = "block";
+        fill.style.width = (r[1] / max * 100) + "%";
+        track.appendChild(fill);
+        li.appendChild(track);
+        li.appendChild(el("span", "bv", String(r[1])));
+        ul.appendChild(li);
+      });
+      g.appendChild(ul);
+      groups.appendChild(g);
+    }
+    group(t("statsComposers"), top(count(cdComposers), 8), "composer");
+    group(t("statsLabels"), top(count(function (cd) { return [cd.label]; }), 8), "label");
+    var dec = count(function (cd) { return [cdDecade(cd)]; });
+    group(t("statsDecades"), Object.keys(dec).sort().map(function (k) { return [k, dec[k]]; }), "decade",
+      function (d) { return t("fDecadeName", { d: d }); });
+    var added = count(function (cd) { return [cd.addedAt ? String(new Date(cd.addedAt).getFullYear()) : ""]; });
+    group(t("statsAdded"), Object.keys(added).sort().map(function (k) { return [k, added[k]]; }));
+    box.appendChild(groups);
+  }
+  $("open-stats").addEventListener("click", function () {
+    renderStats();
+    openWin("stats");
+  });
+  $("close-stats").addEventListener("click", function () { closeWin("stats"); });
+
+  /* ---------- list view and selecting several CDs ----------
+     The shelf shows cards or a compact list (localStorage "cdc.view"). "Select" turns clicks into
+     ticks; the bar then adds the ticked CDs to a favorite, or removes them (with Undo). */
+  var viewMode = "cards";
+  try { if (localStorage.getItem("cdc.view") === "list") viewMode = "list"; } catch (e) { /* storage unavailable */ }
+  var selecting = false;
+  var selected = {};
+  var selAsk = false;
+  /* What clicking a card or row does: tick it while selecting, play it in All music, else open it. */
+  function cardAction(cd, music) {
+    return function () {
+      if (selecting) { toggleSel(cd.id); return; }
+      if (music) playAudio(cd); else openDetail(cd.id);
+    };
+  }
+  function toggleSel(id) {
+    if (selected[id]) delete selected[id]; else selected[id] = true;
+    selAsk = false;
+    renderGrid();
+  }
+  function endSelect() {
+    selecting = false;
+    selected = {};
+    selAsk = false;
+  }
+  function selectedCds() {
+    return cds.filter(function (c) { return selected[c.id]; });
+  }
+  function renderSelBar(list) {
+    var bar = $("selbar");
+    $("select-btn").setAttribute("aria-pressed", selecting ? "true" : "false");
+    bar.hidden = !selecting;
+    if (!selecting) return;
+    /* Ticks on CDs no longer shown (after a filter or search) are dropped. */
+    var shown = {};
+    list.forEach(function (c) { shown[c.id] = true; });
+    Object.keys(selected).forEach(function (id) { if (!shown[id]) delete selected[id]; });
+    var n = Object.keys(selected).length;
+    $("sel-count").textContent = tn("selCount", n);
+    $("sel-all").textContent = t(n === list.length && n ? "selNone" : "selAll");
+    var fav = $("sel-fav");
+    fav.textContent = "";
+    var first = el("option", null, t("selAddFav"));
+    first.value = "";
+    fav.appendChild(first);
+    meta.albums.forEach(function (a) {
+      var o = el("option", null, a.name);
+      o.value = a.id;
+      fav.appendChild(o);
+    });
+    var nw = el("option", null, t("selNewFav"));
+    nw.value = "+new";
+    fav.appendChild(nw);
+    fav.disabled = !n;
+    $("sel-remove").disabled = !n;
+    $("sel-remove").hidden = selAsk;
+    $("sel-ask").hidden = !selAsk;
+    if (selAsk) $("sel-ask-text").textContent = tn("selRemoveAsk", n);
+  }
+  $("select-btn").addEventListener("click", function () {
+    if (selecting) endSelect(); else { selecting = true; selected = {}; }
+    renderGrid();
+  });
+  $("sel-done").addEventListener("click", function () {
+    endSelect();
+    renderGrid();
+    $("select-btn").focus({ preventScroll: true });
+  });
+  $("sel-all").addEventListener("click", function () {
+    var ids = shownIds(true);
+    var all = ids.length && ids.every(function (id) { return selected[id]; });
+    selected = {};
+    if (!all) ids.forEach(function (id) { selected[id] = true; });
+    renderGrid();
+    $("sel-all").focus({ preventScroll: true });
+  });
+  $("sel-fav").addEventListener("change", function (e) {
+    var v = e.target.value;
+    var ids = Object.keys(selected);
+    if (!v || !ids.length) return;
+    if (v === "+new") { openAlbumDlg("new", null, "favorite", ids); return; }
+    var a = findAlbum(v);
+    var added = 0;
+    commitMeta(function (m) {
+      m.albums.forEach(function (x) {
+        if (x.id !== v) return;
+        ids.forEach(function (id) { if (x.cdIds.indexOf(id) === -1) { x.cdIds.push(id); added++; } });
+      });
+    });
+    toast(t("selAdded", { n: added, name: a ? a.name : "" }));
+    $("sel-fav").focus({ preventScroll: true });
+  });
+  $("sel-remove").addEventListener("click", function () {
+    selAsk = true;
+    renderGrid();
+    $("sel-remove-no").focus({ preventScroll: true });
+  });
+  $("sel-remove-no").addEventListener("click", function () {
+    selAsk = false;
+    renderGrid();
+    $("sel-remove").focus({ preventScroll: true });
+  });
+  $("sel-remove-yes").addEventListener("click", async function () {
+    var list = selectedCds();
+    endSelect();
+    try { await removeCds(list); } catch (e) { toast(t("toastRemoveFail")); }
+    renderGrid();
+    $("select-btn").focus({ preventScroll: true });
+  });
+  function setView(mode) {
+    viewMode = mode;
+    try { localStorage.setItem("cdc.view", mode); } catch (e) { /* storage unavailable */ }
+    renderGrid();
+    $(mode === "list" ? "view-list" : "view-cards").focus({ preventScroll: true });
+  }
+  $("view-cards").addEventListener("click", function () { setView("cards"); });
+  $("view-list").addEventListener("click", function () { setView("list"); });
+
+  /* One CD as a row of the list view; it does what a card does (open, play, tick, drag). */
+  function listRow(cd, music, arranging) {
+    var tr = el("tr", "lrow" + (selecting && selected[cd.id] ? " selected" : ""));
+    tr.id = "row-" + cd.id;
+    tr.dataset.id = cd.id;
+    tr.tabIndex = 0;
+    if (arranging) tr.draggable = true;
+    var act = cardAction(cd, music);
+    tr.setAttribute("role", "button");
+    tr.setAttribute("aria-label", t(selecting ? "selToggle" : music ? "musicPlay" : "openProfile", { title: cd.title }));
+    if (selecting) tr.setAttribute("aria-pressed", selected[cd.id] ? "true" : "false");
+    tr.addEventListener("click", act);
+    tr.addEventListener("keydown", function (e) {
+      if (e.target !== tr) return;
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); return; }
+      var step = { ArrowUp: -1, ArrowDown: 1 }[e.key];
+      if (arranging && e.altKey && step) {
+        e.preventDefault();
+        var ids = shownIds();
+        var at = ids.indexOf(cd.id) + step;
+        if (at < 0 || at >= ids.length) return;
+        moveCard(cd.id, ids[at], step < 0);
+        if ($("row-" + cd.id)) $("row-" + cd.id).focus();
+      }
+    });
+    var c0 = el("td", "lcover");
+    if (selecting) c0.appendChild(el("span", "selmark", selected[cd.id] ? "✓" : ""));
+    else c0.appendChild(thumb(cd, music && isCurrentCd(cd.id) ? (audioEl.paused ? "❚❚" : "▶") : ""));
+    tr.appendChild(c0);
+    var c1 = el("td", "ltitle");
+    c1.appendChild(el("strong", null, cd.title));
+    tr.appendChild(c1);
+    tr.appendChild(el("td", null, discComposer(cd)));
+    tr.appendChild(el("td", "lperf", (cd.performers || []).slice(0, 2).map(function (p) { return p.name; }).join(", ")));
+    tr.appendChild(el("td", null, cd.label || ""));
+    tr.appendChild(el("td", "lnum", String(cd.releaseYear || cd.year || cd.recordingYear || "")));
+    tr.appendChild(el("td", "lnum", cd.catalogNo || ""));
+    return tr;
+  }
+  function isCurrentCd(id) {
+    var e = currentEntry();
+    return !!e && e.cdId === id;
+  }
+  function listTable(list, music, arranging) {
+    var table = el("table", "ltable");
+    var head = el("tr");
+    ["", "lTitle", "composer", "performers", "label", "fYear", "lCatalog"].forEach(function (k) {
+      var th = el("th", null, k ? t(k) : "");
+      th.scope = "col";
+      head.appendChild(th);
+    });
+    var thead = el("thead");
+    thead.appendChild(head);
+    table.appendChild(thead);
+    var body = el("tbody");
+    list.forEach(function (cd) { body.appendChild(listRow(cd, music, arranging)); });
+    table.appendChild(body);
+    return table;
+  }
+
   /* ---------- arranging cards (Custom order) ---------- */
   function shownIds() {
-    return sortList(baseList()).map(function (c) { return c.id; });
+    var q = query.trim().toLowerCase();
+    return sortList(baseList().filter(function (c) { return filterMatch(c) && (!q || matches(c, q)); }))
+      .map(function (c) { return c.id; });
   }
   /* Put a card before or after another one, and keep the view's new order. Ids the view doesn't show
      right now (a favorite's CDs, or music on another computer) keep their places at the end. */
@@ -3615,14 +4473,17 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       if (mark) mark.classList.remove("drop-before", "drop-after");
       mark = null;
     }
+    var ITEM = ".card[data-id], .lrow[data-id]";
     function target(e) {
-      var c = e.target.closest && e.target.closest(".card[data-id]");
+      var c = e.target.closest && e.target.closest(ITEM);
       if (!c || !dragId || c.dataset.id === dragId) return null;
       var r = c.getBoundingClientRect();
-      return { el: c, before: e.clientX < r.left + r.width / 2 };
+      /* Cards sit side by side; list rows one under another. */
+      var row = c.classList.contains("lrow");
+      return { el: c, before: row ? e.clientY < r.top + r.height / 2 : e.clientX < r.left + r.width / 2 };
     }
     grid.addEventListener("dragstart", function (e) {
-      var c = e.target.closest && e.target.closest(".card[data-id]");
+      var c = e.target.closest && e.target.closest(ITEM);
       if (!c) return;
       if (!grid.classList.contains("arranging")) { e.preventDefault(); return; }
       dragId = c.dataset.id;
@@ -3654,7 +4515,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     grid.addEventListener("dragend", function () {
       clear();
       dragId = null;
-      qsa(".card.dragging").forEach(function (c) { c.classList.remove("dragging"); });
+      qsa(".card.dragging, .lrow.dragging").forEach(function (c) { c.classList.remove("dragging"); });
     });
   })();
 
@@ -3668,12 +4529,29 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       (plId ? AudioLib.ready && !!findPlaylist(plId) : !!findAlbum(currentAlbum));
     if (!valid) { currentAlbum = "all"; plId = null; }
 
-    function chip(id, name, count) {
+    function chip(id, name, count, kind, key) {
       var b = el("button", "achip");
       b.type = "button";
+      b.id = "chip-" + id;
       b.setAttribute("aria-pressed", currentAlbum === id ? "true" : "false");
       b.appendChild(el("span", "nm", name));
       b.appendChild(el("span", "n", String(count)));
+      /* Favorites and playlists can be dragged into another order, or moved with Alt + ↑/↓. */
+      if (kind) {
+        b.draggable = true;
+        b.dataset.kind = kind;
+        b.dataset.key = key;
+        b.addEventListener("keydown", function (e) {
+          var step = { ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1 }[e.key];
+          if (!e.altKey || !step) return;
+          e.preventDefault();
+          var list = kind === "fav" ? meta.albums : meta.playlists;
+          var at = list.map(function (x) { return x.id; }).indexOf(key) + step;
+          if (at < 0 || at >= list.length) return;
+          moveChip(kind, key, list[at].id, step < 0);
+          if ($("chip-" + id)) $("chip-" + id).focus();
+        });
+      }
       b.addEventListener("click", function () {
         currentAlbum = id;
         try {
@@ -3721,7 +4599,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     cds.forEach(function (c) { present[c.id] = true; });
     meta.albums.forEach(function (a) {
       var n = a.cdIds.filter(function (id) { return present[id]; }).length;
-      group.appendChild(chip(a.id, a.name, n));
+      group.appendChild(chip(a.id, a.name, n, "fav", a.id));
     });
     var nw = el("button", "linkbtn", t("newAlbum"));
     nw.type = "button";
@@ -3747,19 +4625,89 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var plGroup = el("div", "favgroup");
     plGroup.id = "pl-group";
     plGroup.hidden = !plOpenNow;
-    meta.playlists.forEach(function (p) { plGroup.appendChild(chip("pl:" + p.id, p.name, p.items.length)); });
+    meta.playlists.forEach(function (p) { plGroup.appendChild(chip("pl:" + p.id, p.name, p.items.length, "pl", p.id)); });
     var np = el("button", "linkbtn", t("plNew"));
     np.type = "button";
     np.addEventListener("click", function () { openAlbumDlg("new", null, "playlist"); });
     plGroup.appendChild(np);
     bar.appendChild(plGroup);
   }
+  /* Put a favorite (kind "fav") or playlist ("pl") before or after another one of the same kind. */
+  function moveChip(kind, key, targetKey, before) {
+    if (key === targetKey) return;
+    commitMeta(function (m) {
+      var list = kind === "fav" ? m.albums : m.playlists;
+      var from = list.map(function (x) { return x.id; }).indexOf(key);
+      if (from === -1) return;
+      var item = list.splice(from, 1)[0];
+      var at = list.map(function (x) { return x.id; }).indexOf(targetKey);
+      if (at === -1) { list.splice(from, 0, item); return; }
+      list.splice(before ? at : at + 1, 0, item);
+    });
+  }
+  (function () {
+    var bar = $("albums");
+    var src = null;
+    var mark = null;
+    function clear() {
+      if (mark) mark.classList.remove("drop-before", "drop-after");
+      mark = null;
+    }
+    function target(e) {
+      var c = e.target.closest && e.target.closest(".achip[data-kind]");
+      if (!c || !src || c.dataset.kind !== src.kind || c.dataset.key === src.key) return null;
+      var r = c.getBoundingClientRect();
+      var across = getComputedStyle(c.parentNode).flexDirection === "row";
+      return { el: c, before: across ? e.clientX < r.left + r.width / 2 : e.clientY < r.top + r.height / 2 };
+    }
+    bar.addEventListener("dragstart", function (e) {
+      var c = e.target.closest && e.target.closest(".achip[data-kind]");
+      if (!c) return;
+      src = { kind: c.dataset.kind, key: c.dataset.key };
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", "");
+      setTimeout(function () { c.classList.add("dragging"); }, 0);
+    });
+    bar.addEventListener("dragover", function (e) {
+      var tg = target(e);
+      if (!tg) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (mark !== tg.el || mark.classList.contains("drop-before") !== tg.before) {
+        clear();
+        mark = tg.el;
+        mark.classList.add(tg.before ? "drop-before" : "drop-after");
+      }
+    });
+    bar.addEventListener("drop", function (e) {
+      var tg = target(e);
+      var s = src;
+      clear();
+      src = null;
+      if (!tg) return;
+      e.preventDefault();
+      moveChip(s.kind, s.key, tg.el.dataset.key, tg.before);
+    });
+    bar.addEventListener("dragend", function () {
+      clear();
+      src = null;
+      qsa(".achip.dragging").forEach(function (c) { c.classList.remove("dragging"); });
+    });
+  })();
   /* The id of the playlist being shown, or null. */
   function currentPlaylistId() {
     return typeof currentAlbum === "string" && currentAlbum.indexOf("pl:") === 0 ? currentAlbum.slice(3) : null;
   }
 
+  /* The shelf is drawn again often (a song starting or pausing, a sync). Whatever had keyboard focus
+     in it gets it back afterwards, found by its id. */
   function renderGrid() {
+    var grid = $("grid");
+    var keep = grid.contains(document.activeElement) ? document.activeElement.id : "";
+    drawGrid();
+    if (keep && $(keep) && !grid.contains(document.activeElement)) $(keep).focus({ preventScroll: true });
+  }
+  function drawGrid() {
     var grid = $("grid");
     grid.textContent = "";
     applyCardWidth(cardWidth());
@@ -3769,7 +4717,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var sortWrap = $("sort-wrap");
     emptyNote.hidden = true;
     $("drag-hint").hidden = true;
-    grid.classList.remove("arranging");
+    $("filter-btn").hidden = true;
+    $("filters").hidden = true;
+    $("viewsw").hidden = true;
+    $("select-btn").hidden = true;
+    $("selbar").hidden = true;
+    grid.classList.remove("arranging", "as-table");
     renderFab();
     if (addMusic && addMusic.plId && !$("win-addmusic").hidden) renderAddMusic();
     if (cardPl && cardPl.cdId && currentAlbum !== "music") closeCardPlMenu();
@@ -3803,19 +4756,33 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     sortWrap.hidden = false;
     var base = baseList();
     var q = query.trim().toLowerCase();
-    var list = sortList(q ? base.filter(function (c) { return matches(c, q); }) : base);
-    count.textContent = q ? t("countOf", { a: list.length, b: base.length }) : tn("count", base.length);
-    /* Cards can be dragged only in the custom order, and not while a search hides some of them. */
-    var arranging = sortKey === "custom" && !q && list.length > 1;
+    var narrowed = q || filterCount();
+    $("filter-btn").hidden = false;
+    $("viewsw").hidden = false;
+    $("view-cards").setAttribute("aria-pressed", viewMode === "cards" ? "true" : "false");
+    $("view-list").setAttribute("aria-pressed", viewMode === "list" ? "true" : "false");
+    $("select-btn").hidden = false;
+    renderFilters(base);
+    var list = sortList(base.filter(function (c) { return filterMatch(c) && (!q || matches(c, q)); }));
+    renderSelBar(list);
+    count.textContent = narrowed ? t("countOf", { a: list.length, b: base.length }) : tn("count", base.length);
+    /* Cards can be dragged only in the custom order, and not while a search or filter hides some,
+       or while selecting. */
+    var arranging = sortKey === "custom" && !narrowed && !selecting && list.length > 1;
     grid.classList.toggle("arranging", arranging);
     var hint = $("drag-hint");
-    hint.hidden = sortKey !== "custom" || list.length < 2;
-    hint.textContent = t(q ? "dragNoSearch" : "dragCards");
+    hint.hidden = sortKey !== "custom" || selecting || list.length < 2;
+    hint.textContent = t(narrowed ? "dragNoSearch" : "dragCards");
     if (!list.length) {
-      grid.appendChild(el("p", "msg", q ? t("noMatch", { q: query.trim() }) : t(currentAlbum === "music" ? "musicEmpty" : "albumEmpty")));
+      grid.appendChild(el("p", "msg", q ? t("noMatch", { q: query.trim() }) : filterCount() ? t("fNoMatch") : t(currentAlbum === "music" ? "musicEmpty" : "albumEmpty")));
       return;
     }
-    list.forEach(function (cd) { grid.appendChild(card(cd)); });
+    if (viewMode === "list") {
+      grid.classList.add("as-table");
+      grid.appendChild(listTable(list, currentAlbum === "music", arranging));
+    } else {
+      list.forEach(function (cd) { grid.appendChild(card(cd)); });
+    }
     if (cardPl && cardPl.cdId) renderCardPlMenu();
   }
 
@@ -4308,7 +5275,58 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     closeAccount();
     settingsFields.open = false;
     renderAccount();
+    renderAbout();
+    pendingImport = null;
+    renderRestore();
     openWin("settings");
+  });
+
+  /* ---------- version and updates ----------
+     Settings → About shows the app's version, and for GitHub builds also the build number and date
+     (build.js, written by the build). "Check for a new version" asks GitHub for the newest published
+     release; a newer one can be downloaded from the release page. */
+  var RELEASES_API = "https://api.github.com/repos/Yuritnos/CDC/releases/latest";
+  var appVersion = "";
+  async function renderAbout() {
+    if (!appVersion && IS_TAURI && window.__TAURI__.app) {
+      try { appVersion = await window.__TAURI__.app.getVersion(); } catch (e) { /* unknown */ }
+    }
+    var b = window.CDC_BUILD;
+    $("app-version").textContent = appVersion
+      ? t("aboutVersion", { v: appVersion }) + (b ? " · " + t("aboutBuild", { n: b.run, d: b.date }) : "")
+      : t("aboutWeb");
+    $("update-row").hidden = !IS_TAURI;
+  }
+  /* Is version a (like "0.3.0") newer than b? */
+  function newerVersion(a, b) {
+    var x = String(a).split(".").map(Number), y = String(b).split(".").map(Number);
+    for (var i = 0; i < 3; i++) {
+      if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+    }
+    return false;
+  }
+  $("check-update").addEventListener("click", async function () {
+    var msg = $("update-msg");
+    $("open-releases").hidden = true;
+    msg.textContent = t("updChecking");
+    try {
+      var r = await fetch(RELEASES_API, { headers: { Accept: "application/vnd.github+json" } });
+      if (r.status === 404) { msg.textContent = t("updNone"); return; }
+      if (!r.ok) throw new Error(String(r.status));
+      var rel = await r.json();
+      var v = String(rel.tag_name || "").replace(/^v/i, "");
+      if (v && newerVersion(v, appVersion)) {
+        msg.textContent = t("updAvailable", { v: v });
+        $("open-releases").hidden = false;
+      } else {
+        msg.textContent = t("updLatest");
+      }
+    } catch (e) {
+      msg.textContent = t("updFail");
+    }
+  });
+  $("open-releases").addEventListener("click", function () {
+    window.__TAURI__.core.invoke("open_releases").catch(function () { toast(t("updFail")); });
   });
 
   /* Account popover in the top right corner */
@@ -4358,11 +5376,15 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (!cds.length) { toast(t("exportEmpty")); return; }
     var data, name;
     if (kind === "json") {
+      var full = [];
+      for (var i = 0; i < cds.length; i++) full.push(await withCoverData(cds[i]));
       data = JSON.stringify({
         app: "CDC",
         exportedAt: new Date().toISOString(),
         albums: meta.albums,
-        cds: cds
+        playlists: meta.playlists,
+        order: meta.order,
+        cds: full
       }, null, 2);
       name = "cdc-collection.json";
     } else {
@@ -4397,6 +5419,85 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   $("export-json").addEventListener("click", function () { doExport("json"); });
   $("export-csv").addEventListener("click", function () { doExport("csv"); });
+
+  /* ---------- import and backups (desktop) ----------
+     Import reads a file from "Export everything (JSON)" (or a collection/backup file) and adds it
+     to the collection or replaces it. Backups are the daily copies the app keeps; restoring one
+     replaces the collection with it. */
+  var pendingImport = null;
+  /* The CDs and favorites/playlists in an exported file or a collection file, or null. */
+  function readCdcDoc(doc) {
+    if (!doc || typeof doc !== "object" || !Array.isArray(doc.cds)) return null;
+    var m = doc.meta && typeof doc.meta === "object"
+      ? doc.meta
+      : { albums: doc.albums, playlists: doc.playlists, order: doc.order, settings: {} };
+    return { cds: doc.cds, meta: m };
+  }
+  function renderRestore() {
+    var can = !!(backend && backend.importDoc);
+    $("import-box").hidden = !can;
+    $("backup-box").hidden = !can;
+    $("import-ask").hidden = !pendingImport;
+    $("backup-ask").hidden = true;
+    if (!can || !Covers.ready) { $("backup-box").hidden = true; return; }
+    Covers.call("list_backups").then(function (list) {
+      var sel = $("backup-list");
+      sel.textContent = "";
+      list.forEach(function (b) {
+        var o = el("option", null, tnv(b.kind === "previous" ? "backupPrevious" : "backupDaily", { date: b.date, n: b.cds }));
+        o.value = b.name;
+        o.dataset.date = b.date;
+        o.dataset.n = b.cds;
+        sel.appendChild(o);
+      });
+      $("backup-box").hidden = !list.length;
+    }).catch(function () { $("backup-box").hidden = true; });
+  }
+  $("import-btn").addEventListener("click", function () { $("import-file").value = ""; $("import-file").click(); });
+  $("import-file").addEventListener("change", async function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    var doc = null;
+    try { doc = readCdcDoc(JSON.parse(await f.text())); } catch (err) { doc = null; }
+    if (!doc) { toast(t("importBad")); return; }
+    pendingImport = doc;
+    $("import-ask-text").textContent = tnv("importAsk", { n: doc.cds.length, name: f.name });
+    $("import-ask").hidden = false;
+    $("import-merge").focus();
+  });
+  async function finishImport(replace) {
+    var doc = pendingImport;
+    pendingImport = null;
+    $("import-ask").hidden = true;
+    if (!doc) return;
+    try {
+      var n = await backend.importDoc(doc.cds, doc.meta, replace);
+      toast(tn(replace ? "importReplaced" : "importAdded", n));
+    } catch (err) { toast(t("toastSaveFail")); }
+    renderRestore();
+  }
+  $("import-merge").addEventListener("click", function () { finishImport(false); });
+  $("import-replace").addEventListener("click", function () { finishImport(true); });
+  $("import-cancel").addEventListener("click", function () { pendingImport = null; $("import-ask").hidden = true; $("import-btn").focus(); });
+  $("backup-restore").addEventListener("click", function () {
+    var o = $("backup-list").selectedOptions[0];
+    if (!o) return;
+    $("backup-ask-text").textContent = tnv("backupAsk", { date: o.dataset.date, n: o.dataset.n });
+    $("backup-ask").hidden = false;
+    $("backup-no").focus();
+  });
+  $("backup-no").addEventListener("click", function () { $("backup-ask").hidden = true; $("backup-restore").focus(); });
+  $("backup-yes").addEventListener("click", async function () {
+    var name = $("backup-list").value;
+    $("backup-ask").hidden = true;
+    try {
+      var doc = readCdcDoc(await Covers.call("read_backup", { name: name }));
+      if (!doc) throw new Error("bad");
+      await backend.importDoc(doc.cds, doc.meta, true);
+      toast(t("backupRestored"));
+    } catch (err) { toast(t("backupFail")); }
+    renderRestore();
+  });
 
   /* ---------- album window ---------- */
   /* The same window names favorites and playlists: kind is "favorite" (default) or "playlist".
@@ -4452,7 +5553,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
     if (albumDlg.mode === "new") {
       var id = "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-      commitMeta(function (m) { m.albums.push({ id: id, name: name, cdIds: [] }); });
+      /* A favorite made from selected CDs starts with them. */
+      var firstIds = (albumDlg.items || []).filter(function (x) { return typeof x === "string"; });
+      commitMeta(function (m) { m.albums.push({ id: id, name: name, cdIds: firstIds }); });
+      if (firstIds.length) endSelect();
       currentAlbum = id;
       favOpen = true;
       closeWin("album");
@@ -4632,7 +5736,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   function clearForm() {
     $("cd-form").reset();
+    dupWarned = "";
+    $("dup-warn").hidden = true;
     photoData = null;
+    editCover = { file: null, touched: false };
     editingId = null;
     editingAddedAt = null;
     ["title", "recordingYear", "releaseYear", "works"].forEach(function (f) { setErr(f, ""); });
@@ -4676,6 +5783,15 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("notes").value = cd.notes || "";
     resetWorks(cd.works);
     photoData = cd.photo || null;
+    /* A cover kept as a file is read back for the cropper; until then (or if the person leaves the
+       cover alone) saving keeps the file as it is. */
+    editCover = { file: !cd.photo && cd.photoFile ? cd.photoFile : null, touched: false };
+    if (editCover.file && Covers.ready) {
+      var wanted = editCover;
+      Covers.data(wanted.file).then(function (d) {
+        if (editCover === wanted && !wanted.touched && !photoData) { photoData = d; showPhoto(); }
+      }).catch(function () { /* the cover stays as a file */ });
+    }
     showPhoto();
     $("perf-rows").textContent = "";
     if (cd.performers && cd.performers.length) {
@@ -5092,11 +6208,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     /* A cover the user chose stays; one from an earlier lookup is replaced. */
     var ownCover = photoData && !$("drop").classList.contains("filled");
     if (ownCover) { lookupStatus(done); return; }
-    if (photoData) { photoData = null; $("drop").classList.remove("filled"); showPhoto(); }
+    if (photoData) { editCover.touched = true; photoData = null; $("drop").classList.remove("filled"); showPhoto(); }
     lookupStatus(done + " " + t("coverSearching"));
     var cover = await findCover(p);
     if (run !== lookupRun) return;
     if (cover && !photoData) {
+      editCover.touched = true;
       photoData = cover.data;
       showPhoto();
       $("drop").classList.add("filled");
@@ -5252,6 +6369,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     try {
       await saveCdChange(cd, { audio: list });
       toast(t(added.length === 1 ? "toastAudioAdded1" : "toastAudioAdded", { n: added.length }));
+      fillDurations(cd.id, true);
     } catch (e) { toast(t("toastSaveFail")); }
   }
   async function removeAudio(cd, file) {
@@ -5262,6 +6380,61 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var list = (cd.audio || []).filter(function (a) { return a.file !== file; });
     try { await saveCdChange(cd, { audio: list }); } catch (e) { toast(t("toastSaveFail")); }
   }
+  /* Track lengths from the audio files: a track with no length takes its file's length. Each CD is
+     looked at once per session (when its profile opens), and again after files are added or moved
+     to other tracks. Lengths typed by the person are never changed. */
+  var durationsChecked = {};
+  function fileSeconds(url) {
+    return new Promise(function (resolve) {
+      var probe = new Audio();
+      var settled = false;
+      var done = function (v) {
+        if (settled) return;
+        settled = true;
+        probe.removeAttribute("src");
+        resolve(v);
+      };
+      probe.preload = "metadata";
+      probe.onloadedmetadata = function () { done(isFinite(probe.duration) ? probe.duration : 0); };
+      probe.onerror = function () { done(0); };
+      setTimeout(function () { done(0); }, 8000);
+      probe.src = url;
+    });
+  }
+  async function fillDurations(cdId, again) {
+    if (!AudioLib.ready || (durationsChecked[cdId] && !again)) return;
+    durationsChecked[cdId] = true;
+    var cd = cdById(cdId);
+    if (!cd || !(cd.audio || []).length) return;
+    try { await AudioLib.rootDir(); } catch (e) { return; }
+    var fileOf = {};
+    cd.audio.forEach(function (a) { if (a.track && AudioLib.present[a.file]) fileOf[a.track] = a.file; });
+    var slots = [];
+    var no = 0;
+    (cd.works || []).forEach(function (w, wi) {
+      (w.tracks || []).forEach(function (tr, ti) {
+        no++;
+        if (!tr.duration && fileOf[no]) slots.push({ wi: wi, ti: ti, file: fileOf[no] });
+      });
+    });
+    if (!slots.length) return;
+    var found = [];
+    for (var i = 0; i < slots.length; i++) {
+      var secs = await fileSeconds(AudioLib.url(slots[i].file));
+      if (secs >= 1) found.push({ wi: slots[i].wi, ti: slots[i].ti, d: fmtSeconds(Math.round(secs)) });
+    }
+    cd = cdById(cdId);
+    if (!cd || !found.length) return;
+    var works = clone(cd.works || []);
+    var changed = false;
+    found.forEach(function (f) {
+      var tr = works[f.wi] && works[f.wi].tracks && works[f.wi].tracks[f.ti];
+      if (tr && !tr.duration) { tr.duration = f.d; changed = true; }
+    });
+    if (changed) {
+      try { await saveCdChange(cd, { works: works }); } catch (e) { /* lengths stay blank */ }
+    }
+  }
   /* Give a file another track; a file already on that track takes this one's old track. */
   async function setAudioTrack(cd, file, track) {
     var list = (cd.audio || []).map(function (a) { return Object.assign({}, a); });
@@ -5269,12 +6442,14 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (!me) return;
     list.forEach(function (a) { if (a !== me && track && a.track === track) a.track = me.track || 0; });
     me.track = track;
-    try { await saveCdChange(cd, { audio: list }); } catch (e) { toast(t("toastSaveFail")); }
+    try { await saveCdChange(cd, { audio: list }); } catch (e) { toast(t("toastSaveFail")); return; }
+    fillDurations(cd.id, true);
   }
   function audioSection(cd) {
     var list = audioSorted(cd);
     if (!AudioLib.ready && !list.length) return null;
     AudioLib.check(list.map(function (a) { return a.file; }));
+    if (list.some(function (a) { return AudioLib.present[a.file]; })) fillDurations(cd.id);
     var sect = el("section", "psect");
     var head = el("div", "paudio-head");
     head.appendChild(el("h3", null, t("audioHead")));
@@ -5449,12 +6624,80 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (!audioEl.getAttribute("src")) { loadTrack(true); return; }
     if (audioEl.paused) audioEl.play().catch(function () {}); else audioEl.pause();
   }
-  function stepTrack(d) {
-    var i = player.index + d;
-    if (d < 0 && audioEl.currentTime > 3) { audioEl.currentTime = 0; return; }
-    if (i < 0 || i >= player.queue.length) return;
+  /* Shuffle, repeat ("off", "all" or "one") and volume, remembered on this computer
+     (localStorage "cdc.playmode"). With shuffle on, Next picks a track not played yet in this round
+     and Previous goes back through the ones played (player.history). */
+  var playMode = { shuffle: false, repeat: "off", volume: 1, muted: false };
+  try { Object.assign(playMode, JSON.parse(localStorage.getItem("cdc.playmode") || "{}")); } catch (e) { /* storage unavailable */ }
+  if (["off", "all", "one"].indexOf(playMode.repeat) === -1) playMode.repeat = "off";
+  function savePlayMode() {
+    try { localStorage.setItem("cdc.playmode", JSON.stringify(playMode)); } catch (e) { /* storage unavailable */ }
+  }
+  /* The index Next goes to, or -1. `peek` only asks, without starting a new shuffle round. */
+  function nextIndex(peek) {
+    var n = player.queue.length;
+    if (!n) return -1;
+    if (playMode.shuffle) {
+      var played = player.played || [];
+      var left = [];
+      player.queue.forEach(function (e, i) { if (i !== player.index && played.indexOf(e) === -1) left.push(i); });
+      if (!left.length) {
+        if (playMode.repeat !== "all") return -1;
+        if (peek) return 0;
+        player.played = [];
+        player.queue.forEach(function (e, i) { if (i !== player.index || n === 1) left.push(i); });
+      }
+      return peek ? left[0] : left[Math.floor(Math.random() * left.length)];
+    }
+    if (player.index < n - 1) return player.index + 1;
+    return playMode.repeat === "all" ? 0 : -1;
+  }
+  function hasPrev() {
+    return audioEl.currentTime > 3 || player.index > 0 || playMode.repeat === "all" ||
+      (playMode.shuffle && !!(player.history && player.history.length));
+  }
+  /* Go to another track; the one left behind counts as played (for shuffle). */
+  function jumpTo(i, remember) {
+    var cur = currentEntry();
+    if (cur) {
+      player.played = player.played || [];
+      if (player.played.indexOf(cur) === -1) player.played.push(cur);
+      if (remember) (player.history = player.history || []).push(cur);
+    }
     player.index = i;
     loadTrack(true);
+  }
+  function stepTrack(d) {
+    if (d < 0 && audioEl.currentTime > 3) { audioEl.currentTime = 0; return; }
+    if (d > 0) {
+      var next = nextIndex(false);
+      if (next !== -1) jumpTo(next, true);
+      return;
+    }
+    if (playMode.shuffle && player.history && player.history.length) {
+      var back = player.queue.indexOf(player.history.pop());
+      if (back !== -1) jumpTo(back, false);
+      return;
+    }
+    var prev = player.index > 0 ? player.index - 1 : playMode.repeat === "all" ? player.queue.length - 1 : -1;
+    if (prev !== -1) jumpTo(prev, false);
+  }
+  function renderPlayMode() {
+    if (!playMode) return;
+    $("pl-shuffle").setAttribute("aria-pressed", playMode.shuffle ? "true" : "false");
+    var rep = $("pl-repeat");
+    rep.classList.toggle("on", playMode.repeat !== "off");
+    rep.setAttribute("aria-label", t("playerRepeat." + playMode.repeat));
+    rep.title = t("playerRepeat." + playMode.repeat);
+    $("pl-repeat-one").hidden = playMode.repeat !== "one";
+    audioEl.volume = playMode.volume;
+    audioEl.muted = playMode.muted;
+    if (document.activeElement !== $("pl-volume")) $("pl-volume").value = Math.round(playMode.volume * 100);
+    var silent = playMode.muted || playMode.volume === 0;
+    $("pl-mute").setAttribute("aria-pressed", playMode.muted ? "true" : "false");
+    $("pl-mute").setAttribute("aria-label", t(playMode.muted ? "playerUnmute" : "playerMute"));
+    showSvg($("pl-vol-waves"), !silent);
+    showSvg($("pl-vol-x"), silent);
   }
   function closePlayer() {
     audioEl.pause();
@@ -5489,6 +6732,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function renderPlayer() {
     var on = !!player.queue.length;
     $("player").hidden = !on;
+    renderPlayMode();
     document.body.classList.toggle("with-player", on);
     if (on) {
       var e = currentEntry();
@@ -5498,9 +6742,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       $("pl-disc").textContent = info.sub;
       var cover = $("pl-cover");
       cover.textContent = "";
-      if (cd.photo) {
+      if (coverSrc(cd)) {
         var img = el("img");
-        img.src = cd.photo;
+        img.src = coverSrc(cd);
         img.alt = "";
         cover.appendChild(img);
       } else {
@@ -5512,12 +6756,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       showSvg($("pl-icon-play"), !playing);
       showSvg($("pl-icon-pause"), playing);
       $("pl-play").setAttribute("aria-label", t(playing ? "playerPause" : "playerPlay"));
-      $("pl-prev").disabled = player.index === 0 && audioEl.currentTime <= 3;
-      $("pl-next").disabled = player.index >= player.queue.length - 1;
+      $("pl-next").disabled = nextIndex(true) === -1;
+      $("pl-prev").disabled = !hasPrev();
       if ("mediaSession" in navigator && window.MediaMetadata) {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: info.title, album: cd.title || "", artist: discComposer(cd) || "",
-          artwork: cd.photo ? [{ src: cd.photo, sizes: "800x800", type: "image/jpeg" }] : []
+          artwork: coverSrc(cd) ? [{ src: coverSrc(cd), sizes: "800x800", type: "image/jpeg" }] : []
         });
       }
       if (!$("pl-list").hidden) renderPlaylist();
@@ -5557,9 +6801,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   /* A small cover for list rows, with the play state over it when `state` is "▶" or "❚❚". */
   function thumb(cd, state) {
     var box = el("span", "thumb");
-    if (cd && cd.photo) {
+    if (coverSrc(cd)) {
       var img = el("img");
-      img.src = cd.photo;
+      img.src = coverSrc(cd);
       img.alt = "";
       box.appendChild(img);
     } else {
@@ -6169,7 +7413,51 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   audioEl.addEventListener("loadedmetadata", renderTime);
   ["play", "pause"].forEach(function (ev) { audioEl.addEventListener(ev, renderPlayer); });
   audioEl.addEventListener("ended", function () {
-    if (player.index < player.queue.length - 1) stepTrack(1); else renderPlayer();
+    if (playMode.repeat === "one") { audioEl.currentTime = 0; audioEl.play().catch(function () {}); return; }
+    var next = nextIndex(false);
+    if (next !== -1) jumpTo(next, true); else renderPlayer();
+  });
+  $("pl-shuffle").addEventListener("click", function () {
+    playMode.shuffle = !playMode.shuffle;
+    player.played = [];
+    player.history = [];
+    savePlayMode();
+    renderPlayer();
+  });
+  $("pl-repeat").addEventListener("click", function () {
+    playMode.repeat = { off: "all", all: "one", one: "off" }[playMode.repeat];
+    savePlayMode();
+    renderPlayer();
+  });
+  $("pl-mute").addEventListener("click", function () {
+    playMode.muted = !playMode.muted;
+    if (!playMode.muted && playMode.volume === 0) playMode.volume = 0.5;
+    savePlayMode();
+    renderPlayMode();
+  });
+  $("pl-volume").addEventListener("input", function (e) {
+    playMode.volume = e.target.value / 100;
+    if (playMode.volume > 0) playMode.muted = false;
+    renderPlayMode();
+  });
+  $("pl-volume").addEventListener("change", savePlayMode);
+  renderPlayMode();
+  /* Keyboard shortcuts while no window is open: Space plays or pauses (unless a button or field has
+     the key), Ctrl+F goes to the search, Ctrl+N adds a CD (or music, in a playlist). */
+  document.addEventListener("keydown", function (e) {
+    if (e.defaultPrevented || stack.length) return;
+    var tg = e.target;
+    var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName) || tg.isContentEditable;
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+      var k = e.key.toLowerCase();
+      if (k === "f" && !$("search").hidden) { e.preventDefault(); $("search").focus(); $("search").select(); }
+      else if (k === "n" && !$("open-add").hidden) { e.preventDefault(); $("open-add").click(); }
+      return;
+    }
+    if (e.key === " " && !typing && tg.tagName !== "BUTTON" && tg.getAttribute("role") !== "button" && player.queue.length) {
+      e.preventDefault();
+      togglePlay();
+    }
   });
   audioEl.addEventListener("error", function () {
     if (player.queue.length && audioEl.getAttribute("src")) toast(t("audioPlayError"));
@@ -6195,6 +7483,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
 
   /* ---------- CD profile window ---------- */
+  function nameLink(kind, value, label) {
+    var b = el("button", "namelink", label || value);
+    b.type = "button";
+    b.title = t("fShowAll", { name: label || value });
+    b.addEventListener("click", function () { showFiltered(kind, value); });
+    return b;
+  }
   function renderDetail() {
     var cd = null;
     for (var i = 0; i < cds.length; i++) if (cds[i].id === detailId) cd = cds[i];
@@ -6204,9 +7499,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     box.textContent = "";
 
     var cover = el("div", "profile-cover");
-    if (cd.photo) {
+    if (coverSrc(cd)) {
       var img = el("img");
-      img.src = cd.photo;
+      img.src = coverSrc(cd);
       img.alt = cd.title;
       cover.appendChild(img);
     } else {
@@ -6219,16 +7514,26 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var h = el("h2", null, cd.title);
     h.id = "detail-h";
     main.appendChild(h);
-    var shownComposer = discComposer(cd);
-    if (shownComposer) main.appendChild(el("p", "composer", shownComposer));
+    /* Composer, performer and label names show every CD with that name when clicked. */
+    var comps = cd.composer ? [cd.composer] : cdComposers(cd);
+    if (comps.length) {
+      var cline = el("p", "composer");
+      comps.forEach(function (c, i) {
+        if (i) cline.appendChild(document.createTextNode(" / "));
+        cline.appendChild(nameLink("composer", c));
+      });
+      main.appendChild(cline);
+    }
 
     var dl = el("dl", "facts");
     function fact(label, value) {
       if (!value) return;
       dl.appendChild(el("dt", null, label));
-      dl.appendChild(el("dd", null, value));
+      var dd = el("dd");
+      dd.appendChild(typeof value === "string" ? document.createTextNode(value) : value);
+      dl.appendChild(dd);
     }
-    (cd.performers || []).forEach(function (p) { fact(t("role." + p.role), p.name); });
+    (cd.performers || []).forEach(function (p) { if (p.name) fact(t("role." + p.role), nameLink("performer", p.name)); });
 
     var pk = favPicker(detailFav, "detail-fav",
       function (id) { var a = findAlbum(id); return !!a && a.cdIds.indexOf(cd.id) !== -1; },
@@ -6263,7 +7568,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       cd.works.forEach(function (w) {
         var wbox = el("div", "pwork");
         if (w.title) wbox.appendChild(el("p", "pwork-title", w.title));
-        if (w.composer && w.composer !== cd.composer) wbox.appendChild(el("p", "composer", w.composer));
+        if (w.composer && w.composer !== cd.composer) {
+          var wc = el("p", "composer");
+          wc.appendChild(nameLink("composer", w.composer));
+          wbox.appendChild(wc);
+        }
         if (w.tracks && w.tracks.length) {
           var ol = el("ol", "ptracks");
           w.tracks.forEach(function (tr) {
@@ -6293,6 +7602,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
      ["notes", cd.notes]].forEach(function (pair) {
       if (!pair[1]) return;
       spec.appendChild(el("dt", null, t(pair[0])));
+      if (pair[0] === "label") {
+        var ld = el("dd");
+        ld.appendChild(nameLink("label", pair[1]));
+        spec.appendChild(ld);
+        return;
+      }
       spec.appendChild(el("dd", pair[0] === "notes" ? "pnotes" : null, pair[1]));
     });
     if (spec.children.length) {
@@ -6310,13 +7625,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       yes.addEventListener("click", async function () {
         yes.disabled = true;
         try {
-          await backend.remove(cd.id);
-          purgeFromAlbums(cd.id);
-          dropEntries(function (e) { return e.cdId === cd.id; });
-          prunePlaylists(function (x) { return x.cdId === cd.id; });
-          if (AudioLib.ready) AudioLib.call("remove_cd_audio", { cdId: cd.id }).catch(function () {});
+          await removeCds([cd]);
           closeWin("detail");
-          toast(t("toastRemoved", { title: cd.title }));
         } catch (e) {
           yes.disabled = false;
           toast(t("toastRemoveFail"));
@@ -6360,6 +7670,26 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (pl) openAddMusic(pl.id); else openAdd();
   });
 
+  /* Another CD with the same barcode (digits only) or catalogue number (ignoring spaces, dashes
+     and case), if there is one. */
+  var dupWarned = "";
+  function sameDisc(cd) {
+    var bar = function (v) { return String(v || "").replace(/\D/g, ""); };
+    var cat = function (v) { return String(v || "").replace(/[\s\-–./]/g, "").toLowerCase(); };
+    var b = bar(cd.barcode), c = cat(cd.catalogNo);
+    if (b.length < 8 && c.length < 3) return null;
+    return cds.filter(function (x) {
+      return (b.length >= 8 && bar(x.barcode) === b) || (c.length >= 3 && cat(x.catalogNo) === c);
+    })[0] || null;
+  }
+  ["barcode", "catalogNo"].forEach(function (f) {
+    $(f).addEventListener("input", function () {
+      if ($("dup-warn").hidden) return;
+      dupWarned = "";
+      $("dup-warn").hidden = true;
+      applyMode();
+    });
+  });
   $("cd-form").addEventListener("submit", async function (e) {
     e.preventDefault();
     var title = $("title").value.trim();
@@ -6403,6 +7733,18 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     DETAIL_FIELDS.forEach(function (f) { var v = $(f).value.trim(); if (v) cd[f] = v; });
     var notes = $("notes").value.trim();
     if (notes) cd.notes = notes;
+    /* Adding a disc whose barcode or catalogue number is already in the collection: say which CD
+       has it, and add it only when the button is pressed again. */
+    var twin = editingId ? null : sameDisc(cd);
+    var twinKey = twin ? [twin.id, cd.barcode, cd.catalogNo].join("|") : "";
+    if (twin && dupWarned !== twinKey) {
+      dupWarned = twinKey;
+      $("dup-warn").textContent = t("dupWarn", { title: twin.title });
+      $("dup-warn").hidden = false;
+      $("submit").textContent = t("addAnyway");
+      $("submit").focus();
+      return;
+    }
     if (Array.isArray(formCard.own)) cd.cardFields = formCard.own.slice();
     /* The form has no audio list; editing keeps the CD's audio as it is. */
     if (editingId) {
@@ -6410,7 +7752,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       if (before && before.audio && before.audio.length) cd.audio = before.audio;
     }
     var cover = coverForSaving();
-    if (cover) cd.photo = cover;
+    /* An untouched cover that is already a file stays that file (no need to write it again). */
+    if (editingId && editCover.file && !editCover.touched && (!cover || !coverCrop.changed)) cd.photoFile = editCover.file;
+    else if (cover) cd.photo = cover;
     var chosenAlbums = readChecked();
 
     var wasEditing = !!editingId;

@@ -10,17 +10,22 @@ CDC is an app for cataloguing the CDs a person owns. It started as a single-page
   - **Storage layer:** `Store` has `load()` and `save(doc)`. In Tauri it calls the Rust commands, and otherwise a `/api/data` HTTP endpoint. All persistence goes through it, and future online sync should be another `Store`, not changes elsewhere.
   - The page also still runs as a claude.ai artifact, using `window.claude.use("db")` and related calls. That path is only used when `window.claude` exists.
 - `src-tauri/src/lib.rs`: the `load_data` and `save_data` commands.
-  - The collection is saved to `<app data dir>/collection.json`, with a backup kept as `collection.backup.json`.
+  - The collection is saved to `<app data dir>/collection.json`, with a backup kept as `collection.backup.json` (before the last save).
+  - The day's first save also copies the old file to `backups/collection-YYYY-MM-DD.json` (UTC date; the newest 14 are kept). `list_backups` / `read_backup` serve Settings → "Go back to a backup".
+  - Covers are files in `covers/` named after their content (`<fnv64>-<bytes>.jpg|png|webp`): `save_cover` (data URL → name), `cover_data` (name → data URL), `covers_root_dir`, `tidy_covers` (on start, deletes files no collection or backup mentions; does nothing if collection.json can't be read).
+  - `open_releases` opens the fixed GitHub releases page in the browser.
   - Saves are atomic: the file is written to a temporary file first, then renamed.
   - On first run, data from the old trial is migrated from `%APPDATA%\CDC\collection.json`.
 - `src-tauri/tauri.conf.json`: the identifier is `com.cdc.collection`. The main window has `dragDropEnabled: false`: Tauri's own file-drop handling on Windows otherwise blocks dragging inside the page (cards and rows showed a "no" cursor). The installers are NSIS (current user, with English, Simplified Chinese and Japanese) and MSI.
-- `.github/workflows/build-windows.yml`: builds on `windows-latest` with `tauri-apps/tauri-action`. A manual run uploads the installers as artifacts; a `v*` tag also creates a draft release.
+- `.github/workflows/build-windows.yml`: builds on `windows-latest` with `tauri-apps/tauri-action`. A manual run uploads the installers as artifacts; a `v*` tag also creates a draft release. It writes `src/build.js` (`window.CDC_BUILD = { run, commit, date }`, git-ignored) so Settings → About shows the build number.
+- Version: 0.2.0 in `tauri.conf.json`, `Cargo.toml` and `package.json` (keep all three equal). "Check for a new version" compares with the newest *published* GitHub release (`api.github.com/.../releases/latest`); real auto-update (tauri-plugin-updater) would need a signing key pair stored as a GitHub secret by the owner.
 
 ## Data shape
 
 ```
 { cds: [ { id, title, composer, performers: [{ role, name }], label, issuer,
-           recordingYear, releaseYear, photo (JPEG data URL, at most ~170 KB), addedAt, updatedAt (desktop, for sync),
+           recordingYear, releaseYear, photo (JPEG data URL, at most ~170 KB) or, in the desktop file, photoFile (a file in covers/),
+           addedAt, updatedAt (desktop, for sync),
            works: [ { title, composer, tracks: [ { title, duration ("m:ss" or "h:mm:ss") } ] } ],
            catalogNo (catalogue or matrix number), barcode, manufacturer, madeIn, recordingVenue,
            spars ("DDD" | "ADD" | "AAD"), ifpiMastering, ifpiMould, notes,
@@ -55,6 +60,17 @@ Internally, favorites are still called `albums`, in code, ids and translation ke
 - Composer sort uses the surname: the last word, or the text before a comma.
 - Sort options: Custom order (default), Recently added, Composer A–Z, Title A–Z (release year was removed by the owner). Saved per computer in localStorage `cdc.sort`. Only in Custom order, and not while searching, can cards be dragged (or moved with Alt + arrow keys) in All CDs, a favorite and All music (`moveCard`, `orderOf`; the grid gets class `arranging`). CDs not placed yet come first, newest first.
 - Dragging rows (`dragRows`, `rowBlock`) works in playlist views and the play queue (`moveQueue` keeps the current track current), with the same rules as the ↑/↓ buttons: discs and lone tracks move past whole rows, an unfolded disc's tracks only within it.
+- Shelf tools (all from the owner's 16-item round, 2026-10-26/27):
+  - Windows and popovers open with a short animation (`ov-in`/`panel-in`/`pop-in`, off for reduced motion); there is no closing animation.
+  - `renderGrid()` wraps `drawGrid()` and gives keyboard focus back to the same id after redrawing.
+  - Filters (`filters`, `renderFilters`): composer (disc's or a work's), performer, label, decade (release year, else recording year). Not saved. Names in the CD profile and in Statistics are `nameLink`s → `showFiltered`. Dragging is off while a search or filter is active.
+  - View switch: cards or a list table (`viewMode`, localStorage `cdc.view`, `listTable`/`listRow`); list rows drag like cards.
+  - "Select" (`selecting`, `selected`, `#selbar`): tick CDs, then add them to a favorite (or a new one, seeded via `openAlbumDlg(..., "favorite", ids)`), or remove them.
+  - Removing CDs (`removeCds`) offers Undo in the toast for `UNDO_MS` (desktop `backend.restore`; favorites, playlists and custom orders are put back; audio copies are deleted only after Undo expires).
+  - Adding a CD whose barcode or catalogue number is already in the collection warns once (`sameDisc`, `#dup-warn`); the button becomes "Add anyway".
+  - Favorites and playlists in the left column can be dragged or moved with Alt + ↑/↓ (`moveChip`).
+  - Statistics window (`win-stats`, `renderStats`): tiles (CDs, works, tracks, total time, favorites, CDs with audio) and bars for top composers, labels, release decades and CDs added per year.
+  - Settings → Your data: "Import a CDC file (JSON)" (add to the collection or replace it; `backend.importDoc`, `mergeLists`) and "Go back to a backup" (replaces the collection). Export now includes playlists, orders and cover pictures. Settings → About CDC: version, build, update check.
 - A disc holds works, each with its own tracks; track numbers run on across the whole disc, as printed on back covers. A work's composer is optional; when the disc has no composer, cards show the works' composers.
 - The form's fold-out "Disc details" section holds label, issuing corporation, both years, one "Catalogue / matrix number" field, manufacturer, country, venue, SPARS, barcode and IFPI codes. The profile shows them under the same heading.
 - "Notes" is free text and is the last field of "Disc details", in the form and in the profile. It is written only in the edit form (no separate edit button in the profile).
@@ -89,6 +105,9 @@ Internally, favorites are still called `albums`, in code, ids and translation ke
 - Left column (owner chose "scheme A"): a **Library** section (All CDs, Favorites = groups of discs) and, in the desktop app, a **Music** section: "♪ All music" (`currentAlbum === "music"`, the CDs with audio here; clicking a card plays it; at the bottom right of each cover, an ⓘ button opens the CD profile and a playlist button opens the playlist menu) and **Playlists** (`currentAlbum === "pl:<id>"`, foldable like Favorites). Favorites and playlists are kept separate on purpose.
 - Saved playlists (`meta.playlists`, synced with favorites; merged on a computer's first sync): named lists of tracks across CDs. The playlist view (`playlistView`) replaces the grid: ▶ Play (replaces the queue with its tracks that have audio here), ▶ per track to start there, ↑/↓ to reorder, × to remove. Tracks come from "Save as playlist" (the queue), "+ Playlist" on a track in a CD's Audio section, "+ Add music" (bottom right in a playlist view; window `win-addmusic`, `renderAddMusic`: All music's discs with a search, each foldable to its tracks, with a round +/✓ button per disc and per track that appends to the playlist or takes out again), or the playlist button on each card in All music (a floating menu, `cardPl`: a ticked playlist already holds all the disc's tracks and clicking it takes them out; otherwise clicking adds the missing ones; or "+ New playlist with this disc").
 - Disc rows (owner's request): in the play queue and in a playlist view, neighbouring tracks from the same CD (`discRuns`) show as one disc row with its cover, a fold button that unfolds its tracks (`openRuns`, not saved), and × to remove the whole disc; unfolded tracks each have their own ×. A lone track stays a plain row. In a playlist, ↑/↓ on a disc or lone track moves it past whole rows; an unfolded disc's tracks move only within it. Clicking the disc that is playing pauses/resumes; another disc plays from its first track. New/rename/delete use the favorites window with kind "playlist". Removing a CD or audio file prunes it from playlists.
+- Player extras: shuffle (plays each queue entry once per round, Previous walks back through `player.history`), repeat off/all/one, mute and volume (hidden under 640 px), saved in localStorage `cdc.playmode`. Shortcuts with no window open: Space play/pause, Ctrl+F search, Ctrl+N add a CD (or music).
+- Track lengths: a track with no length takes its audio file's length (`fillDurations`, once per CD per session, and after files are added or moved).
+- Covers in the desktop app (`Covers`, `coverSrc`, `withCoverData`): shown from `covers/` through the asset protocol (scope `$APPDATA/covers/**`); new covers stay data URLs until `storeCovers` writes them on save (updatedAt unchanged). Older files are converted on start. Sync pushes and exports carry the picture itself. Editing a CD whose cover is a file loads it back with `cover_data` for the cropper; an untouched cover keeps its file (`editCover`).
 - Editing a CD keeps `audio`; removing a CD (here, or on another computer via sync) deletes its copies and takes it off the playlist.
 
 ## Roadmap

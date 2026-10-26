@@ -4,3 +4,4 @@ src-tauri/gen/
 .DS_Store
 .claude/settings.local.json
 installers/
+src/build.js

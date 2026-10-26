@@ -1,6 +1,6 @@
 [package]
 name = "cdc"
-version = "0.1.0"
+version = "0.2.0"
 description = "CDC: catalogue the CDs on your shelf"
 edition = "2021"
 
@@ -21,6 +21,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Downloads cover pictures that the page itself is not allowed to load (see fetch_cover in lib.rs).
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+# Cover pictures travel between the page and the covers folder as base64 data URLs.
+base64 = "0.22"
 
 [profile.release]
 codegen-units = 1

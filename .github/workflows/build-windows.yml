@@ -30,6 +30,12 @@ jobs:
       - name: Install Tauri CLI
         run: npm install
 
+      # Settings shows which build this is (src/build.js is not in the repository).
+      - name: Record the build number
+        shell: bash
+        run: |
+          echo "window.CDC_BUILD = { run: ${GITHUB_RUN_NUMBER}, commit: \"${GITHUB_SHA::7}\", date: \"$(date -u +%Y-%m-%d)\" };" > src/build.js
+
       - name: Build installer
         uses: tauri-apps/tauri-action@v0
         env:

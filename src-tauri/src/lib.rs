@@ -5,13 +5,22 @@
 
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
+use base64::Engine;
 use serde_json::{json, Value};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::DialogExt;
 
 const DATA_FILE: &str = "collection.json";
+/// The collection as it was before the last save.
 const BACKUP_FILE: &str = "collection.backup.json";
+/// One copy a day, "backups/collection-YYYY-MM-DD.json": the collection as it was before that
+/// day's first change. The newest DAILY_BACKUPS are kept.
+const BACKUPS_DIR: &str = "backups";
+const DAILY_BACKUPS: usize = 14;
+/// Cover pictures: <app data dir>/covers/<hash>-<size>.<jpg|png|webp>, named after their content.
+const COVERS_DIR: &str = "covers";
 /// Audio library: <app data dir>/audio/<CD id>/<file>.
 const AUDIO_DIR: &str = "audio";
 /// Formats the app's web view can play.
@@ -80,12 +89,253 @@ async fn save_data(app: AppHandle, data: Value) -> Result<(), String> {
     let path = dir.join(DATA_FILE);
     if path.is_file() {
         let _ = fs::copy(&path, dir.join(BACKUP_FILE));
+        daily_backup(&dir, &path);
     }
     let text = serde_json::to_string(&data).map_err(|e| e.to_string())?;
     let tmp = dir.join("collection.json.tmp");
     fs::write(&tmp, text).map_err(|e| format!("Could not save: {e}"))?;
     fs::rename(&tmp, &path).map_err(|e| format!("Could not save: {e}"))?;
     Ok(())
+}
+
+/// Year, month and day of a count of days since 1970-01-01 (Howard Hinnant's civil_from_days).
+fn civil_from_days(days: i64) -> (i64, u32, u32) {
+    let z = days + 719_468;
+    let era = (if z >= 0 { z } else { z - 146_096 }) / 146_097;
+    let doe = (z - era * 146_097) as u64;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let month = (if mp < 10 { mp + 3 } else { mp - 9 }) as u32;
+    let year = yoe as i64 + era * 400 + if month <= 2 { 1 } else { 0 };
+    (year, month, day)
+}
+
+/// "YYYY-MM-DD" (UTC) of a moment.
+fn date_of(t: SystemTime) -> String {
+    let secs = t.duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0) as i64;
+    let (y, m, d) = civil_from_days(secs.div_euclid(86_400));
+    format!("{y:04}-{m:02}-{d:02}")
+}
+
+/// The day's first save copies the collection as it was into backups/, and old copies are dropped.
+fn daily_backup(dir: &Path, current: &Path) {
+    let folder = dir.join(BACKUPS_DIR);
+    if fs::create_dir_all(&folder).is_err() {
+        return;
+    }
+    let today = folder.join(format!("collection-{}.json", date_of(SystemTime::now())));
+    if !today.exists() {
+        let _ = fs::copy(current, &today);
+    }
+    let mut names: Vec<String> = fs::read_dir(&folder)
+        .map(|entries| {
+            entries
+                .flatten()
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .filter(|n| is_daily_backup_name(n))
+                .collect()
+        })
+        .unwrap_or_default();
+    names.sort();
+    names.reverse();
+    for old in names.iter().skip(DAILY_BACKUPS) {
+        let _ = fs::remove_file(folder.join(old));
+    }
+}
+
+/// "collection-YYYY-MM-DD.json"
+fn is_daily_backup_name(name: &str) -> bool {
+    name.len() == 26
+        && name.starts_with("collection-")
+        && name.ends_with(".json")
+        && name[11..21].chars().all(|c| c.is_ascii_digit() || c == '-')
+}
+
+/// A backup the person can go back to.
+#[derive(serde::Serialize)]
+struct BackupInfo {
+    /// File name, to ask read_backup for it.
+    name: String,
+    /// "YYYY-MM-DD" (UTC).
+    date: String,
+    /// "daily" (as it was before that day's first change) or "previous" (before the last change).
+    kind: &'static str,
+    cds: usize,
+}
+
+fn count_cds(path: &Path) -> Option<usize> {
+    let text = fs::read_to_string(path).ok()?;
+    let doc: Value = serde_json::from_str(&text).ok()?;
+    Some(doc.get("cds")?.as_array()?.len())
+}
+
+/// The backups on this computer, newest first.
+#[tauri::command]
+async fn list_backups(app: AppHandle) -> Result<Vec<BackupInfo>, String> {
+    let dir = data_dir(&app)?;
+    let mut out = Vec::new();
+    let previous = dir.join(BACKUP_FILE);
+    if let (Some(cds), Ok(meta)) = (count_cds(&previous), fs::metadata(&previous)) {
+        let date = meta.modified().map(date_of).unwrap_or_default();
+        out.push(BackupInfo { name: BACKUP_FILE.into(), date, kind: "previous", cds });
+    }
+    let mut daily: Vec<BackupInfo> = fs::read_dir(dir.join(BACKUPS_DIR))
+        .map(|entries| {
+            entries
+                .flatten()
+                .filter_map(|e| {
+                    let name = e.file_name().to_string_lossy().into_owned();
+                    if !is_daily_backup_name(&name) {
+                        return None;
+                    }
+                    let cds = count_cds(&e.path())?;
+                    Some(BackupInfo { date: name[11..21].to_string(), name, kind: "daily", cds })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    daily.sort_by(|a, b| b.name.cmp(&a.name));
+    out.extend(daily);
+    Ok(out)
+}
+
+/// One backup's contents, by a name list_backups gave.
+#[tauri::command]
+async fn read_backup(app: AppHandle, name: String) -> Result<Value, String> {
+    let dir = data_dir(&app)?;
+    let path = if name == BACKUP_FILE {
+        dir.join(BACKUP_FILE)
+    } else if is_daily_backup_name(&name) {
+        dir.join(BACKUPS_DIR).join(&name)
+    } else {
+        return Err("That is not a backup.".into());
+    };
+    let text = fs::read_to_string(&path).map_err(|e| format!("Could not read the backup: {e}"))?;
+    serde_json::from_str(&text).map_err(|_| "The backup could not be read.".to_string())
+}
+
+fn covers_root(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = data_dir(app)?.join(COVERS_DIR);
+    fs::create_dir_all(&dir).map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
+    Ok(dir)
+}
+
+/// Cover file names are made by save_cover; anything else is refused.
+fn cover_path(app: &AppHandle, file: &str) -> Result<PathBuf, String> {
+    let ok = !file.is_empty()
+        && file.len() <= 64
+        && file.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.')
+        && !file.contains("..")
+        && (file.ends_with(".jpg") || file.ends_with(".png") || file.ends_with(".webp"));
+    if !ok {
+        return Err("That is not a cover file.".into());
+    }
+    Ok(covers_root(app)?.join(file))
+}
+
+/// 64-bit FNV-1a, for naming cover files after their content.
+fn fnv1a(bytes: &[u8]) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in bytes {
+        h ^= *b as u64;
+        h = h.wrapping_mul(0x0100_0000_01b3);
+    }
+    h
+}
+
+/// The covers folder, so the page can show cover files through the asset protocol.
+#[tauri::command]
+async fn covers_root_dir(app: AppHandle) -> Result<String, String> {
+    Ok(covers_root(&app)?.to_string_lossy().into_owned())
+}
+
+/// Keep a cover picture (a data URL from the page) as a file and return its name. The same picture
+/// always gets the same name, so saving it again writes nothing.
+#[tauri::command]
+async fn save_cover(app: AppHandle, data: String) -> Result<String, String> {
+    let (head, body) = data.split_once(',').ok_or("That is not a picture.")?;
+    let ext = match head {
+        "data:image/jpeg;base64" | "data:image/jpg;base64" => "jpg",
+        "data:image/png;base64" => "png",
+        "data:image/webp;base64" => "webp",
+        _ => return Err("That is not a picture.".into()),
+    };
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(body.trim())
+        .map_err(|_| "That is not a picture.".to_string())?;
+    if bytes.is_empty() || bytes.len() as u64 > MAX_COVER_BYTES {
+        return Err("The picture is too large.".into());
+    }
+    let name = format!("{:016x}-{}.{ext}", fnv1a(&bytes), bytes.len());
+    let path = cover_path(&app, &name)?;
+    if !path.is_file() {
+        let tmp = path.with_extension("tmp");
+        fs::write(&tmp, &bytes).map_err(|e| format!("Could not save the cover: {e}"))?;
+        fs::rename(&tmp, &path).map_err(|e| format!("Could not save the cover: {e}"))?;
+    }
+    Ok(name)
+}
+
+/// A cover file as a data URL (for sync, exports and the cover cropper).
+#[tauri::command]
+async fn cover_data(app: AppHandle, file: String) -> Result<String, String> {
+    let path = cover_path(&app, &file)?;
+    let bytes = fs::read(&path).map_err(|e| format!("Could not read the cover: {e}"))?;
+    let mime = if file.ends_with(".png") {
+        "image/png"
+    } else if file.ends_with(".webp") {
+        "image/webp"
+    } else {
+        "image/jpeg"
+    };
+    Ok(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes)))
+}
+
+/// Delete cover files that neither the collection nor any backup mentions. Does nothing unless the
+/// collection itself can be read. Returns how many were deleted.
+#[tauri::command]
+async fn tidy_covers(app: AppHandle) -> Result<u32, String> {
+    let dir = data_dir(&app)?;
+    let Ok(main) = fs::read_to_string(dir.join(DATA_FILE)) else { return Ok(0) };
+    if serde_json::from_str::<Value>(&main).is_err() {
+        return Ok(0);
+    }
+    let mut texts = vec![main];
+    if let Ok(t) = fs::read_to_string(dir.join(BACKUP_FILE)) {
+        texts.push(t);
+    }
+    if let Ok(entries) = fs::read_dir(dir.join(BACKUPS_DIR)) {
+        for e in entries.flatten() {
+            if let Ok(t) = fs::read_to_string(e.path()) {
+                texts.push(t);
+            }
+        }
+    }
+    let mut removed = 0;
+    if let Ok(entries) = fs::read_dir(covers_root(&app)?) {
+        for e in entries.flatten() {
+            let name = e.file_name().to_string_lossy().into_owned();
+            if !texts.iter().any(|t| t.contains(&name)) && fs::remove_file(e.path()).is_ok() {
+                removed += 1;
+            }
+        }
+    }
+    Ok(removed)
+}
+
+/// Open CDC's download page on GitHub in the default browser. Only this fixed address is opened.
+#[tauri::command]
+async fn open_releases() -> Result<(), String> {
+    let url = "https://github.com/Yuritnos/CDC/releases";
+    #[cfg(target_os = "windows")]
+    let result = std::process::Command::new("rundll32").args(["url.dll,FileProtocolHandler", url]).spawn();
+    #[cfg(target_os = "macos")]
+    let result = std::process::Command::new("open").arg(url).spawn();
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let result = std::process::Command::new("xdg-open").arg(url).spawn();
+    result.map(|_| ()).map_err(|e| format!("Could not open the page: {e}"))
 }
 
 /// Largest cover picture fetch_cover will download.
@@ -267,7 +517,14 @@ pub fn run() {
             add_audio,
             audio_present,
             remove_audio,
-            remove_cd_audio
+            remove_cd_audio,
+            list_backups,
+            read_backup,
+            covers_root_dir,
+            save_cover,
+            cover_data,
+            tidy_covers,
+            open_releases
         ])
         .run(tauri::generate_context!())
         .expect("error while running CDC");
