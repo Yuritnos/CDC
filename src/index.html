@@ -4116,7 +4116,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function renderFilters(base) {
     var n = filterCount();
     $("filter-btn").setAttribute("aria-expanded", filterOpen ? "true" : "false");
-    $("filter-btn").classList.toggle("on", n > 0);
+    $("filter-btn").classList.toggle("on", filterOpen || n > 0);
     $("filter-count").textContent = n ? " · " + n : "";
     $("filters").hidden = !filterOpen;
     if (!filterOpen) return;
