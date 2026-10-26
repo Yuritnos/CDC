@@ -611,7 +611,8 @@ details.more[open] > summary { margin-bottom: 14px; }
 }
 .card.sample { border-style: dashed; background: transparent; }
 /* Custom order: cards are dragged, with a bar showing where the card will go */
-#filter-btn.on, #select-btn[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+#filter-btn[aria-pressed="true"], #select-btn[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+#sort:focus:not(:focus-visible) { outline: none; }
 .viewsw { display: flex; }
 .viewsw[hidden] { display: none; }
 .viewsw .iconbtn { width: 36px; height: 34px; display: grid; place-items: center; padding: 0; }
@@ -4116,7 +4117,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function renderFilters(base) {
     var n = filterCount();
     $("filter-btn").setAttribute("aria-expanded", filterOpen ? "true" : "false");
-    $("filter-btn").classList.toggle("on", filterOpen || n > 0);
+    $("filter-btn").setAttribute("aria-pressed", filterOpen || n > 0 ? "true" : "false");
     $("filter-count").textContent = n ? " · " + n : "";
     $("filters").hidden = !filterOpen;
     if (!filterOpen) return;
@@ -5268,6 +5269,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     sortKey = e.target.value;
     try { localStorage.setItem("cdc.sort", sortKey); } catch (err) { /* storage unavailable */ }
     renderGrid();
+  });
+  $("sort").addEventListener("dblclick", function (e) {
+    if (e.detail > 1) e.currentTarget.blur();
   });
 
   /* ---------- settings window ---------- */
