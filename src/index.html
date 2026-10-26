@@ -215,16 +215,18 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .overlay.is-closing { animation: ov-out 0.16s ease-in forwards; }
 .overlay.is-closing > .panel { animation: panel-out 0.16s ease-in forwards; }
 .acct-pop:not([hidden]), .pl-list:not([hidden]), .cardpl-menu:not([hidden]) { animation: pop-in 0.16s ease-out; }
-.favgroup:not([hidden]), .filters:not([hidden]), .selbar:not([hidden]), .fpick-list:not([hidden]), .pl-items li.sub,
-.custom-select-menu:not([hidden]) { animation: unfold-in 0.16s ease-out; }
+.pl-items li.sub { animation: unfold-in 0.16s ease-out; }
+.is-unfolding { animation: unfold-in 0.16s ease-out; }
 .is-folding { animation: unfold-out 0.14s ease-in forwards !important; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
   .overlay:not([hidden]), .overlay:not([hidden]) > .panel,
   .overlay.is-closing, .overlay.is-closing > .panel,
   .acct-pop:not([hidden]), .pl-list:not([hidden]), .cardpl-menu:not([hidden]),
-  .favgroup:not([hidden]), .filters:not([hidden]), .selbar:not([hidden]), .fpick-list:not([hidden]), .pl-items li.sub,
-  .custom-select-menu:not([hidden]), .is-folding { animation: none !important; }
+  .pl-items li.sub, .is-unfolding, .is-folding { animation: none !important; }
 }
+@keyframes fav-button-tap { 0% { transform: none; } 45% { transform: translateY(1px) scale(.96); } 100% { transform: none; } }
+.fav-add.is-tapping { animation: fav-button-tap 0.18s ease-out; }
+@media (prefers-reduced-motion: reduce) { .fav-add.is-tapping { animation: none; } }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .panel h2 {
   margin: 0;
@@ -617,7 +619,6 @@ details.more[open] > summary { margin-bottom: 14px; }
 .custom-select-option { display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: 2px; background: transparent; color: var(--ink); text-align: left; font: inherit; cursor: pointer; }
 .custom-select-option:hover, .custom-select-option:focus-visible { background: var(--accent-soft); outline: none; }
 .custom-select-option[aria-selected="true"] { color: var(--accent); }
-.custom-select-menu.is-folding { animation: unfold-out 0.14s ease-in forwards !important; }
 /* Card width comes from the Card size slider in Settings; small cards get tighter type. */
 /* Cards are exactly --card-w wide (never wider than the shelf), so the slider resizes them smoothly
    instead of only when the number of columns changes. Spacing and type scale with the width. */
@@ -1643,7 +1644,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   /* ---------- text in three languages ---------- */
   var I18N = {
     en: {
-      tagline: "Catalogue the discs on your shelf.", trial: "Trial version", langLabel: "Language",
+      tagline: "A home for your CD collection.", trial: "Trial version", langLabel: "Language",
       settings: "Settings", collection: "Your collection", albumsBar: "Favorites",
       add: "Add a CD", edit: "Edit CD", close: "Close", cover: "Cover", coverAdded: "Cover added",
       coverHint: "Drop an image here or choose one. A front cover or the disc itself both work.",
@@ -1852,7 +1853,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       notes: "Notes", notesPh: "Anything you want to remember about this disc"
     },
     ja: {
-      tagline: "棚のCDをカタログにしましょう。", trial: "試用版", langLabel: "言語",
+      tagline: "CDコレクションのための場所。", trial: "試用版", langLabel: "言語",
       settings: "設定", collection: "コレクション", albumsBar: "お気に入り",
       add: "CDを追加", edit: "CDを編集", close: "閉じる", cover: "カバー", coverAdded: "カバーを追加しました",
       coverHint: "画像をここにドロップするか、ファイルを選んでください。ジャケットでもディスクの写真でも構いません。",
@@ -2061,7 +2062,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       notes: "メモ", notesPh: "このディスクについて自由に書き留めてください"
     },
     zh: {
-      tagline: "为架上的每一张CD建立目录。", trial: "试用版", langLabel: "语言",
+      tagline: "为你的CD收藏打造一个专属空间。", trial: "试用版", langLabel: "语言",
       settings: "设置", collection: "你的CD", albumsBar: "收藏夹",
       add: "添加CD", edit: "编辑CD", close: "关闭", cover: "封面", coverAdded: "封面已添加",
       coverHint: "将图片拖到此处，或选择文件。封面或光盘照片均可。",
@@ -2372,8 +2373,15 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (!node) return;
     clearTimeout(node._foldTimer);
     if (open) {
+      var wasHidden = node.hidden || node.classList.contains("is-folding");
       node.hidden = false;
       node.classList.remove("is-folding");
+      if (wasHidden && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+        node.classList.remove("is-unfolding");
+        void node.offsetWidth;
+        node.classList.add("is-unfolding");
+        node._unfoldTimer = setTimeout(function () { node.classList.remove("is-unfolding"); }, FOLD_ANIM_MS + 30);
+      }
     } else if (!node.hidden) {
       if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         node.hidden = true;
@@ -5809,7 +5817,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
      Returns the button, the tags for the favorites already chosen, and the list to show below. */
   function newFavoriteId() { return "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
   function favPicker(state, idBase, isOn, onToggle, onCreate) {
-    var btn = el("button", "btn small quiet", t("addToFavorites"));
+    var btn = el("button", "btn small quiet" + (idBase === "detail-fav" ? " fav-add" : ""), t("addToFavorites"));
     btn.type = "button";
     btn.id = idBase + "-toggle";
     btn.setAttribute("aria-expanded", state.open ? "true" : "false");
@@ -5862,8 +5870,14 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     list.appendChild(make);
     btn.addEventListener("click", function () {
       state.open = !state.open;
-      list.hidden = !state.open;
+      setFoldVisibility(list, state.open);
       btn.setAttribute("aria-expanded", state.open ? "true" : "false");
+      if (btn.classList.contains("fav-add")) {
+        btn.classList.remove("is-tapping");
+        void btn.offsetWidth;
+        btn.classList.add("is-tapping");
+        setTimeout(function () { btn.classList.remove("is-tapping"); }, 190);
+      }
       if (state.open) inp.focus({ preventScroll: true });
     });
     return { btn: btn, chips: chips, list: list };
