@@ -205,13 +205,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
    menus get a shorter version of the same. */
 @keyframes ov-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes panel-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes ov-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes panel-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(6px) scale(0.985); } }
 @keyframes pop-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes unfold-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .overlay:not([hidden]) { animation: ov-in 0.16s ease-out; }
 .overlay:not([hidden]) > .panel { animation: panel-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.overlay.is-closing { animation: ov-out 0.16s ease-in forwards; }
+.overlay.is-closing > .panel { animation: panel-out 0.16s ease-in forwards; }
 .acct-pop:not([hidden]), .pl-list:not([hidden]), .cardpl-menu:not([hidden]) { animation: pop-in 0.16s ease-out; }
+.favgroup:not([hidden]), .filters:not([hidden]), .selbar:not([hidden]), .fpick-list:not([hidden]), .pl-items li.sub { animation: unfold-in 0.16s ease-out; }
 @media (prefers-reduced-motion: reduce) {
   .overlay:not([hidden]), .overlay:not([hidden]) > .panel,
-  .acct-pop:not([hidden]), .pl-list:not([hidden]), .cardpl-menu:not([hidden]) { animation: none; }
+  .overlay.is-closing, .overlay.is-closing > .panel,
+  .acct-pop:not([hidden]), .pl-list:not([hidden]), .cardpl-menu:not([hidden]),
+  .favgroup:not([hidden]), .filters:not([hidden]), .selbar:not([hidden]), .fpick-list:not([hidden]), .pl-items li.sub { animation: none; }
 }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .panel h2 {
@@ -624,6 +632,7 @@ details.more[open] > summary { margin-bottom: 14px; }
 .selbar strong { font-size: 14px; margin-right: auto; }
 .selbar select.input { width: auto; height: 34px; font-size: 14px; }
 .selbar .linkbtn { padding: 0; font-size: 13.5px; }
+#sel-all { transform: translateY(2px); }
 .sel-ask { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .sel-ask[hidden] { display: none; }
 .danger-text { color: var(--danger); }
@@ -643,7 +652,6 @@ details.more[open] > summary { margin-bottom: 14px; }
 .lrow.dragging { opacity: 0.4; }
 .lrow.drop-before td { box-shadow: inset 0 3px 0 var(--accent); }
 .lrow.drop-after td { box-shadow: inset 0 -3px 0 var(--accent); }
-.grid.arranging .lrow { cursor: grab; }
 .lcover { width: 34px; position: relative; }
 .lcover .selmark { position: static; }
 .ltitle strong { font-weight: 600; }
@@ -659,7 +667,6 @@ details.more[open] > summary { margin-bottom: 14px; }
 .namelink:hover { color: var(--accent); text-decoration-color: currentColor; }
 .drag-hint { font-size: 12.5px; color: var(--muted); flex-basis: 100%; margin-top: -8px; }
 .drag-hint[hidden] { display: none; }
-.grid.arranging .card { cursor: grab; }
 .card.dragging { opacity: 0.4; }
 .card.drop-before { box-shadow: -7px 0 0 -2px var(--accent); }
 .card.drop-after { box-shadow: 7px 0 0 -2px var(--accent); }
@@ -788,10 +795,10 @@ li.drop-after { box-shadow: inset 0 -3px 0 var(--accent); }
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
 }
 .pl-list[hidden] { display: none; }
-.pl-list-head { display: flex; align-items: baseline; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.pl-list-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
 .pl-list-head strong { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
 .pl-count { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-right: auto; }
-.pl-list-head .linkbtn { padding: 0; font-size: 13px; }
+.pl-list-head .linkbtn { padding: 0; font-size: 13px; transform: translateY(2px); }
 .pl-items { list-style: none; margin: 0; padding: 6px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
 .pl-items li { display: grid; grid-template-columns: minmax(0, 1fr) 32px 32px; gap: 4px; align-items: center; border-radius: 3px; }
 .pl-items li.current, .pl-items li.current-in { background: var(--accent-soft); }
@@ -813,7 +820,7 @@ li.current .pl-mark { color: var(--accent); }
 .thumb-state { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.5); color: #fff; font-family: var(--font-mono); font-size: 11px; }
 .iconbtn.fold { display: grid; place-items: center; padding: 0; }
 .iconbtn.fold svg { transform: rotate(-90deg); transition: transform 0.15s; }
-.iconbtn.fold.open svg { transform: none; }
+.iconbtn.fold.open svg { transform: rotate(180deg); }
 .iconbtn.fold.open { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .iconbtn.fold svg { transition: none; } }
 body.with-player .shell { padding-bottom: 170px; }
@@ -1648,7 +1655,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       "count.one": "1 disc", "count.other": "{n} discs", countOf: "{a} of {b} discs",
       searchPh: "Search title, composer or performer", searchAria: "Search your collection",
       sort: "Sort", "sort.added": "Recently added", "sort.composer": "Composer A–Z", "sort.title": "Title A–Z", "sort.custom": "Custom order",
-      dragCards: "Drag cards to arrange them (or Alt + arrow keys).", dragNoSearch: "Clear the search and filters to arrange cards.",
+      dragCards: "Alt + drag cards to arrange them (or use Alt + arrow keys).", dragNoSearch: "Clear the search and filters to arrange cards.",
       filterBtn: "Filter", fDecade: "Decade", fClear: "Clear filters", fAny: "Any", fDecadeName: "{d}s",
       fShowAll: "Show all CDs with {name}", fNoMatch: "No CDs match these filters.",
       importBtn: "Import a CDC file (JSON)…", importMerge: "Add to my collection", importReplace: "Replace my collection",
@@ -1857,7 +1864,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       "count.one": "1枚", "count.other": "{n}枚", countOf: "{b}枚中 {a}枚",
       searchPh: "タイトル・作曲家・演奏者で検索", searchAria: "コレクションを検索",
       sort: "並び替え", "sort.added": "追加順（新しい順）", "sort.composer": "作曲家順", "sort.title": "タイトル順", "sort.custom": "カスタム",
-      dragCards: "カードをドラッグして並べ替えられます（Alt + 矢印キーでも可）。", dragNoSearch: "並べ替えるには検索と絞り込みを解除してください。",
+      dragCards: "Alt + ドラッグで並べ替え（Alt + 矢印キーでも可）。", dragNoSearch: "並べ替えるには検索と絞り込みを解除してください。",
       filterBtn: "絞り込み", fDecade: "年代", fClear: "絞り込みを解除", fAny: "すべて", fDecadeName: "{d}年代",
       fShowAll: "{name} のCDをすべて表示", fNoMatch: "条件に合うCDはありません。",
       importBtn: "CDCファイル（JSON）を読み込む…", importMerge: "コレクションに追加", importReplace: "コレクションを置き換える",
@@ -2066,7 +2073,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       "count.one": "1张", "count.other": "{n}张", countOf: "共{b}张，显示{a}张",
       searchPh: "搜索标题、作曲家或演奏者", searchAria: "搜索收藏",
       sort: "排序", "sort.added": "最近添加", "sort.composer": "按作曲家", "sort.title": "按标题", "sort.custom": "自定义",
-      dragCards: "拖动卡片即可排列（也可用 Alt + 方向键）。", dragNoSearch: "清除搜索和筛选后即可排列卡片。",
+      dragCards: "按住 Alt 并拖动卡片即可排列（也可用 Alt + 方向键）。", dragNoSearch: "清除搜索和筛选后即可排列卡片。",
       filterBtn: "筛选", fDecade: "年代", fClear: "清除筛选", fAny: "全部", fDecadeName: "{d}年代",
       fShowAll: "显示 {name} 的所有CD", fNoMatch: "没有符合筛选条件的CD。",
       importBtn: "导入 CDC 文件（JSON）…", importMerge: "添加到我的收藏", importReplace: "替换我的收藏",
@@ -2396,12 +2403,23 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 
   /* ---------- windows ---------- */
   var winState = {};
+  var winCloseTimers = {};
+  var WIN_CLOSE_MS = 180;
   var stack = [];
   function openWin(id) {
     var ov = $("win-" + id);
-    if (!ov.hidden) return;
-    winState[id] = document.activeElement;
-    ov.hidden = false;
+    var reopening = ov.classList.contains("is-closing");
+    if (!ov.hidden && !reopening) return;
+    if (winCloseTimers[id]) {
+      clearTimeout(winCloseTimers[id]);
+      delete winCloseTimers[id];
+    }
+    ov.classList.remove("is-closing");
+    if (reopening) winState[id] = document.activeElement;
+    if (ov.hidden) {
+      winState[id] = document.activeElement;
+      ov.hidden = false;
+    }
     stack.push(id);
     document.body.style.overflow = "hidden";
     ov.querySelector(".panel").scrollTop = 0;
@@ -2410,13 +2428,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   function closeWin(id) {
     var ov = $("win-" + id);
-    if (ov.hidden) return;
+    if (ov.hidden || ov.classList.contains("is-closing")) return;
     if (id === "cd") stopCamera();
     if (id === "firstsync" && firstSync.resolve) { var ask = firstSync.resolve; firstSync.resolve = null; setTimeout(function () { ask("signout"); }, 0); }
     if (id === "cd" && editingId) { clearForm(); renderAll(); }
     if (id === "album") resetAlbumDlg();
     if (id === "detail") { detailId = null; detailConfirm = false; }
-    ov.hidden = true;
+    ov.classList.add("is-closing");
     stack = stack.filter(function (x) { return x !== id; });
     if (!stack.length) document.body.style.overflow = "";
     var back = winState[id];
@@ -2425,6 +2443,20 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (back && back.id && !document.contains(back) && $(back.id)) back = $(back.id);
     if (!back || back === document.body || !document.contains(back)) back = $("open-add").hidden ? $("search") : $("open-add");
     if (back.focus) back.focus({ preventScroll: true });
+    var timer = null;
+    var finishClose = function () {
+      if (timer && winCloseTimers[id] !== timer) return;
+      if (ov.classList.contains("is-closing")) {
+        ov.hidden = true;
+        ov.classList.remove("is-closing");
+      }
+      delete winCloseTimers[id];
+    };
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) finishClose();
+    else {
+      timer = setTimeout(finishClose, WIN_CLOSE_MS);
+      winCloseTimers[id] = timer;
+    }
   }
   qsa(".overlay").forEach(function (ov) {
     var id = ov.id.replace("win-", "");
@@ -4486,7 +4518,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     grid.addEventListener("dragstart", function (e) {
       var c = e.target.closest && e.target.closest(ITEM);
       if (!c) return;
-      if (!grid.classList.contains("arranging")) { e.preventDefault(); return; }
+      if (!grid.classList.contains("arranging") || !e.altKey) { e.preventDefault(); return; }
       dragId = c.dataset.id;
       e.dataTransfer.effectAllowed = "move";
       e.dataTransfer.setData("text/plain", c.dataset.id);
