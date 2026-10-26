@@ -13,7 +13,7 @@ CDC is an app for cataloguing the CDs a person owns. It started as a single-page
   - The collection is saved to `<app data dir>/collection.json`, with a backup kept as `collection.backup.json`.
   - Saves are atomic: the file is written to a temporary file first, then renamed.
   - On first run, data from the old trial is migrated from `%APPDATA%\CDC\collection.json`.
-- `src-tauri/tauri.conf.json`: the identifier is `com.cdc.collection`. The installers are NSIS (current user, with English, Simplified Chinese and Japanese) and MSI.
+- `src-tauri/tauri.conf.json`: the identifier is `com.cdc.collection`. The main window has `dragDropEnabled: false`: Tauri's own file-drop handling on Windows otherwise blocks dragging inside the page (cards and rows showed a "no" cursor). The installers are NSIS (current user, with English, Simplified Chinese and Japanese) and MSI.
 - `.github/workflows/build-windows.yml`: builds on `windows-latest` with `tauri-apps/tauri-action`. A manual run uploads the installers as artifacts; a `v*` tag also creates a draft release.
 
 ## Data shape
