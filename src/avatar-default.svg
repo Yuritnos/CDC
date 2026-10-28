@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">CDC</title>
+  <!-- Export of the inline defaultAvatar() mark in index.html. -->
+  <style>
+    :root { color: #2B3990; }
+    @media (prefers-color-scheme: dark) { :root { color: #97A4F2; } }
+  </style>
+  <circle cx="32" cy="32" r="29" fill="currentColor" opacity=".10"/>
+  <circle cx="32" cy="32" r="25" fill="none" stroke="currentColor" stroke-width="1" opacity=".25"/>
+  <path d="M43 20a17 17 0 1 0 0 24" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="3" fill="currentColor" opacity=".5"/>
+</svg>
