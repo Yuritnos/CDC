@@ -43,14 +43,39 @@ const multiTitle = 'Symphony · Volume · One';
 function deferred() {
   let resolve; const promise = new Promise(r => resolve = r); return {promise, resolve};
 }
-async function fixture() {
-  const state = {doc: {cds: [], meta: {albums: [], playlists: [], settings: {lang: 'en'}}},
-    releases: {101: multi, 102: single}, holds: {}, failures: {}, requested: [], errors: []};
+function silenceWav() {
+  const pcmBytes = 8000 * 2, wav = Buffer.alloc(44 + pcmBytes);
+  wav.write('RIFF', 0); wav.writeUInt32LE(36 + pcmBytes, 4); wav.write('WAVEfmt ', 8);
+  wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(8000, 24); wav.writeUInt32LE(16000, 28);
+  wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34);
+  wav.write('data', 36); wav.writeUInt32LE(pcmBytes, 40);
+  return wav;
+}
+async function fixture({cds = [], settings = {}, nativeAudio = false} = {}) {
+  const state = {doc: {cds: structuredClone(cds), meta: {albums: [], playlists: [], settings: {lang: 'en', ...settings}}},
+    releases: {101: multi, 102: single}, holds: {}, failures: {}, requested: [], errors: [], commands: []};
   const context = await browser.newContext({viewport: {width: 1280, height: 860}, reducedMotion: 'reduce'});
-  await context.addInitScript(() => {
+  if (nativeAudio) await context.exposeBinding('__cdcNativeInvoke', async (_, command, args = {}) => {
+    state.commands.push({command, args});
+    switch (command) {
+      case 'load_data': return structuredClone(state.doc);
+      case 'save_data': state.doc = structuredClone(args.data); return null;
+      case 'covers_root_dir': return 'C:\\isolated-qa\\covers';
+      case 'audio_root_dir': return 'C:\\isolated-qa\\audio';
+      case 'audio_present': return args.files.map(() => true);
+      case 'tidy_covers': return null;
+      default: throw new Error('Unexpected native command in isolated QA: ' + command);
+    }
+  });
+  await context.addInitScript(({nativeAudio}) => {
     window.CDC_DESKTOP = true;
     localStorage.setItem('cdc.lang', 'en');
-  });
+    if (nativeAudio) window.__TAURI__ = {core: {
+      invoke: (command, args) => window.__cdcNativeInvoke(command, args),
+      convertFileSrc: file => location.origin + '/qa-audio/' + encodeURIComponent(file)
+    }};
+  }, {nativeAudio});
   await context.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url());
     if (url.hostname === 'cdc-integration.test') {
@@ -59,6 +84,10 @@ async function fixture() {
         if (request.method() === 'PUT') state.doc = request.postDataJSON();
         return route.fulfill({json: state.doc});
       }
+      if (url.pathname === '/avatar-default.svg') return route.fulfill({
+        contentType: 'image/svg+xml', body: fs.readFileSync(path.join(path.dirname(sourcePath), 'avatar-default.svg'))});
+      if (nativeAudio && url.pathname.startsWith('/qa-audio/')) return route.fulfill({
+        contentType: 'audio/wav', body: silenceWav()});
     }
     if (url.hostname === 'api.discogs.com') {
       if (url.pathname === '/database/search') return route.fulfill({json: {results:
@@ -69,7 +98,8 @@ async function fixture() {
       if (state.failures[id]) return route.fulfill({status: 503, json: {message: 'Delayed test failure'}});
       return route.fulfill({json: state.releases[id]});
     }
-    // No real accounts, audio library, network services, fonts or cover downloads are used.
+    // Native audio is simulated by the binding and in-memory WAV; no library files are used.
+    // No real accounts, network services, fonts or cover downloads are used.
     return route.abort();
   });
   const page = await context.newPage();
@@ -150,44 +180,164 @@ async function main() {
     assert.equal(groups[2][0].sub_tracks.length, 2);
     assert.equal(groups[3][0].type_, 'heading');
   });
-  await test('single-work duration survives adding/removing tracks, validation and edit/reload', async () => {
+  await test('zero-track work duration saves separately and transfers only across the first/last track boundary', async () => {
     const f = await fixture(), {page, state} = f;
+    const customType = 'Tone poem / 诗篇';
     try {
       await page.locator('#open-add').click();
       await page.locator('#title').fill('Duration QA');
       await page.locator('.w-title').fill('Overture');
-      await page.locator('.w-type').selectOption('Overture');
+      assert.equal(await page.locator('.w-type').evaluate(n => n.tagName), 'INPUT');
+      assert.equal(await page.locator('.w-type').getAttribute('list'), 'work-type-options');
+      await page.locator('.w-type').fill(customType);
+      while (await page.locator('.trow').count()) await page.locator('.trow .iconbtn').first().click();
+      assert.equal(await page.locator('.w-duration').isVisible(), true);
       await page.locator('.w-duration').fill('12:99');
       await page.locator('#submit').click();
       assert((await page.locator('#works-err').textContent()).length);
       assert.equal(await page.locator('.w-duration').evaluate(n => n === document.activeElement), true);
+      assert.equal(await page.locator('.w-duration').getAttribute('aria-invalid'), 'true');
       await page.locator('.w-duration').fill('12:34');
+      await save(page);
+      assert.equal(state.doc.cds[0].works[0].duration, '12:34');
+      assert.deepEqual(state.doc.cds[0].works[0].tracks, []);
+      assert.equal(state.doc.cds[0].works[0].type, customType);
+      await openCard(page, 'Duration QA');
+      assert.equal(await page.locator('.pwork-title').textContent(), 'Overture · 12:34');
+      assert.equal(await page.locator('.ptracks li').count(), 0);
+      assert((await page.locator('.ptotal').textContent()).includes('12:34'));
+      await page.getByRole('button', {name: 'Edit', exact: true}).click();
+      assert.equal(await page.locator('.trow').count(), 0);
+      assert.equal(await page.locator('.w-duration').inputValue(), '12:34');
       await page.locator('#work-list .linkbtn').click();
       assert.equal(await page.locator('.w-duration').isHidden(), true);
+      assert.equal(await page.locator('.w-duration').inputValue(), '');
+      assert.equal(await page.locator('.trow').count(), 1);
       assert.equal(await page.locator('.t-len').first().inputValue(), '12:34');
       assert.equal(await page.locator('.t-len').first().isVisible(), true);
-      await page.locator('.t-title').nth(1).fill('Second');
-      await page.locator('.t-len').nth(1).fill('3:21');
-      await page.locator('.trow .iconbtn').first().click();
-      assert.equal(await page.locator('.w-duration').inputValue(), '3:21');
-      await page.locator('.w-duration').fill('12:34');
+      await page.locator('.t-title').first().fill('Opening');
       await page.locator('#work-list .linkbtn').click();
+      assert.equal(await page.locator('.t-len').nth(1).inputValue(), '');
       await page.locator('.t-title').nth(1).fill('Finale');
       await page.locator('.t-len').nth(1).fill('3:21');
       await save(page);
       assert.deepEqual(state.doc.cds[0].works[0].tracks.map(t => t.duration), ['12:34', '3:21']);
-      assert.equal(state.doc.cds[0].works[0].type, 'Overture');
+      assert.equal(state.doc.cds[0].works[0].duration, undefined, 'work duration must not double-count track lengths');
+      assert.equal(state.doc.cds[0].works[0].type, customType);
       await openCard(page, 'Duration QA');
-      assert((await page.locator('#win-detail').innerText()).includes('15:55'));
+      assert((await page.locator('.ptotal').textContent()).includes('15:55'));
       await page.getByRole('button', {name: 'Edit', exact: true}).click();
-      await page.locator('.trow .iconbtn').nth(1).click();
-      assert.equal(await page.locator('.w-duration').inputValue(), '12:34');
+      await page.locator('.trow .iconbtn').first().click();
+      assert.equal(await page.locator('.w-duration').isHidden(), true, 'one track still uses its own duration');
+      assert.equal(await page.locator('.t-len').inputValue(), '3:21');
+      assert.equal(await page.locator('.t-len').isVisible(), true);
+      await page.locator('.trow .iconbtn').click();
+      assert.equal(await page.locator('.w-duration').inputValue(), '3:21');
+      assert.equal(await page.locator('.w-duration').isVisible(), true);
       await save(page); await page.reload();
       await openCard(page, 'Duration QA');
-      assert((await page.locator('#win-detail').innerText()).includes('12:34'));
+      assert((await page.locator('.ptotal').textContent()).includes('3:21'));
+      assert.equal(await page.locator('.pwork-title').textContent(), 'Overture · 3:21');
       await page.getByRole('button', {name: 'Edit', exact: true}).click();
-      assert.equal(await page.locator('.w-duration').inputValue(), '12:34');
-      assert.equal(await page.locator('.w-type').inputValue(), 'Overture');
+      assert.equal(await page.locator('.trow').count(), 0);
+      assert.equal(await page.locator('.w-duration').inputValue(), '3:21');
+      assert.equal(await page.locator('.w-type').inputValue(), customType);
+      assert.deepEqual(state.doc.cds[0].works[0].tracks, []);
+    } finally { await f.close(); }
+  });
+  await test('custom CD/work types and hub text survive save/edit and drive cards and type filters', async () => {
+    const overall = 'Historical anthology / 私家选集', workType = 'Night music / 夜曲', hub = 'Mirror ring · batch A';
+    const f = await fixture({cds: [{id: 'other-type', title: 'Other type QA', type: 'Symphony'}],
+      settings: {cardFields: ['type', 'workTypes', 'hub']}}), {page, state} = f;
+    try {
+      await page.locator('#open-add').click(); await page.locator('#title').fill('Custom type QA');
+      assert.equal(await page.locator('#type').getAttribute('list'), 'work-type-options');
+      await page.locator('#type').fill(overall);
+      await page.locator('.w-title').fill('Nocturne'); await page.locator('.w-type').fill(workType);
+      await page.locator('#more-details').evaluate(n => n.open = true);
+      assert.equal(await page.locator('#hub').evaluate(n => n.tagName), 'INPUT');
+      assert.equal(await page.locator('#hub').getAttribute('list'), 'hub-options');
+      await page.locator('#hub').fill(hub); await save(page);
+      const cd = state.doc.cds.find(c => c.title === 'Custom type QA');
+      assert.equal(cd.type, overall); assert.equal(cd.hub, hub); assert.equal(cd.works[0].type, workType);
+      const card = page.locator('#card-' + cd.id);
+      for (const text of [overall, workType, hub]) assert((await card.innerText()).includes(text), text);
+      await page.locator('#filter-btn').click();
+      for (const [type, title] of [[overall, 'Custom type QA'], [workType, 'Custom type QA'], ['Symphony', 'Other type QA']]) {
+        await page.locator('#f-type label').filter({has: page.getByText(type, {exact: true})}).locator('input').check();
+        assert.deepEqual(await page.locator('#grid .card h3').allTextContents(), [title]);
+        await page.locator('#f-clear').click();
+      }
+      await page.locator('#f-done').click(); await openCard(page, 'Custom type QA');
+      for (const text of [overall, workType, hub]) assert((await page.locator('#win-detail').innerText()).includes(text), text);
+      await page.locator('.profile-actions > button').first().click();
+      assert.equal(await page.locator('#type').inputValue(), overall);
+      assert.equal(await page.locator('.w-type').inputValue(), workType);
+      assert.equal(await page.locator('#hub').inputValue(), hub);
+      await page.locator('#hub').fill(''); await page.locator('#type').fill(''); await save(page);
+      const cleared = state.doc.cds.find(c => c.id === cd.id);
+      assert.equal(cleared.hub, undefined); assert.equal(cleared.type, undefined);
+      await page.reload(); await openCard(page, 'Custom type QA');
+      assert.equal(await page.locator('#win-detail').getByText(hub, {exact: true}).count(), 0);
+      await page.locator('.profile-actions > button').first().click();
+      assert.equal(await page.locator('#hub').inputValue(), '');
+      assert.equal(await page.locator('#type').inputValue(), '');
+      assert.equal(await page.locator('.w-type').inputValue(), workType);
+    } finally { await f.close(); }
+  });
+  await test('localized type/hub datalist suggestions normalize known values without an Unknown choice', async () => {
+    const f = await fixture(), {page, state} = f;
+    try {
+      for (const [lang, type, hub, value, hubs] of [
+        ['en', 'Piano concerto', 'Full silver hub', 'full', ['Full silver hub', 'Partial silver hub', 'Clear hub']],
+        ['ja', 'ピアノ協奏曲', '一部銀色ハブ', 'partial', ['全面銀色ハブ', '一部銀色ハブ', '透明ハブ']],
+        ['zh', '钢琴协奏曲', '透明圈', 'clear', ['满银圈', '半银圈', '透明圈']]
+      ]) {
+        await setLanguage(page, lang); await page.locator('#open-add').click();
+        assert.deepEqual(await page.locator('#hub-options option').evaluateAll(ns => ns.map(n => n.value)), hubs);
+        assert((await page.locator('#work-type-options option').evaluateAll(ns => ns.map(n => n.value))).includes(type));
+        await page.locator('#title').fill('Known ' + lang); await page.locator('#type').fill(type);
+        await page.locator('.w-title').fill('Concerto'); await page.locator('.w-type').fill(type);
+        await page.locator('#more-details').evaluate(n => n.open = true); await page.locator('#hub').fill(hub);
+        await save(page);
+        const cd = state.doc.cds.find(c => c.title === 'Known ' + lang);
+        assert.equal(cd.type, 'PianoConcerto'); assert.equal(cd.works[0].type, 'PianoConcerto'); assert.equal(cd.hub, value);
+        await openCard(page, cd.title);
+        assert((await page.locator('#win-detail').innerText()).includes(hub));
+        await page.locator('.profile-actions > button').first().click();
+        assert.equal(await page.locator('#type').inputValue(), type);
+        assert.equal(await page.locator('.w-type').inputValue(), type);
+        assert.equal(await page.locator('#hub').inputValue(), hub); await save(page);
+      }
+    } finally { await f.close(); }
+  });
+  await test('work-only audio gets virtual track slots and metadata fills work duration without creating tracks', async () => {
+    const f = await fixture({nativeAudio: true, settings: {cardFields: ['totalTime']}, cds: [{
+      id: 'virtual-audio', title: 'Virtual audio QA', works: [
+        {title: 'Ambient work', duration: '12:34', tracks: []},
+        {title: 'Untimed work', tracks: []},
+        {title: 'Movement work', duration: '99:00', tracks: [{title: 'Finale', duration: '3:21'}]}
+      ], audio: [1, 2, 3].map(n => ({file: 'virtual-audio/' + n + '.wav', name: n + '.wav', size: 16044, track: n}))
+    }]}), {page, state} = f;
+    try {
+      await openCard(page, 'Virtual audio QA');
+      await page.waitForFunction(() => document.querySelector('.ptotal')?.textContent.includes('15:56'));
+      assert.deepEqual(await page.locator('#audio-track-0 option').evaluateAll(ns => ns.map(n => n.value)), ['0', '1', '2', '3']);
+      assert.deepEqual(await page.locator('#audio-track-0 option').allTextContents(), [
+        'No track', '1. Ambient work  (12:34)', '2. Untimed work  (0:01)', '3. Finale  (3:21)'
+      ]);
+      assert((await page.locator('#audio-play-0').getAttribute('aria-label')).includes('1. Ambient work'));
+      assert.equal(await page.locator('#audio-play-0').isEnabled(), true);
+      assert.equal(await page.locator('#audio-track-1').inputValue(), '2');
+      assert.equal(state.doc.cds[0].works[0].duration, '12:34', 'typed duration stays unchanged');
+      assert.equal(state.doc.cds[0].works[1].duration, '0:01');
+      assert.deepEqual(state.doc.cds[0].works[1].tracks, []);
+      assert((await page.locator('#card-virtual-audio').innerText()).includes('15:56'), 'sum includes work duration and ignores stale duration on tracked works');
+      assert(state.commands.some(c => c.command === 'save_data'));
+      await page.locator('.profile-actions > button').first().click();
+      assert.equal(await page.locator('.work').nth(1).locator('.trow').count(), 0);
+      assert.equal(await page.locator('.w-duration').nth(1).inputValue(), '0:01');
+      assert.equal(await page.locator('.w-duration').nth(2).isHidden(), true);
     } finally { await f.close(); }
   });
   await test('recording ranges, silver hubs and linked set add/edit/rename/detach roundtrip', async () => {
@@ -201,7 +351,7 @@ async function main() {
         assert((await page.locator('#recordingYear-err').textContent()).length, value);
       }
       await page.locator('#recordingYear').fill('1985–1987, 1990');
-      await page.locator('#hub').selectOption('full');
+      await page.locator('#hub').fill('Full silver hub');
       await page.locator('#set-title').fill('Box QA'); await save(page);
       const first = state.doc.cds.find(c => c.title === 'Set disc one');
       assert.equal(first.recordingYear, '1985–1987, 1990'); assert.equal(first.hub, 'full');
@@ -220,18 +370,18 @@ async function main() {
       assert.equal(await page.locator('#detail-h').textContent(), 'Set disc one');
       await page.getByRole('button', {name: 'Edit', exact: true}).click();
       assert.equal(await page.locator('#recordingYear').inputValue(), '1985–1987, 1990');
-      assert.equal(await page.locator('#hub').inputValue(), 'full');
+      assert.equal(await page.locator('#hub').inputValue(), 'Full silver hub');
       await page.locator('#set-total').fill('1'); await page.locator('#submit').click();
       assert((await page.locator('#discSet-err').textContent()).length);
       await page.locator('#set-title').fill('Renamed QA'); await page.locator('#set-total').fill('3');
-      await page.locator('#hub').selectOption('partial'); await save(page);
+      await page.locator('#hub').fill('Partial silver hub'); await save(page);
       assert(state.doc.cds.every(c => c.set.title === 'Renamed QA' && c.set.total === 3 && c.set.id === first.set.id));
       await page.reload(); await openCard(page, 'Set disc one');
       assert((await page.locator('#win-detail').innerText()).includes('Partial silver hub'));
       await page.getByRole('button', {name: 'Edit', exact: true}).click();
-      await page.locator('#set-title').fill(''); await page.locator('#hub').selectOption('other'); await save(page);
+      await page.locator('#set-title').fill(''); await page.locator('#hub').fill('Clear hub'); await save(page);
       assert.equal(state.doc.cds.find(c => c.title === 'Set disc one').set, undefined);
-      assert.equal(state.doc.cds.find(c => c.title === 'Set disc one').hub, 'other');
+      assert.equal(state.doc.cds.find(c => c.title === 'Set disc one').hub, 'clear');
       assert.equal(state.doc.cds.find(c => c.title === 'Set disc two').set.title, 'Renamed QA');
     } finally { await f.close(); }
   });
@@ -241,19 +391,45 @@ async function main() {
       await page.locator('#open-add').click(); await search(page); await page.locator('#lookup-use-0').click();
       await page.locator('#lookup-disc-row').waitFor();
       assert.equal(await page.locator('#title').inputValue(), multiTitle);
+      assert.equal(await page.locator('#type').inputValue(), '', 'mixed release must not infer one overall CD type');
       assert.equal(await page.locator('#lookup-disc option').count(), 2);
       assert.equal(await page.locator('.t-title').count(), 1);
       assert.equal(await page.locator('.t-title').inputValue(), 'I. First');
       await page.locator('#lookup-disc').selectOption('2');
       assert.deepEqual(await page.locator('.t-title').evaluateAll(ns => ns.map(n => n.value)), ['II. Second', 'Finale']);
-      assert.deepEqual(await page.locator('.w-type').evaluateAll(ns => ns.map(n => n.value)), ['Symphony', 'PianoConcerto']);
+      assert.deepEqual(await page.locator('.w-type').evaluateAll(ns => ns.map(n => n.value)), ['Symphony', 'Piano concerto']);
       assert.equal(await page.locator('#set-disc').inputValue(), '2');
       await save(page);
       assert.equal(state.doc.cds[0].set.disc, 2); assert.equal(state.doc.cds[0].set.total, 2);
       assert.deepEqual(state.doc.cds[0].works.flatMap(w => w.tracks.map(t => t.title)), ['II. Second', 'Finale']);
       await openCard(page, multiTitle); await page.getByRole('button', {name: 'Edit', exact: true}).click();
       assert.equal(await page.locator('#set-disc').inputValue(), '2');
-      assert.equal(await page.locator('.w-duration').first().inputValue(), '3:21');
+      assert.equal(await page.locator('.w-duration').first().isHidden(), true);
+      assert.equal(await page.locator('.t-len').first().inputValue(), '3:21');
+      assert.equal(await page.locator('.t-len').first().isVisible(), true);
+    } finally { await f.close(); }
+  });
+  await test('Discogs infers overall type for a uniform release and clears its automatic type for a mixed release', async () => {
+    const f = await fixture({settings: {cardFields: ['type']}}), {page, state} = f;
+    try {
+      state.releases[103] = {id: 103, title: 'Uniform symphonies', formats: [{name: 'CD', qty: '2'}], tracklist: [
+        {type_: 'track', position: '1-1', title: 'Symphony No. 1', duration: '1:11'},
+        {type_: 'track', position: '2-1', title: 'Symphony No. 2', duration: '2:22'}
+      ]};
+      await page.locator('#open-add').click(); await search(page);
+      await page.locator('#lookup-use-2').click();
+      await page.waitForFunction(() => document.getElementById('title').value === 'Uniform symphonies');
+      assert.equal(await page.locator('#type').inputValue(), 'Symphony');
+      await page.locator('#lookup-disc').selectOption('2');
+      assert.equal(await page.locator('#type').inputValue(), 'Symphony');
+      await page.locator('#lookup-use-0').click();
+      await page.waitForFunction(() => document.getElementById('title').value === 'Symphony · Volume · One');
+      assert.equal(await page.locator('#type').inputValue(), '');
+      await page.locator('#lookup-use-2').click();
+      await page.waitForFunction(() => document.getElementById('title').value === 'Uniform symphonies');
+      await save(page);
+      assert.equal(state.doc.cds[0].type, 'Symphony');
+      assert((await page.locator('#grid .card .meta').allTextContents()).includes('Symphony'));
     } finally { await f.close(); }
   });
   await test('late details cannot replace a newer release or resurrect its disc selector', async () => {
