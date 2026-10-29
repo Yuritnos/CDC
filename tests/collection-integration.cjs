@@ -189,6 +189,7 @@ async function main() {
       await page.locator('.w-title').fill('Overture');
       assert.equal(await page.locator('.w-type').evaluate(n => n.tagName), 'INPUT');
       assert.equal(await page.locator('.w-type').getAttribute('list'), 'work-type-options');
+      await page.locator('.w-details > summary').click();
       await page.locator('.w-type').fill(customType);
       while (await page.locator('.trow').count()) await page.locator('.trow .iconbtn').first().click();
       assert.equal(await page.locator('.w-duration').isVisible(), true);
@@ -210,14 +211,14 @@ async function main() {
       await page.getByRole('button', {name: 'Edit', exact: true}).click();
       assert.equal(await page.locator('.trow').count(), 0);
       assert.equal(await page.locator('.w-duration').inputValue(), '12:34');
-      await page.locator('#work-list .linkbtn').click();
+      await page.getByRole('button', {name: '+ Add track', exact: true}).click();
       assert.equal(await page.locator('.w-duration').isHidden(), true);
       assert.equal(await page.locator('.w-duration').inputValue(), '');
       assert.equal(await page.locator('.trow').count(), 1);
       assert.equal(await page.locator('.t-len').first().inputValue(), '12:34');
       assert.equal(await page.locator('.t-len').first().isVisible(), true);
       await page.locator('.t-title').first().fill('Opening');
-      await page.locator('#work-list .linkbtn').click();
+      await page.getByRole('button', {name: '+ Add track', exact: true}).click();
       assert.equal(await page.locator('.t-len').nth(1).inputValue(), '');
       await page.locator('.t-title').nth(1).fill('Finale');
       await page.locator('.t-len').nth(1).fill('3:21');
@@ -255,7 +256,8 @@ async function main() {
       await page.locator('#open-add').click(); await page.locator('#title').fill('Custom type QA');
       assert.equal(await page.locator('#type').getAttribute('list'), 'work-type-options');
       await page.locator('#type').fill(overall);
-      await page.locator('.w-title').fill('Nocturne'); await page.locator('.w-type').fill(workType);
+      await page.locator('.w-title').fill('Nocturne');
+      await page.locator('.w-details > summary').click(); await page.locator('.w-type').fill(workType);
       await page.locator('#more-details').evaluate(n => n.open = true);
       assert.equal(await page.locator('#hub').evaluate(n => n.tagName), 'INPUT');
       assert.equal(await page.locator('#hub').getAttribute('list'), 'hub-options');
@@ -263,7 +265,11 @@ async function main() {
       const cd = state.doc.cds.find(c => c.title === 'Custom type QA');
       assert.equal(cd.type, overall); assert.equal(cd.hub, hub); assert.equal(cd.works[0].type, workType);
       const card = page.locator('#card-' + cd.id);
-      for (const text of [overall, workType, hub]) assert((await card.innerText()).includes(text), text);
+      for (const text of [overall, hub]) assert((await card.innerText()).includes(text), text);
+      assert(!(await card.innerText()).includes(workType), 'work override starts collapsed');
+      await card.locator('.work-overrides > summary').click();
+      assert((await card.innerText()).includes(workType), workType);
+      assert.equal(await page.locator('#win-detail').isVisible(), false, 'disclosure opened the profile');
       await page.locator('#filter-btn').click();
       for (const [type, title] of [[overall, 'Custom type QA'], [workType, 'Custom type QA'], ['Symphony', 'Other type QA']]) {
         await page.locator('#f-type label').filter({has: page.getByText(type, {exact: true})}).locator('input').check();
@@ -271,6 +277,8 @@ async function main() {
         await page.locator('#f-clear').click();
       }
       await page.locator('#f-done').click(); await openCard(page, 'Custom type QA');
+      assert(!(await page.locator('#win-detail').innerText()).includes(workType), 'profile work override starts collapsed');
+      await page.locator('#detail-body .work-overrides > summary').click();
       for (const text of [overall, workType, hub]) assert((await page.locator('#win-detail').innerText()).includes(text), text);
       await page.locator('.profile-actions > button').first().click();
       assert.equal(await page.locator('#type').inputValue(), overall);
@@ -293,13 +301,14 @@ async function main() {
       for (const [lang, type, hub, value, hubs] of [
         ['en', 'Piano concerto', 'Full silver hub', 'full', ['Full silver hub', 'Partial silver hub', 'Clear hub']],
         ['ja', 'ピアノ協奏曲', '一部銀色ハブ', 'partial', ['全面銀色ハブ', '一部銀色ハブ', '透明ハブ']],
-        ['zh', '钢琴协奏曲', '透明圈', 'clear', ['满银圈', '半银圈', '透明圈']]
+        ['zh', '钢琴协奏曲', '胶圈', 'clear', ['满银圈', '半银圈', '胶圈']]
       ]) {
         await setLanguage(page, lang); await page.locator('#open-add').click();
         assert.deepEqual(await page.locator('#hub-options option').evaluateAll(ns => ns.map(n => n.value)), hubs);
         assert((await page.locator('#work-type-options option').evaluateAll(ns => ns.map(n => n.value))).includes(type));
         await page.locator('#title').fill('Known ' + lang); await page.locator('#type').fill(type);
-        await page.locator('.w-title').fill('Concerto'); await page.locator('.w-type').fill(type);
+        await page.locator('.w-title').fill('Concerto');
+        await page.locator('.w-details > summary').click(); await page.locator('.w-type').fill(type);
         await page.locator('#more-details').evaluate(n => n.open = true); await page.locator('#hub').fill(hub);
         await save(page);
         const cd = state.doc.cds.find(c => c.title === 'Known ' + lang);
@@ -342,49 +351,96 @@ async function main() {
       assert.equal(await page.locator('.w-duration').nth(2).isHidden(), true);
     } finally { await f.close(); }
   });
-  await test('recording ranges, silver hubs and linked set add/edit/rename/detach roundtrip', async () => {
-    const f = await fixture(), {page, state} = f;
+  await test('set UI is unavailable; edits preserve existing set data and do not change siblings', async () => {
+    const membership = {id: 'legacy-box', title: 'Box QA', disc: 1, total: 2, extra: {keep: true}};
+    const sibling = {id: 'legacy-two', title: 'Set disc two', addedAt: 2,
+      set: {...membership, disc: 2}, cardFields: ['set']};
+    const f = await fixture({cds: [{id: 'legacy-one', title: 'Set disc one', addedAt: 1,
+      set: membership, cardFields: ['set']}, sibling], settings: {cardFields: ['set']}}), {page, state} = f;
     try {
+      assert.equal((await page.locator('#grid').innerText()).includes('Box QA'), false);
+      await page.locator('#open-settings').click();
+      await page.locator('#cf-toggle').click();
+      assert.equal(await page.locator('#cf-set, #cf-workTypes').count(), 0);
+      assert.equal((await page.locator('#win-settings').innerText()).includes('Album or box set'), false);
+      await page.locator('#close-settings').click();
       await page.locator('#open-add').click();
-      await page.locator('#title').fill('Set disc one');
+      assert.equal(await page.locator('#set-fields, #set-title, #ff-set, #ff-workTypes').count(), 0);
+      await page.locator('#title').fill('Standalone CD');
       await page.locator('#more-details').evaluate(n => n.open = true);
       for (const value of ['1899', '1987–1985', '1985,', '1985–']) {
         await page.locator('#recordingYear').fill(value); await page.locator('#submit').click();
         assert((await page.locator('#recordingYear-err').textContent()).length, value);
       }
       await page.locator('#recordingYear').fill('1985–1987, 1990');
-      await page.locator('#hub').fill('Full silver hub');
-      await page.locator('#set-title').fill('Box QA'); await save(page);
-      const first = state.doc.cds.find(c => c.title === 'Set disc one');
-      assert.equal(first.recordingYear, '1985–1987, 1990'); assert.equal(first.hub, 'full');
+      await page.locator('#hub').fill('Full silver hub'); await save(page);
+      const added = state.doc.cds.find(c => c.title === 'Standalone CD');
+      assert.equal(added.recordingYear, '1985–1987, 1990'); assert.equal(added.hub, 'full');
+      assert.equal(Object.hasOwn(added, 'set'), false);
       await openCard(page, 'Set disc one');
-      assert((await page.locator('#win-detail').innerText()).includes('Full silver hub'));
-      await page.getByRole('button', {name: 'Add another disc to this set', exact: true}).click();
-      assert.equal(await page.locator('#set-disc').inputValue(), '2');
-      await page.locator('#title').fill('Set disc two');
-      await page.locator('#set-disc').fill('1'); await page.locator('#submit').click();
-      assert((await page.locator('#discSet-err').textContent()).includes('already contains disc 1'));
-      await page.locator('#set-disc').fill('2'); await save(page);
-      assert.equal(state.doc.cds.length, 2);
-      assert.equal(state.doc.cds.find(c => c.title === 'Set disc two').set.id, first.set.id);
-      await openCard(page, 'Set disc two');
-      await page.locator('.set-siblings button').first().click();
-      assert.equal(await page.locator('#detail-h').textContent(), 'Set disc one');
+      assert.equal((await page.locator('#win-detail').innerText()).includes('Box QA'), false);
+      assert.equal(await page.locator('.set-siblings').count(), 0);
+      assert.equal(await page.getByRole('button', {name: 'Add another disc to this set', exact: true}).count(), 0);
       await page.getByRole('button', {name: 'Edit', exact: true}).click();
-      assert.equal(await page.locator('#recordingYear').inputValue(), '1985–1987, 1990');
-      assert.equal(await page.locator('#hub').inputValue(), 'Full silver hub');
-      await page.locator('#set-total').fill('1'); await page.locator('#submit').click();
-      assert((await page.locator('#discSet-err').textContent()).length);
-      await page.locator('#set-title').fill('Renamed QA'); await page.locator('#set-total').fill('3');
+      await page.locator('#title').fill('Edited disc one');
+      await page.locator('#more-details').evaluate(n => n.open = true);
       await page.locator('#hub').fill('Partial silver hub'); await save(page);
-      assert(state.doc.cds.every(c => c.set.title === 'Renamed QA' && c.set.total === 3 && c.set.id === first.set.id));
-      await page.reload(); await openCard(page, 'Set disc one');
+      assert.deepEqual(state.doc.cds.find(c => c.id === 'legacy-one').set, membership);
+      assert.deepEqual(state.doc.cds.find(c => c.id === sibling.id), sibling);
+      await page.reload(); await openCard(page, 'Edited disc one');
       assert((await page.locator('#win-detail').innerText()).includes('Partial silver hub'));
       await page.getByRole('button', {name: 'Edit', exact: true}).click();
-      await page.locator('#set-title').fill(''); await page.locator('#hub').fill('Clear hub'); await save(page);
-      assert.equal(state.doc.cds.find(c => c.title === 'Set disc one').set, undefined);
-      assert.equal(state.doc.cds.find(c => c.title === 'Set disc one').hub, 'clear');
-      assert.equal(state.doc.cds.find(c => c.title === 'Set disc two').set.title, 'Renamed QA');
+      // Online replacement during an edit must preserve the old membership too.
+      await search(page); await page.locator('#lookup-use-0').click();
+      await page.locator('#lookup-disc-row').waitFor();
+      await page.locator('#lookup-disc').selectOption('2'); await save(page);
+      assert.deepEqual(state.doc.cds.find(c => c.id === 'legacy-one').set, membership);
+      assert.deepEqual(state.doc.cds.find(c => c.id === sibling.id), sibling);
+    } finally { await f.close(); }
+  });
+  await test('legacy set data roundtrips JSON export and both import modes', async () => {
+    const legacy = {id: 'legacy-import', title: 'Stored set disc', addedAt: 1,
+      set: {id: 'old-box', title: 'Stored box', disc: 2, total: 3, extension: {preserve: true}}};
+    const f = await fixture({cds: [legacy]}), {page, state} = f;
+    try {
+      await page.locator('#open-settings').click();
+      const download = page.waitForEvent('download');
+      await page.locator('#export-json').click();
+      const stream = await (await download).createReadStream();
+      const chunks = []; for await (const chunk of stream) chunks.push(chunk);
+      const exported = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      assert.deepEqual(exported.cds[0].set, legacy.set);
+      const imported = {...legacy, id: 'another-legacy', title: 'Imported set disc'};
+      for (const replace of [false, true]) {
+        await page.locator('#import-file').setInputFiles({name: 'legacy.json', mimeType: 'application/json',
+          buffer: Buffer.from(JSON.stringify({cds: [imported], meta: {}}))});
+        await page.locator(replace ? '#import-replace' : '#import-merge').click();
+        await page.locator('#import-ask').waitFor({state: 'hidden'});
+        assert.deepEqual(state.doc.cds.find(c => c.id === imported.id).set, legacy.set);
+        assert.equal(state.doc.cds.length, replace ? 1 : 2);
+      }
+      // Backups use the same unrestricted document reader as JSON import.
+      const start = html.indexOf('  function readCdcDoc('), end = html.indexOf('  function renderRestore(', start);
+      const read = vm.runInNewContext(html.slice(start, end) + '\nreadCdcDoc;');
+      assert.deepEqual(read({cds: [legacy], meta: {}}).cds[0].set, legacy.set);
+    } finally { await f.close(); }
+  });
+  await test('obsolete workTypes choices migrate to works and deduplicate before the six-field limit', async () => {
+    const start = html.indexOf('  function capFields('), end = html.indexOf('  function cardFields(', start);
+    assert(start >= 0 && end > start);
+    const cap = vm.runInNewContext('var CARD_FIELD_MAX = 6, FAV_TAGS_OFF = "-albums";\n' + html.slice(start, end) + '\ncapFields;');
+    const input = ['workTypes', 'works', 'composer', 'label', 'issuer', 'recordingYear', 'releaseYear', '-albums'];
+    assert.deepEqual(Array.from(cap(input)), ['works', 'composer', 'label', 'issuer', 'recordingYear', 'releaseYear', '-albums']);
+    assert.equal(input[0], 'workTypes', 'read-time migration must not mutate stored choices');
+    const f = await fixture({cds: [{id: 'work-migration', title: 'Migrated choices',
+      cardFields: ['workTypes', 'works'], works: [{title: 'Visible work', tracks: []}]}],
+      settings: {cardFields: ['workTypes', 'works']}}), {page} = f;
+    try {
+      assert((await page.locator('#grid').innerText()).includes('Visible work'));
+      await openCard(page, 'Migrated choices'); await page.getByRole('button', {name: 'Edit', exact: true}).click();
+      await page.locator('#ff-toggle').click();
+      assert.equal(await page.locator('#ff-workTypes').count(), 0);
+      assert.equal(await page.locator('#ff-works').isChecked(), true);
     } finally { await f.close(); }
   });
   await test('Discogs cross-disc works, disc selection, source punctuation and saved selected disc', async () => {
@@ -400,12 +456,12 @@ async function main() {
       await page.locator('#lookup-disc').selectOption('2');
       assert.deepEqual(await page.locator('.t-title').evaluateAll(ns => ns.map(n => n.value)), ['II. Second', 'Finale']);
       assert.deepEqual(await page.locator('.w-type').evaluateAll(ns => ns.map(n => n.value)), ['Symphony', 'Piano concerto']);
-      assert.equal(await page.locator('#set-disc').inputValue(), '2');
+      assert.equal(await page.locator('#set-fields').count(), 0);
       await save(page);
-      assert.equal(state.doc.cds[0].set.disc, 2); assert.equal(state.doc.cds[0].set.total, 2);
+      assert.equal(Object.hasOwn(state.doc.cds[0], 'set'), false);
       assert.deepEqual(state.doc.cds[0].works.flatMap(w => w.tracks.map(t => t.title)), ['II. Second', 'Finale']);
       await openCard(page, multiTitle); await page.getByRole('button', {name: 'Edit', exact: true}).click();
-      assert.equal(await page.locator('#set-disc').inputValue(), '2');
+      assert.equal(await page.locator('#set-fields').count(), 0);
       assert.equal(await page.locator('.w-duration').first().isHidden(), true);
       assert.equal(await page.locator('.t-len').first().inputValue(), '3:21');
       assert.equal(await page.locator('.t-len').first().isVisible(), true);
@@ -444,7 +500,7 @@ async function main() {
       await releaseHeld(page, state, 101);
       assert.equal(await page.locator('#title').inputValue(), 'New Single');
       assert.equal(await page.locator('#lookup-disc-row').isHidden(), true);
-      assert.equal(await page.locator('#set-title').inputValue(), '');
+      assert.equal(await page.locator('#set-title').count(), 0);
       assert.equal(await page.locator('.t-title').inputValue(), 'New Track');
     } finally { await f.close(); }
   });

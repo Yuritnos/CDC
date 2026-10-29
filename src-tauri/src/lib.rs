@@ -455,11 +455,14 @@ async fn add_audio(app: AppHandle, cd_id: String) -> Result<Vec<AudioFile>, Stri
     let dir = audio_root(&app)?.join(&cd_id);
     fs::create_dir_all(&dir).map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
     let mut added = Vec::new();
-    for chosen in picked {
+    let mut copied = Vec::new();
+    let result: Result<(), String> = async {
+      for chosen in picked {
         let source = chosen.into_path().map_err(|e| format!("Could not read that file: {e}"))?;
         let name = source.file_name().and_then(|n| n.to_str()).unwrap_or("audio").to_string();
         let target = free_name(&dir, &name);
         let dest = dir.join(&target);
+        copied.push(dest.clone());
         let (from, to) = (source.clone(), dest.clone());
         tauri::async_runtime::spawn_blocking(move || fs::copy(&from, &to))
             .await
@@ -467,6 +470,13 @@ async fn add_audio(app: AppHandle, cd_id: String) -> Result<Vec<AudioFile>, Stri
             .map_err(|e| format!("Could not copy {name}: {e}"))?;
         let size = fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
         added.push(AudioFile { file: format!("{cd_id}/{target}"), name, size });
+      }
+      Ok(())
+    }.await;
+    if let Err(error) = result {
+        // A failed multi-file import must not strand earlier copies outside the form draft.
+        for file in copied { let _ = fs::remove_file(file); }
+        return Err(error);
     }
     Ok(added)
 }

@@ -344,8 +344,6 @@ legend { margin-bottom: 8px; }
 .trow:focus-within { z-index: 1; }
 .work-kind { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, .7fr); gap: 8px; }
 .trow:has(.t-len[hidden]) { grid-template-columns: 26px minmax(0, 1fr) 38px; }
-.set-siblings { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.set-numbers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .work-head .iconbtn:hover, .trow .iconbtn:hover { color: var(--danger); border-color: var(--danger); }
 .trow { display: grid; grid-template-columns: 26px minmax(0, 1fr) 76px 38px; gap: 8px; align-items: center; }
 .trow .no { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: right; }
@@ -389,6 +387,9 @@ details.more > summary {
 details.more > summary:hover { color: var(--accent); }
 details.more[open] > summary { margin-bottom: 14px; }
 .more-body { display: flex; flex-direction: column; gap: 14px; }
+.work-overrides > summary { font-size: 12px; font-weight: 400; color: var(--muted); }
+.work-overrides[open] > .more-body { animation: pop-in .15s ease-out; }
+@media (prefers-reduced-motion: reduce) { .work-overrides[open] > .more-body { animation: none; } }
 
 .linkbtn {
   background: none;
@@ -1251,34 +1252,36 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       </div>
 
       <div class="field">
-        <label class="lbl" for="title"><span data-i18n="cdTitle">Title of the CD</span> <span class="req">*</span></label>
+        <label class="lbl" for="title"><span data-i18n="cdTitle">Title</span> <span class="req">*</span></label>
         <input class="input" id="title" name="title" type="text" autocomplete="off" data-autofocus data-i18n-ph="cdTitlePh" placeholder="e.g. Piano Concerto No. 2">
         <p class="err" id="title-err" role="alert"></p>
       </div>
 
-      <div class="field">
-        <label class="lbl" for="composer" data-i18n="composer">Composer</label>
-        <input class="input" id="composer" name="composer" type="text" autocomplete="off" list="composers" data-i18n-ph="composerPh" placeholder="e.g. Sergei Rachmaninoff (optional)">
-        <datalist id="composers"></datalist>
-      </div>
-
-      <div class="field">
-        <label class="lbl" for="type" data-i18n="cdType">Type of CD</label>
-        <input class="input" id="type" type="text" list="work-type-options" data-i18n-ph="cdTypePh" placeholder="Type of CD, if known" autocomplete="off">
-        <datalist id="work-type-options"></datalist>
-      </div>
+      <fieldset id="albumOverall">
+        <legend data-i18n="albumOverall">Album overall</legend>
+        <p class="hint" data-i18n="workInheritHint">Works use these details unless you enter different ones in Work details.</p>
+        <div class="field">
+          <label class="lbl" for="composer" data-i18n="composer">Composer</label>
+          <input class="input" id="composer" name="composer" type="text" autocomplete="off" list="composers" data-i18n-ph="composerPh" placeholder="e.g. Sergei Rachmaninoff (optional)">
+          <datalist id="composers"></datalist>
+        </div>
+        <div class="field">
+          <label class="lbl" for="type" data-i18n="cdType">Type of work</label>
+          <input class="input" id="type" type="text" list="work-type-options" data-i18n-ph="cdTypePh" placeholder="Type of work, if known" autocomplete="off">
+          <datalist id="work-type-options"></datalist>
+        </div>
+        <fieldset id="perf-set">
+          <legend data-i18n="performers">Performers</legend>
+          <div id="perf-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+          <button type="button" class="linkbtn" id="add-perf" data-i18n="addPerformer">+ Add performer</button>
+        </fieldset>
+      </fieldset>
       <fieldset id="works-set">
         <legend data-i18n="works">Works on this disc</legend>
         <p class="hint" data-i18n="worksHint">Add each piece on the disc with its tracks. Track numbers run on across the whole disc.</p>
         <div id="work-list" style="display:flex;flex-direction:column;gap:10px"></div>
         <button type="button" class="linkbtn" id="add-work" data-i18n="addWork">+ Add work</button>
         <p class="err" id="works-err" role="alert"></p>
-      </fieldset>
-
-      <fieldset id="perf-set">
-        <legend data-i18n="performers">Performers</legend>
-        <div id="perf-rows" style="display:flex;flex-direction:column;gap:8px"></div>
-        <button type="button" class="linkbtn" id="add-perf" data-i18n="addPerformer">+ Add performer</button>
       </fieldset>
 
       <details class="more" id="more-details">
@@ -1355,24 +1358,17 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
             <input class="input" id="hub" type="text" list="hub-options" data-i18n-ph="hubPh" placeholder="Silver hub details, if known" autocomplete="off">
             <datalist id="hub-options"></datalist>
           </div>
-          <fieldset id="set-fields">
-            <legend data-i18n="discSet">Album or box set</legend>
-            <label class="lbl" for="set-title" data-i18n="setTitle">Set name</label>
-            <input class="input" id="set-title" type="text" list="disc-sets" autocomplete="off" data-i18n-ph="setTitlePh" placeholder="Leave empty for a standalone CD">
-            <datalist id="disc-sets"></datalist>
-            <div class="set-numbers">
-              <div><label class="lbl" for="set-disc" data-i18n="setDisc">Disc number</label><input class="input" id="set-disc" type="number" min="1" max="999" value="1"></div>
-              <div><label class="lbl" for="set-total" data-i18n="setTotal">Discs in set</label><input class="input" id="set-total" type="number" min="1" max="999" value="2"></div>
-            </div>
-            <p class="err" id="discSet-err" role="alert"></p>
-            <p class="hint" data-i18n="setHint">Choose the same set name to link its discs. Each disc keeps its own details, tracks and audio.</p>
-          </fieldset>
           <div class="field">
             <label class="lbl" for="notes" data-i18n="notes">Notes</label>
             <textarea class="input" id="notes" rows="4" data-i18n-ph="notesPh" placeholder="Anything you want to remember about this disc"></textarea>
           </div>
         </div>
       </details>
+
+      <fieldset id="form-audio-set" hidden>
+        <legend data-i18n="audioHead">Audio</legend>
+        <div id="form-audio"></div>
+      </fieldset>
 
       <fieldset id="cardshow-set">
         <legend data-i18n="cardOwn">Show on this card</legend>
@@ -1738,7 +1734,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       coverHintAdded: "Drag the cover to choose the part shown on the card. Zoom with the slider or the mouse wheel.",
       coverCropAria: "Cover position. Drag, or use the arrow keys; plus and minus zoom.",
       replace: "Replace", remove: "Remove",
-      cdTitle: "Title of the CD", cdTitlePh: "e.g. Piano Concerto No. 2",
+      cdTitle: "Title", cdTitlePh: "e.g. Piano Concerto No. 2",
       composer: "Composer", composerPh: "e.g. Sergei Rachmaninoff (optional)",
       performers: "Performers", performerName: "Name", performerNameAria: "Performer name", roleAria: "Role",
       removePerformer: "Remove this performer", addPerformer: "+ Add performer",
@@ -1932,7 +1928,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       works: "Works on this disc", worksHint: "Add each piece on the disc with its tracks. Track numbers run on across the whole disc.",
       addWork: "+ Add work", removeWork: "Remove this work",
       workTitlePh: "Work, e.g. Symphony No. 4 in E minor, Op. 98", workTitleAria: "Work title",
-      workComposerPh: "Composer of this work, if different from the CD", workComposerAria: "Composer of this work",
+      workComposerPh: "Composer (if different)", workComposerAria: "Composer of this work",
       addTrack: "+ Add track", removeTrack: "Remove this track",
       trackTitlePh: "Track or movement", trackTitleAria: "Track title", durationPh: "13:17", durationAria: "Length (minutes:seconds)",
       errDuration: "Write each length as minutes:seconds, like 13:17.", totalTime: "Total time {x}",
@@ -1956,7 +1952,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       coverHintAdded: "カバーをドラッグして、カードに表示する部分を選んでください。スライダーまたはマウスホイールで拡大できます。",
       coverCropAria: "カバーの位置。ドラッグするか矢印キーで移動し、プラスとマイナスで拡大・縮小します。",
       replace: "差し替え", remove: "削除",
-      cdTitle: "CDのタイトル", cdTitlePh: "例：ピアノ協奏曲第2番",
+      cdTitle: "タイトル", cdTitlePh: "例：ピアノ協奏曲第2番",
       composer: "作曲家", composerPh: "例：ラフマニノフ（任意）",
       performers: "演奏者", performerName: "名前", performerNameAria: "演奏者名", roleAria: "役割",
       removePerformer: "この演奏者を削除", addPerformer: "+ 演奏者を追加",
@@ -2150,7 +2146,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       works: "収録曲", worksHint: "ディスクに収録された作品を、トラックと一緒に追加してください。トラック番号はディスク全体で通し番号になります。",
       addWork: "+ 作品を追加", removeWork: "この作品を削除",
       workTitlePh: "作品名　例：交響曲第4番 ホ短調 作品98", workTitleAria: "作品名",
-      workComposerPh: "この作品の作曲家（CDと異なる場合）", workComposerAria: "この作品の作曲家",
+      workComposerPh: "作曲家（異なる場合）", workComposerAria: "この作品の作曲家",
       addTrack: "+ トラックを追加", removeTrack: "このトラックを削除",
       trackTitlePh: "トラック・楽章名", trackTitleAria: "トラック名", durationPh: "13:17", durationAria: "演奏時間（分:秒）",
       errDuration: "演奏時間は「分:秒」の形式で入力してください（例：13:17）。", totalTime: "総演奏時間 {x}",
@@ -2174,7 +2170,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       coverHintAdded: "拖动封面，选择在卡片上显示的部分。可用滑块或鼠标滚轮缩放。",
       coverCropAria: "封面位置。拖动或使用方向键移动，加号和减号缩放。",
       replace: "更换", remove: "删除",
-      cdTitle: "CD标题", cdTitlePh: "例如：第二钢琴协奏曲",
+      cdTitle: "标题", cdTitlePh: "例如：第二钢琴协奏曲",
       composer: "作曲家", composerPh: "例如：拉赫玛尼诺夫（可选）",
       performers: "演奏者", performerName: "姓名", performerNameAria: "演奏者姓名", roleAria: "角色",
       removePerformer: "删除此演奏者", addPerformer: "+ 添加演奏者",
@@ -2368,7 +2364,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       works: "收录作品", worksHint: "添加这张CD上的每部作品及其音轨。音轨编号在整张CD中连续编号。",
       addWork: "+ 添加作品", removeWork: "删除此作品",
       workTitlePh: "作品，例如：e小调第四交响曲，作品98", workTitleAria: "作品名称",
-      workComposerPh: "此作品的作曲家（如与CD不同）", workComposerAria: "此作品的作曲家",
+      workComposerPh: "作曲家（如不同）", workComposerAria: "此作品的作曲家",
       addTrack: "+ 添加音轨", removeTrack: "删除此音轨",
       trackTitlePh: "音轨或乐章", trackTitleAria: "音轨名称", durationPh: "13:17", durationAria: "时长（分:秒）",
       errDuration: "请按“分:秒”格式填写时长，例如 13:17。", totalTime: "总时长 {x}",
@@ -2401,9 +2397,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     WORK_TYPES.forEach(function (type, i) { I18N[l]["workType." + type] = WORK_TYPE_NAMES[l][i]; });
   });
   function workTypeText(type) { return WORK_TYPES.indexOf(type) >= 0 ? t("workType." + type) : type || t("typeUnknown"); }
-  Object.assign(I18N.en, { cdType: "Type of CD", cdTypePh: "Type of CD, if known", workTypePh: "Type of this work, if known", hubPh: "Silver hub details, if known", hubClear: "Clear hub", hubClearType: "Clear hub", workDuration: "Duration of this work" });
-  Object.assign(I18N.ja, { cdType: "CDの種類", cdTypePh: "CDの種類（任意）", workTypePh: "この作品の種類（任意）", hubPh: "銀色ハブの詳細（任意）", hubClear: "ハブをクリア", hubClearType: "透明ハブ", workDuration: "作品の演奏時間" });
-  Object.assign(I18N.zh, { cdType: "CD类型", cdTypePh: "CD的整体类型（选填）", workTypePh: "此作品的类型（选填）", hubPh: "银圈详情（选填）", hubClear: "清空银圈", hubClearType: "透明圈", workDuration: "作品时长" });
+  Object.assign(I18N.en, { cdType: "Type of work", cdTypePh: "Type of work, if known", workTypePh: "Type of work (if different)", albumOverall: "Album overall", workDetails: "Work details", workPerformers: "Performers (if different)", workInheritHint: "Works use these details unless you enter different ones in Work details.", hubPh: "Silver hub details, if known", hubClear: "Clear hub", hubClearType: "Clear hub", workDuration: "Duration of this work" });
+  Object.assign(I18N.ja, { cdType: "作品の種類", cdTypePh: "作品の種類（任意）", workTypePh: "作品の種類（異なる場合）", albumOverall: "アルバム全体", workDetails: "作品の詳細", workPerformers: "演奏者（異なる場合）", workInheritHint: "各作品にはここで入力した情報が使われます。異なる場合は「作品の詳細」で入力してください。", hubPh: "銀色ハブの詳細（任意）", hubClear: "ハブをクリア", hubClearType: "透明ハブ", workDuration: "作品の演奏時間" });
+  Object.assign(I18N.zh, { cdType: "作品类型", cdTypePh: "作品类型（选填）", workTypePh: "作品类型（如不同）", albumOverall: "专辑整体信息", workDetails: "作品详情", workPerformers: "演奏者（如不同）", workInheritHint: "各作品默认使用这里的信息；如有不同，请在「作品详情」中填写。", hubPh: "银圈详情（选填）", hubClear: "清空银圈", hubClearType: "胶圈", workDuration: "作品时长" });
   I18N.en.hubClearType = "Clear hub";
   function normalizeWorkType(value) {
     value = String(value || "").trim();
@@ -2417,7 +2413,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   function normalizeHub(value) {
     value = String(value || "").trim();
-    var known = { full: ["Full silver hub", "全面銀色ハブ", "满银圈"], partial: ["Partial silver hub", "一部銀色ハブ", "半银圈"], clear: ["Clear hub", "透明ハブ", "透明圈"] };
+    var known = { full: ["Full silver hub", "全面銀色ハブ", "满银圈"], partial: ["Partial silver hub", "一部銀色ハブ", "半银圈"], clear: ["Clear hub", "透明ハブ", "透明圈", "胶圈"] };
     return Object.keys(known).filter(function (k) { return known[k].some(function (s) { return s.toLowerCase() === value.toLowerCase(); }); })[0] || value;
   }
   function refreshTypeSuggestions() {
@@ -2734,7 +2730,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     fillComposers();
     refreshRows();
     if (lookupDiscRelease) qsa("#lookup-disc option").forEach(function (o) {
-      o.textContent = t("setPosition", { n: o.value, total: lookupDiscRelease.discSet.total });
+      o.textContent = t("setPosition", { n: o.value, total: lookupDiscRelease.lookupDiscs.length });
     });
     ["title", "recordingYear", "releaseYear", "works"].forEach(function (f) { setErr(f, ""); });
     $("photo-err").textContent = "";
@@ -2775,7 +2771,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function closeWin(id) {
     var ov = $("win-" + id);
     if (ov.hidden || ov.classList.contains("is-closing")) return;
-    if (id === "cd") stopCamera();
+    if (id === "cd" && formAudio && formAudio.saving) return;
+    if (id === "cd") { stopCamera(); if (!editingId) discardFormAudio(); }
     if (id === "firstsync" && firstSync.resolve) { var ask = firstSync.resolve; firstSync.resolve = null; setTimeout(function () { ask("signout"); }, 0); }
     if (id === "cd" && editingId) { clearForm(); renderAll(); }
     if (id === "album") resetAlbumDlg();
@@ -2992,10 +2989,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     summary.setAttribute("aria-label", t("performerRoles") + ": " + chosen.join(", "));
     row.querySelector(".perf-role-options").setAttribute("aria-label", t("performerRoles"));
   }
-  function addRow(role, name) {
+  function addRow(role, name, root) {
+    root = root || $("perf-rows");
     var n = ++rowCounter;
     var row = el("div", "prow");
-    var roles = Array.isArray(role) ? role : [role || DEFAULT_ROLES[$("perf-rows").children.length] || "Other"];
+    var roles = Array.isArray(role) ? role : [role || DEFAULT_ROLES[root.children.length] || "Other"];
     roles = roles.filter(Boolean);
     if (!roles.length) roles = ["Other"];
     var menu = el("details", "perf-roles");
@@ -3042,12 +3040,17 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     rm.setAttribute("aria-label", t("removePerformer"));
     rm.addEventListener("click", function () { row.remove(); });
     row.appendChild(menu); row.appendChild(inp); row.appendChild(rm);
-    options.addEventListener("change", function () {
+    function markPerformerEdited() {
       inp.classList.remove("filled");
+      var work = row.closest(".work");
+      if (work) work.querySelector(".w-title").classList.remove("filled");
+    }
+    options.addEventListener("change", function () {
+      markPerformerEdited();
       syncPerformerRoles(row);
       if (menu.open) positionPerformerRoles(menu);
     });
-    custom.addEventListener("input", function () { inp.classList.remove("filled"); syncPerformerRoles(row); });
+    custom.addEventListener("input", function () { markPerformerEdited(); syncPerformerRoles(row); });
     function addCustomRole() {
       var value = custom.value.trim();
       if (!value) return;
@@ -3056,7 +3059,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       box.checked = true;
       boxes.forEach(function (b) { if (b.value === "Other" && value !== "Other") b.checked = false; });
       custom.value = "";
-      inp.classList.remove("filled");
+      markPerformerEdited();
       /* Move focus before hiding the editor; a sole selected role becomes disabled. */
       summary.focus();
       syncPerformerRoles(row);
@@ -3083,7 +3086,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       if (!menu.contains(e.relatedTarget)) menu.open = false;
     });
     syncPerformerRoles(row);
-    $("perf-rows").appendChild(row);
+    root.appendChild(row);
     return inp;
   }
   $("add-perf").addEventListener("click", function () { addRow().focus(); });
@@ -3092,8 +3095,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   });
   window.addEventListener("resize", function () { qsa(".perf-roles[open]").forEach(positionPerformerRoles); });
   window.addEventListener("scroll", function () { qsa(".perf-roles[open]").forEach(positionPerformerRoles); }, true);
-  function resetRows(performers, filled) {
-    $("perf-rows").textContent = "";
+  function resetRows(performers, filled, root) {
+    root = root || $("perf-rows");
+    root.textContent = "";
     var people = [];
     (performers || []).forEach(function (p) {
       var name = (p.name || "").trim();
@@ -3103,14 +3107,14 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       if (person.roles.indexOf(role) === -1) person.roles.push(role);
     });
     people.forEach(function (person) {
-      var inp = addRow(person.roles, person.name);
+      var inp = addRow(person.roles, person.name, root);
       if (filled) inp.classList.add("filled");
     });
-    if (!people.length) addRow("Conductor");
+    if (!people.length && root === $("perf-rows")) addRow("Conductor", "", root);
   }
-  function readPerformers() {
+  function readPerformers(root) {
     var out = [];
-    qsa(".prow").forEach(function (row) {
+    qsa(".prow", root || $("perf-rows")).forEach(function (row) {
       var name = row.querySelector(".perf-name").value.trim();
       /* Keep the old record shape: one person may have several distinct roles. */
       qsa(".perf-role-option input[type=checkbox]:checked", row).forEach(function (box) {
@@ -3353,6 +3357,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     rm.addEventListener("click", function () { box.remove(); renumberTracks(); });
     head.appendChild(title); head.appendChild(workLen); head.appendChild(rm);
     box.appendChild(head);
+    var details = el("details", "more w-details");
+    var summary = el("summary", null, t("workDetails"));
+    summary.setAttribute("data-i18n", "workDetails");
+    details.appendChild(summary);
+    var body = el("div", "more-body");
     var comp = textInput("input w-composer", w.composer, "workComposerPh", "workComposerAria");
     comp.id = "work-composer-" + n;
     comp.setAttribute("list", "composers");
@@ -3363,7 +3372,23 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     i18nAttrs(kind, null, "workType");
     kind.setAttribute("list", "work-type-options");
     kindRow.appendChild(kind);
-    box.appendChild(kindRow);
+    body.appendChild(kindRow);
+    var performers = el("fieldset", "w-performers");
+    var legend = el("legend", null, t("workPerformers"));
+    legend.setAttribute("data-i18n", "workPerformers");
+    performers.appendChild(legend);
+    var rows = el("div", "w-perf-rows");
+    rows.style.cssText = "display:flex;flex-direction:column;gap:8px";
+    performers.appendChild(rows);
+    resetRows(w.performers, false, rows);
+    var addPerformer = el("button", "linkbtn w-add-perf", t("addPerformer"));
+    addPerformer.type = "button";
+    addPerformer.setAttribute("data-i18n", "addPerformer");
+    addPerformer.addEventListener("click", function () { addRow(null, "", rows).focus(); });
+    performers.appendChild(addPerformer);
+    body.appendChild(performers);
+    details.appendChild(body);
+    box.appendChild(details);
     box.appendChild(el("div", "tracks"));
     var more = el("button", "linkbtn", t("addTrack"));
     more.type = "button";
@@ -3418,13 +3443,16 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var title = box.querySelector(".w-title").value.trim();
       var composer = box.querySelector(".w-composer").value.trim();
       var type = normalizeWorkType(box.querySelector(".w-type").value);
+      /* Store only this work's own credits; blank fields inherit the album at read time. */
+      var performers = readPerformers(box.querySelector(".w-perf-rows"));
       var workDuration = !qsa(".trow", box).length ? visibleLen.value.trim().replace(/[：.']/g, ":") : "";
       if (workDuration && !DURATION.test(workDuration)) {
         visibleLen.setAttribute("aria-invalid", "true"); bad = bad || visibleLen;
       }
-      if (title || composer || type || tracks.length || workDuration) {
+      if (title || composer || type || performers.length || tracks.length || workDuration) {
         var work = { title: title, composer: composer, tracks: tracks };
         if (type) work.type = type;
+        if (performers.length) work.performers = performers;
         if (workDuration) work.duration = workDuration;
         out.push(work);
       }
@@ -3438,6 +3466,52 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     (cd.works || []).forEach(function (w) { if (w.composer && seen.indexOf(w.composer) === -1) seen.push(w.composer); });
     return seen.join(" / ");
   }
+  /* Empty work fields follow the album. Only actual differences need a disclosure. */
+  function workMetadata(cd, work) {
+    return {
+      composer: String(work.composer || "").trim() || cd.composer || "",
+      type: String(work.type || "").trim() || cd.type || "",
+      performers: Array.isArray(work.performers) && work.performers.length ? work.performers : cd.performers || []
+    };
+  }
+  function workOverrides(cd, work) {
+    var effective = workMetadata(cd, work), out = {};
+    if (work.composer && effective.composer !== (cd.composer || "")) out.composer = effective.composer;
+    if (work.type && effective.type !== (cd.type || "")) out.type = effective.type;
+    function key(perfs) { return Array.from(new Set((perfs || []).filter(function (p) { return p.name; }).map(function (p) { return JSON.stringify([p.role || "Other", p.name.trim()]); }))).sort().join("|"); }
+    if ((work.performers || []).length && key(effective.performers) !== key(cd.performers)) out.performers = effective.performers;
+    return out;
+  }
+  function workDisclosure(cd, work, linked) {
+    var own = workOverrides(cd, work);
+    if (!Object.keys(own).length) return null;
+    var details = el("details", "more work-overrides");
+    details.appendChild(el("summary", null, t("workSpecificDetails")));
+    var body = el("div", "more-body");
+    if (own.composer) {
+      var composer = el("p", "composer");
+      composer.appendChild(linked ? nameLink("composer", own.composer) : document.createTextNode(own.composer));
+      body.appendChild(composer);
+    }
+    if (own.type) body.appendChild(el("p", "hint", workTypeText(own.type)));
+    if (own.performers) body.appendChild(perfList(own.performers, linked));
+    details.appendChild(body);
+    details.addEventListener("click", function (e) { e.stopPropagation(); });
+    details.addEventListener("keydown", function (e) { e.stopPropagation(); });
+    return details;
+  }
+  function cdPerformers(cd) {
+    var all = (cd.performers || []).slice();
+    (cd.works || []).forEach(function (w) {
+      workMetadata(cd, w).performers.forEach(function (p) {
+        if (!all.some(function (x) { return x.name === p.name && x.role === p.role; })) all.push(p);
+      });
+    });
+    return all;
+  }
+  Object.assign(I18N.en, { workSpecificDetails: "Work details" });
+  Object.assign(I18N.ja, { workSpecificDetails: "作品の詳細" });
+  Object.assign(I18N.zh, { workSpecificDetails: "作品详情" });
   function totalSeconds(cd) {
     var s = 0;
     (cd.works || []).forEach(function (w) {
@@ -3493,7 +3567,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     ["label", "label"], ["issuer", "issuer"], ["recordingYear", "recYear"], ["releaseYear", "relYear"],
     ["catalogNo", "catalogNo"], ["manufacturer", "manufacturer"], ["madeIn", "madeIn"], ["recordingVenue", "venue"],
     ["spars", "spars"], ["barcode", "barcode"], ["ifpiMastering", "ifpiMastering"], ["ifpiMould", "ifpiMould"],
-    ["hub", "hub"], ["set", "discSet"], ["type", "cdType"], ["workTypes", "workType"], ["notes", "notes"]
+    ["hub", "hub"], ["type", "cdType"], ["notes", "notes"]
   ];
   var CARD_FIELD_MAX = 6;
   /* The favorites a disc is in show as tags at the bottom of its card. They don't count toward
@@ -3501,7 +3575,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
      so lists saved before this choice existed keep showing them. */
   var FAV_TAGS_OFF = "-albums";
   function capFields(list) {
-    var out = list.filter(function (f) { return f !== FAV_TAGS_OFF; }).slice(0, CARD_FIELD_MAX);
+    /* Older per-work summaries now live inside Works. Migrate before limiting the choices. */
+    var out = [];
+    list.forEach(function (f) {
+      if (f === "workTypes") f = "works";
+      if (f !== FAV_TAGS_OFF && out.indexOf(f) === -1) out.push(f);
+    });
+    out = out.slice(0, CARD_FIELD_MAX);
     if (list.indexOf(FAV_TAGS_OFF) !== -1) out.push(FAV_TAGS_OFF);
     return out;
   }
@@ -3726,8 +3806,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         setCds(items.slice());
         applyMeta(raw);
       },
-      add: async function (cd) {
-        cd.id = "l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      add: async function (cd, prospectiveId) {
+        cd.id = prospectiveId || "l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
         items = [cd].concat(items);
         var ok = persist();
         setCds(items.slice());
@@ -3847,7 +3927,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function desktopBackend() {
     var items = [];
     var syncInfo = { metaAt: 0, deleted: {} };
-    var saving = false, again = false;
+    var saving = false, again = false, savePromise = Promise.resolve();
     /* Write covers that are still pictures to files (the CD's updatedAt stays as it is). */
     async function storeCovers() {
       if (!Covers.ready) return;
@@ -3861,18 +3941,21 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         }
       }
     }
-    function persist(fromSync) {
+    function persist(fromSync, strict) {
       if (!fromSync) Cloud.changed();
-      if (saving) { again = true; return Promise.resolve(); }
+      if (saving) { again = true; return strict ? savePromise.then(function () { return persist(fromSync, true); }) : Promise.resolve(); }
       saving = true;
-      return storeCovers().then(function () {
+      var failure = null;
+      savePromise = storeCovers().then(function () {
         return Store.save({ cds: items, meta: meta, sync: syncInfo });
-      }).catch(function () {
+      }).catch(function (error) {
+        failure = error;
         toast(t("toastSaveFail"));
       }).then(function () {
         saving = false;
-        if (again) { again = false; return persist(true); }
-      });
+        if (again) { again = false; return persist(true, strict); }
+      }).then(function () { if (strict && failure) throw failure; });
+      return savePromise;
     }
     return {
       kind: "desktop",
@@ -3902,15 +3985,18 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           toast(t("toastSaveFail"));
         });
       },
-      add: async function (cd) {
-        cd.id = "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      add: async function (cd, prospectiveId, strict) {
+        var previous = items;
+        cd.id = prospectiveId || "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
         cd.updatedAt = Date.now();
         items = [cd].concat(items);
         setCds(items.slice());
-        await persist();
+        try { await persist(false, strict); }
+        catch (error) { if (strict) { items = previous; setCds(items.slice()); } throw error; }
         return cd.id;
       },
-      update: async function (id, cd) {
+      update: async function (id, cd, strict) {
+        var previous = items;
         items = items.map(function (i) {
           if (i.id !== id) return i;
           var n = Object.assign({}, cd);
@@ -3919,7 +4005,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           return n;
         });
         setCds(items.slice());
-        await persist();
+        try { await persist(false, strict); }
+        catch (error) { if (strict) { items = previous; setCds(items.slice()); } throw error; }
       },
       remove: async function (id) {
         items = items.filter(function (i) { return i.id !== id; });
@@ -4441,12 +4528,14 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     });
     return people;
   }
-  function perfList(perfs) {
+  function perfList(perfs, linked) {
     var ul = el("ul", "perfs");
     groupedPerformers(perfs).forEach(function (p) {
       var li = el("li");
       li.appendChild(el("span", "role", p.roles.map(roleText).join(" / ")));
-      li.appendChild(el("span", "name", p.name));
+      var name = el("span", "name");
+      name.appendChild(linked ? nameLink("performer", p.name) : document.createTextNode(p.name));
+      li.appendChild(name);
       ul.appendChild(li);
     });
     return ul;
@@ -4551,8 +4640,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     body.appendChild(el("h3", null, cd.title));
     var picked = {};
     fieldsFor(cd).forEach(function (f) { picked[f] = true; });
-    var shownComposer = picked.composer ? discComposer(cd) : "";
+    var shownComposer = picked.composer ? cd.composer || "" : "";
     if (shownComposer) body.appendChild(el("p", "composer", shownComposer));
+    if (picked.type && cd.type) body.appendChild(el("p", "meta", workTypeText(cd.type)));
     var codes = [];
     CARD_FIELDS.forEach(function (pair) {
       var f = pair[0];
@@ -4562,19 +4652,16 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       } else if (f === "performers") {
         if (cd.performers && cd.performers.length) body.appendChild(perfList(cd.performers));
       } else if (f === "works") {
-        var titles = (cd.works || []).map(function (w) { return w.title; }).filter(Boolean);
-        if (titles.length > 3) titles = titles.slice(0, 3).concat(t("moreWorks", { n: titles.length - 3 }));
-        titles.forEach(function (x) { body.appendChild(el("p", "meta", x)); });
+        var worksShown = (cd.works || []).filter(function (w) { return w.title; });
+        worksShown.slice(0, 3).forEach(function (w) {
+          body.appendChild(el("p", "meta", w.title));
+          var more = workDisclosure(cd, w); if (more) body.appendChild(more);
+        });
+        if (worksShown.length > 3) body.appendChild(el("p", "meta", t("moreWorks", { n: worksShown.length - 3 })));
       } else if (f === "hub") {
         if (cd.hub) body.appendChild(el("p", "meta", hubText(cd.hub)));
-      } else if (f === "set") {
-        if (cd.set) body.appendChild(el("p", "meta", cd.set.title + " · " + t("setPosition", { n: cd.set.disc, total: cd.set.total })));
       } else if (f === "type") {
-        if (cd.type) body.appendChild(el("p", "meta", workTypeText(cd.type)));
-      } else if (f === "workTypes") {
-        var kinds = [];
-        (cd.works || []).forEach(function (w) { if (w.type && kinds.indexOf(w.type) < 0) kinds.push(w.type); });
-        if (kinds.length) body.appendChild(el("p", "meta", kinds.map(workTypeText).join(" · ")));
+        return;
       } else if (f === "totalTime") {
         var secs = totalSeconds(cd);
         if (secs) body.appendChild(el("p", "meta", t("totalTime", { x: fmtSeconds(secs) })));
@@ -4619,9 +4706,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
 
   function matches(cd, q) {
-    var hay = [cd.title, cd.composer, cd.label, cd.issuer, cd.recordingYear, cd.releaseYear, cd.year, cd.notes, cd.set && cd.set.title]
+    var hay = [cd.title, cd.composer, cd.label, cd.issuer, cd.recordingYear, cd.releaseYear, cd.year, cd.notes]
       .concat(DETAIL_FIELDS.map(function (f) { return cd[f]; }))
-      .concat((cd.performers || []).map(function (p) { return p.name + " " + roleText(p.role); }))
+      .concat(cdPerformers(cd).map(function (p) { return p.name + " " + roleText(p.role); }))
       .concat((cd.works || []).map(function (w) {
         return [w.title, w.composer, w.type ? workTypeText(w.type) : ""].concat((w.tracks || []).map(function (tr) { return tr.title; })).join(" ");
       }))
@@ -4713,7 +4800,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   function filterMatch(cd) {
     if (filters.composer.length && !cdComposers(cd).some(function (c) { return filters.composer.indexOf(c) !== -1; })) return false;
-    if (filters.performer.length && !(cd.performers || []).some(function (p) { return filters.performer.indexOf(performerFilterKey(p)) !== -1; })) return false;
+    if (filters.performer.length && !cdPerformers(cd).some(function (p) { return filters.performer.indexOf(performerFilterKey(p)) !== -1; })) return false;
     if (filters.label.length && filters.label.indexOf(cd.label || "") === -1) return false;
     if (filters.type.length && filters.type.indexOf(cd.type) === -1 && !(cd.works || []).some(function (w) { return filters.type.indexOf(w.type) !== -1; })) return false;
     return true;
@@ -4745,7 +4832,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var roles = Object.create(null);
     base.forEach(function (cd) {
       cdComposers(cd).forEach(function (c) { sets.composer[c] = true; });
-      (cd.performers || []).forEach(function (p) {
+      cdPerformers(cd).forEach(function (p) {
         if (!p.name) return;
         roles[p.role || "Other"] = true;
         sets.performer[performerFilterKey(p)] = true;
@@ -4812,7 +4899,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     resetShelfTools();
     if (!Object.prototype.hasOwnProperty.call(filters, kind)) return;
     if (kind === "performer") {
-      cds.forEach(function (cd) { (cd.performers || []).forEach(function (p) {
+      cds.forEach(function (cd) { cdPerformers(cd).forEach(function (p) {
         var key = performerFilterKey(p);
         if ((p.name || "").trim() === value && (!role || (p.role || "Other") === role) && filters.performer.indexOf(key) === -1) filters.performer.push(key);
       }); });
@@ -5921,7 +6008,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function fieldPicker(box, idBase, chosen, state, onChange, extra) {
     var keep = box.contains(document.activeElement) ? document.activeElement.id : "";
     var tagsOn = chosen.indexOf(FAV_TAGS_OFF) === -1;
-    var count = chosen.length - (tagsOn ? 0 : 1);
+    var count = chosen.filter(function (f) { return f !== "set"; }).length - (tagsOn ? 0 : 1);
     var full = count >= CARD_FIELD_MAX;
     box.textContent = "";
     var wrap = el("div", "fpick");
@@ -5941,8 +6028,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     list.hidden = !state.open;
     list.appendChild(el("p", "hint", t("cardFieldsNote", { n: count, max: CARD_FIELD_MAX })));
     var fieldGroups = [
-      ["cardGroupMusic", ["composer", "performers", "works", "type", "workTypes", "totalTime"]],
-      ["cardGroupRelease", ["label", "issuer", "recordingYear", "releaseYear", "catalogNo", "set"]],
+      ["cardGroupMusic", ["composer", "performers", "works", "type", "totalTime"]],
+      ["cardGroupRelease", ["label", "issuer", "recordingYear", "releaseYear", "catalogNo"]],
       ["cardGroupDisc", ["manufacturer", "madeIn", "recordingVenue", "spars", "barcode", "ifpiMastering", "ifpiMould", "hub", "notes"]]
     ];
     var checksByField = {};
@@ -6538,18 +6625,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("add-h").textContent = editing ? t("edit") : t("add");
     if (!$("submit").disabled) $("submit").textContent = editing ? t("saveChanges") : t("addToCollection");
     $("cancel-edit").hidden = !editing;
+    renderFormAudio();
   }
   function clearForm() {
+    discardFormAudio();
     $("cd-form").reset();
-    $("set-title").dataset.setId = "";
-    $("discSet-err").textContent = "";
-    $("disc-sets").textContent = "";
-    var setNames = {};
-    cds.forEach(function (cd) {
-      if (!cd.set || !cd.set.title || setNames[cd.set.title]) return;
-      setNames[cd.set.title] = true;
-      var option = el("option"); option.value = cd.set.title; $("disc-sets").appendChild(option);
-    });
     dupWarned = "";
     $("dup-warn").hidden = true;
     photoData = null;
@@ -6584,6 +6664,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function startEdit(cd) {
     clearForm();
     editingId = cd.id;
+    formAudio = makeFormAudio(cd);
     editingAddedAt = cd.addedAt || Date.now();
     $("title").value = cd.title || "";
     $("composer").value = cd.composer || "";
@@ -6591,15 +6672,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("issuer").value = cd.issuer || "";
     $("recordingYear").value = cd.recordingYear || "";
     $("releaseYear").value = cd.releaseYear || cd.year || "";
-    if (cd.set) {
-      $("set-title").value = cd.set.title || "";
-      $("set-title").dataset.setId = cd.set.id || "";
-      $("set-disc").value = cd.set.disc || 1;
-      $("set-total").value = cd.set.total || 2;
-    }
     DETAIL_FIELDS.forEach(function (f) { $(f).value = f === "hub" ? hubText(cd[f]) : f === "type" && cd[f] ? workTypeText(cd[f]) : cd[f] || ""; });
     $("more-details").open = ["label", "issuer", "recordingYear", "releaseYear", "year", "notes"].concat(DETAIL_FIELDS)
-      .some(function (f) { return !!cd[f]; }) || !!cd.set;
+      .some(function (f) { return !!cd[f]; });
     $("notes").value = cd.notes || "";
     resetWorks(cd.works);
     photoData = cd.photo || null;
@@ -6719,8 +6794,19 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       return "";
     }
     var works = [], cur = null;
+    function addWorkCredits(into, credits) {
+      (credits || []).forEach(function (credit) {
+        var name = dgCreditName(credit);
+        if (!name) return;
+        dgRoles(credit.role).forEach(function (role) {
+          if (!into.performers) into.performers = [];
+          if (!into.performers.some(function (p) { return p.name === name && p.role === role; })) into.performers.push({ role: role, name: name });
+        });
+      });
+    }
     function work(title, credits) {
       cur = { title: dgTitle(title), composer: dgComposers(credits)[0] || "", tracks: [] };
+      addWorkCredits(cur, credits);
       works.push(cur);
       return cur;
     }
@@ -6728,6 +6814,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       /* CDC numbers tracks itself, so drop a leading "1. " (Roman movement numbers stay). */
       into.tracks.push({ title: dgTitle(String(t.title || "").replace(/^\d+\.\s+/, "")), duration: DURATION.test(t.duration || "") ? t.duration : "" });
       if (!into.composer) into.composer = trackComposer(t);
+      addWorkCredits(into, t.extraartists);
     }
     (tracklist || []).forEach(function (t) {
       if (t.type_ === "index") {
@@ -6845,7 +6932,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var totalDiscs = Math.max(formatCount, discKeys[discKeys.length - 1] || 1);
       out.works = dgWorks(discLists[discKeys[0]] || d.tracklist, composers);
       if (totalDiscs > 1) {
-        out.discSet = { id: "discogs-" + d.id, title: dgTitle(d.title), disc: discKeys[0] || 1, total: totalDiscs };
+        out.lookupDisc = discKeys[0] || 1;
         out.lookupDiscs = [];
         for (var dn = 1; dn <= totalDiscs; dn++) out.lookupDiscs.push({ disc: dn, works: dgWorks(discLists[dn] || [], composers) });
       }
@@ -7031,7 +7118,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
     /* Performer rows and works are replaced as a whole, or emptied when only a lookup filled them. */
     function onlyFilled(sel) {
-      var inputs = qsa(sel).filter(function (i) { return !!i.value.trim(); });
+      var inputs = qsa(sel).filter(function (i) { return i.type !== "checkbox" && !!i.value.trim(); });
       return inputs.every(function (i) { return i.classList.contains("filled"); });
     }
     put("title", p.title);
@@ -7039,13 +7126,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (p.performers && p.performers.length) {
       resetRows(p.performers, true);
       n += p.performers.length;
-    } else if (onlyFilled(".prow .perf-name")) {
+    } else if (onlyFilled("#perf-rows .perf-name")) {
       resetRows();
     }
     if (p.works && p.works.length) {
       resetWorks(p.works);
-      qsa("#work-list input").forEach(function (i) { if (i.value) i.classList.add("filled"); });
-      p.works.forEach(function (w) { n += (w.title ? 1 : 0) + w.tracks.length; });
+      qsa("#work-list input:not([type=checkbox])").forEach(function (i) { if (i.value) i.classList.add("filled"); });
+      p.works.forEach(function (w) { n += (w.title ? 1 : 0) + (w.tracks || []).length; });
     } else if (onlyFilled("#work-list input")) {
       resetWorks();
     }
@@ -7055,15 +7142,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     put("releaseYear", p.releaseYear && /^(19[89]\d|20\d{2})$/.test(p.releaseYear) ? p.releaseYear : "");
     put("spars", p.spars || "");
     put("type", p.type ? workTypeText(p.type) : "");
-    if (p.discSet) {
-      put("set-title", p.discSet.title);
-      $("set-title").dataset.setId = p.discSet.id;
-      put("set-disc", p.discSet.disc);
-      put("set-total", p.discSet.total);
-    } else if ($("set-title").classList.contains("filled")) {
-      put("set-title", ""); $("set-title").dataset.setId = "";
-      $("set-disc").value = 1; $("set-total").value = 2;
-    }
     if (n > before) $("more-details").open = true;
     return n;
   }
@@ -7114,17 +7192,17 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("lookup-disc").textContent = "";
     if (!lookupDiscRelease) return;
     p.lookupDiscs.forEach(function (x) {
-      var option = el("option", null, t("setPosition", { n: x.disc, total: p.discSet.total }));
+      var option = el("option", null, t("setPosition", { n: x.disc, total: p.lookupDiscs.length }));
       option.value = x.disc; $("lookup-disc").appendChild(option);
     });
-    $("lookup-disc").value = p.discSet.disc;
+    $("lookup-disc").value = p.lookupDisc;
   }
   $("lookup-disc").addEventListener("change", function () {
     if (!lookupDiscRelease) return;
     var release = lookupDiscRelease;
     var disc = release.lookupDiscs.filter(function (x) { return x.disc === +$("lookup-disc").value; })[0];
     if (!disc) return;
-    fillFromLookup(Object.assign({}, release, { works: disc.works, discSet: Object.assign({}, release.discSet, { disc: disc.disc }) }));
+    fillFromLookup(Object.assign({}, release, { works: disc.works }));
   });
   async function useLookup(item, q, btn) {
     var run = ++lookupRun;
@@ -7297,26 +7375,114 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       if (!e || e.code !== "local_full") throw e;
     }
   }
-  async function addAudio(cd) {
-    var added;
-    try { added = await AudioLib.call("add_audio", { cdId: cd.id }); }
-    catch (e) { toast(t("toastAudioFail")); return; }
-    if (!added || !added.length) return;
-    var list = (cd.audio || []).slice();
-    var taken = {};
-    list.forEach(function (a) { if (a.track) taken[a.track] = true; });
-    var free = discTracks(cd).map(function (x) { return x.no; }).filter(function (n) { return !taken[n]; });
-    added.sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { numeric: true }); });
-    added.forEach(function (a) {
-      AudioLib.present[a.file] = true;
-      list.push({ file: a.file, name: a.name, size: a.size, track: free.shift() || 0 });
-    });
-    try {
-      await saveCdChange(cd, { audio: list });
-      toast(t(added.length === 1 ? "toastAudioAdded1" : "toastAudioAdded", { n: added.length }));
-      fillDurations(cd.id, true);
-    } catch (e) { toast(t("toastSaveFail")); }
+  /* Audio belongs to this editor session until its CD save succeeds. A stable prospective id
+     lets a new desktop CD use the same native importer without creating a collection entry. */
+  var formAudio = null;
+  function makeFormAudio(cd) {
+    return { id: cd ? cd.id : "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10),
+      list: clone(cd && cd.audio || []), original: clone(cd && cd.audio || []),
+      copied: [], busy: false, saving: false };
   }
+  async function cleanDraftAudio(files) {
+    if (!files.length) return;
+    try {
+      await AudioLib.call("remove_audio", { files: files });
+      files.forEach(function (f) { delete AudioLib.present[f]; });
+    } catch (e) { toast(t("toastAudioFail")); }
+  }
+  function discardFormAudio() {
+    var draft = formAudio;
+    formAudio = null;
+    if (draft) cleanDraftAudio(draft.copied);
+  }
+  async function addFormAudio() {
+    var draft = formAudio;
+    if (!draft || draft.busy || draft.saving) return;
+    var works = readWorks();
+    if (!Array.isArray(works)) { setErr("works", t("errDuration")); if (works.bad) works.bad.focus(); return; }
+    draft.busy = true;
+    renderFormAudio();
+    var imported = [];
+    try {
+      var added = await AudioLib.call("add_audio", { cdId: draft.id });
+      imported = (added || []).map(function (a) { return a.file; });
+      if (formAudio !== draft) { await cleanDraftAudio((added || []).map(function (a) { return a.file; })); return; }
+      draft.copied.push.apply(draft.copied, imported);
+      var taken = {};
+      draft.list.forEach(function (a) { if (a.track) taken[a.track] = true; });
+      var free = discTracks({ works: formAudioWorks() }).map(function (x) { return x.no; }).filter(function (n) { return !taken[n]; });
+      (added || []).sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { numeric: true }); }).forEach(function (a) {
+        draft.list.push({ file: a.file, name: a.name, size: a.size, track: free.shift() || 0 });
+      });
+    } catch (e) {
+      await cleanDraftAudio(imported);
+      draft.copied = draft.copied.filter(function (f) { return imported.indexOf(f) === -1; });
+      draft.list = draft.list.filter(function (a) { return imported.indexOf(a.file) === -1; });
+      toast(t("toastAudioFail"));
+    }
+    finally { draft.busy = false; if (formAudio === draft) renderFormAudio(); }
+  }
+  function formAudioWorks() { var works = readWorks(); return Array.isArray(works) ? works : []; }
+  function renderFormAudio() {
+    var box = $("form-audio");
+    if (!box) return;
+    $("form-audio-set").hidden = !AudioLib.ready;
+    if (!AudioLib.ready) return;
+    if (!formAudio) formAudio = makeFormAudio(editingId && cdById(editingId));
+    var draft = formAudio;
+    box.textContent = "";
+    var tracks = discTracks({ works: formAudioWorks() });
+    if (!draft.list.length) box.appendChild(el("p", "hint", t("audioNone")));
+    var ul = el("ul", "paudio");
+    audioSorted({ audio: draft.list }).forEach(function (a, i) {
+      var li = el("li"), main = el("div", "pa-main");
+      main.appendChild(el("span", "pa-file", AudioLib.present[a.file] === false ? t("audioMissing", { name: a.name }) : a.name));
+      var sel = el("select", "mini");
+      sel.id = "form-audio-track-" + i;
+      sel.setAttribute("aria-label", t("audioTrackAria", { name: a.name }));
+      var none = el("option", null, t("audioTrackNone")); none.value = "0"; sel.appendChild(none);
+      tracks.forEach(function (tr) {
+        var o = el("option", null, tr.no + ". " + (tr.title || tr.work)); o.value = String(tr.no); sel.appendChild(o);
+      });
+      // Keep a saved assignment visible even when its work was removed in this draft.
+      if (a.track > tracks.length) { var old = el("option", null, String(a.track)); old.value = String(a.track); sel.appendChild(old); }
+      sel.value = String(a.track || 0);
+      sel.disabled = draft.busy || draft.saving;
+      sel.addEventListener("change", function () {
+        var track = Number(sel.value);
+        draft.list.forEach(function (b) { if (b !== a && track && b.track === track) b.track = a.track || 0; });
+        a.track = track;
+        renderFormAudio();
+      });
+      main.appendChild(sel); li.appendChild(main);
+      var rm = el("button", "iconbtn", "×"); rm.type = "button";
+      rm.setAttribute("aria-label", t("audioRemove", { name: a.name }));
+      rm.disabled = draft.busy || draft.saving;
+      rm.addEventListener("click", function () { draft.list = draft.list.filter(function (b) { return b !== a; }); renderFormAudio(); });
+      li.appendChild(rm); ul.appendChild(li);
+    });
+    box.appendChild(ul);
+    var add = el("button", "linkbtn", t("audioAdd")); add.type = "button"; add.id = "form-audio-add";
+    add.disabled = draft.busy || draft.saving;
+    add.addEventListener("click", addFormAudio); box.appendChild(add);
+  }
+  async function commitFormAudio(draft) {
+    if (!draft) return;
+    var kept = draft.list.map(function (a) { return a.file; });
+    var removed = draft.original.map(function (a) { return a.file; }).filter(function (f) { return kept.indexOf(f) === -1; });
+    var unused = draft.copied.filter(function (f) { return kept.indexOf(f) === -1; });
+    // Release ownership before any later form reset (or an unrelated save failure).
+    draft.copied = [];
+    draft.original = clone(draft.list);
+    kept.forEach(function (f) { if (!(f in AudioLib.present)) AudioLib.check([f]); });
+    removed.forEach(function (file) { dropEntries(function (e) { return e.cdId === draft.id && e.file === file; }); });
+    prunePlaylists(function (x) { return x.cdId === draft.id && removed.indexOf(x.file) !== -1; });
+    await cleanDraftAudio(removed.concat(unused));
+  }
+  $("work-list").addEventListener("input", renderFormAudio);
+  $("work-list").addEventListener("change", renderFormAudio);
+  $("work-list").addEventListener("click", renderFormAudio);
+  $("add-work").addEventListener("click", renderFormAudio);
   async function removeAudio(cd, file) {
     dropEntries(function (e) { return e.cdId === cd.id && e.file === file; });
     prunePlaylists(function (x) { return x.cdId === cd.id && x.file === file; });
@@ -7401,7 +7567,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   function audioSection(cd) {
     var list = audioSorted(cd);
-    if (!AudioLib.ready && !list.length) return null;
+    if (!list.length) return null;
     AudioLib.check(list.map(function (a) { return a.file; }));
     if (list.some(function (a) { return AudioLib.present[a.file]; })) fillDurations(cd.id);
     var sect = el("section", "psect");
@@ -7509,13 +7675,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       ul.appendChild(li);
     });
     if (list.length) sect.appendChild(ul);
-    if (AudioLib.ready) {
-      var add = el("button", "linkbtn", t("audioAdd"));
-      add.type = "button";
-      add.id = "audio-add";
-      add.addEventListener("click", function () { addAudio(cd); });
-      sect.appendChild(add);
-    }
     return sect;
   }
 
@@ -8486,39 +8645,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var h = el("h2", null, cd.title);
     h.id = "detail-h";
     main.appendChild(h);
-    if (cd.set) {
-      var setBox = el("section", "psect");
-      setBox.appendChild(el("h3", null, cd.set.title));
-      setBox.appendChild(el("p", "hint", t("setPosition", { n: cd.set.disc, total: cd.set.total })));
-      var siblings = el("div", "set-siblings");
-      cds.filter(function (x) { return x.set && x.set.id === cd.set.id; })
-        .sort(function (a, b) { return a.set.disc - b.set.disc; }).forEach(function (x) {
-          var b = el("button", "btn small quiet", t("setPosition", { n: x.set.disc, total: x.set.total }));
-          b.type = "button"; b.disabled = x.id === cd.id; b.title = x.title;
-          b.addEventListener("click", function () { openDetail(x.id); });
-          siblings.appendChild(b);
-        });
-      setBox.appendChild(siblings);
-      var addDisc = el("button", "linkbtn", t("setAdd"));
-      addDisc.type = "button";
-      addDisc.addEventListener("click", function () {
-        clearForm();
-        $("set-title").value = cd.set.title;
-        $("set-title").dataset.setId = cd.set.id;
-        var occupied = cds.filter(function (x) { return x.set && x.set.id === cd.set.id; }).map(function (x) { return x.set.disc; });
-        var next = 1; while (occupied.indexOf(next) >= 0) next++;
-        $("set-disc").value = next;
-        $("set-total").value = Math.max(next, cd.set.total);
-        $("composer").value = cd.composer || "";
-        $("label").value = cd.label || "";
-        $("more-details").open = true;
-        closeWin("detail"); openAdd();
-      });
-      setBox.appendChild(addDisc);
-      main.appendChild(setBox);
-    }
     /* Composer, performer and label names show every CD with that name when clicked. */
-    var comps = cd.composer ? [cd.composer] : cdComposers(cd);
+    var comps = cd.composer ? [cd.composer] : [];
     if (comps.length) {
       var cline = el("p", "composer");
       comps.forEach(function (c, i) {
@@ -8527,6 +8655,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       });
       main.appendChild(cline);
     }
+    if (cd.type) main.appendChild(el("p", "album-work-type", workTypeText(cd.type)));
 
     var dl = el("dl", "facts");
     function fact(label, value) {
@@ -8578,12 +8707,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           if (!(w.tracks || []).length && w.duration) workHeading.appendChild(el("span", "pwork-duration", w.duration));
           wbox.appendChild(workHeading);
         }
-        if (w.type) wbox.appendChild(el("p", "hint", workTypeText(w.type)));
-        if (w.composer && w.composer !== cd.composer) {
-          var wc = el("p", "composer");
-          wc.appendChild(nameLink("composer", w.composer));
-          wbox.appendChild(wc);
-        }
+        var specifics = workDisclosure(cd, w, true);
+        if (specifics) wbox.appendChild(specifics);
         if (w.tracks && w.tracks.length) {
           var ol = el("ol", "ptracks");
           w.tracks.forEach(function (tr) {
@@ -8610,7 +8735,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     [["label", cd.label], ["issuer", cd.issuer], ["recYear", cd.recordingYear], ["relYear", cd.releaseYear || cd.year],
      ["catalogNo", cd.catalogNo], ["manufacturer", cd.manufacturer], ["madeIn", cd.madeIn], ["venue", cd.recordingVenue],
      ["spars", cd.spars], ["barcode", cd.barcode], ["ifpiMastering", cd.ifpiMastering], ["ifpiMould", cd.ifpiMould],
-     ["hub", hubText(cd.hub)], ["cdType", cd.type ? workTypeText(cd.type) : ""],
+     ["hub", hubText(cd.hub)],
      ["notes", cd.notes]].forEach(function (pair) {
       if (!pair[1]) return;
       spec.appendChild(el("dt", null, t(pair[0])));
@@ -8704,6 +8829,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   });
   $("cd-form").addEventListener("submit", async function (e) {
     e.preventDefault();
+    if ($("submit").disabled || (formAudio && (formAudio.busy || formAudio.saving))) return;
     var title = $("title").value.trim();
     var recordingYear = $("recordingYear").value.trim();
     var releaseYear = $("releaseYear").value.trim();
@@ -8724,24 +8850,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       setErr("releaseYear", t("errRel"));
       firstBad = firstBad || $("releaseYear");
     }
-    var setTitle = $("set-title").value.trim(), setData = null;
-    $("discSet-err").textContent = "";
-    if (setTitle) {
-      var discNo = Number($("set-disc").value), discTotal = Number($("set-total").value);
-      var linked = cds.filter(function (x) { return x.set && x.set.title.toLowerCase() === setTitle.toLowerCase(); })[0];
-      var sid = linked ? linked.set.id : $("set-title").dataset.setId || "set-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-      var lastDisc = cds.reduce(function (n, x) { return x.id !== editingId && x.set && x.set.id === sid ? Math.max(n, x.set.disc) : n; }, 1);
-      if (!Number.isInteger(discNo) || !Number.isInteger(discTotal) || discNo < 1 || discNo > discTotal || discTotal > 999 || discTotal < lastDisc) {
-        $("discSet-err").textContent = t("setErr"); firstBad = firstBad || $("set-disc");
-      } else if (cds.some(function (x) { return x.id !== editingId && x.set && x.set.id === sid && x.set.disc === discNo; })) {
-        $("discSet-err").textContent = t("setDuplicate", { n: discNo }); firstBad = firstBad || $("set-disc");
-      } else {
-        setData = { id: sid, title: linked ? linked.set.title : setTitle, disc: discNo, total: discTotal };
-      }
-    } else if ($("set-title").dataset.setId) {
-      /* Clearing the set name deliberately makes this a standalone disc. */
-      setData = null;
-    }
     if (firstBad) {
       if ($("more-details").contains(firstBad)) $("more-details").open = true;
       firstBad.focus();
@@ -8760,7 +8868,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       addedAt: editingId ? editingAddedAt : Date.now()
     };
     if (works.length) cd.works = works;
-    if (setData) cd.set = setData;
     DETAIL_FIELDS.forEach(function (f) { var v = $(f).value.trim(); if (v) cd[f] = v; });
     if (cd.type) cd.type = normalizeWorkType(cd.type);
     if (cd.hub) cd.hub = normalizeHub(cd.hub);
@@ -8779,11 +8886,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       return;
     }
     if (Array.isArray(formCard.own)) cd.cardFields = formCard.own.slice();
-    /* The form has no audio list; editing keeps the CD's audio as it is. */
-    if (editingId) {
-      var before = cds.filter(function (c) { return c.id === editingId; })[0];
-      if (before && before.audio && before.audio.length) cd.audio = before.audio;
-    }
+    var audioDraft = AudioLib.ready ? formAudio : null;
+    var before = editingId && cdById(editingId);
+    if (before && Object.prototype.hasOwnProperty.call(before, "set")) cd.set = before.set;
+    if (audioDraft) cd.audio = clone(audioDraft.list);
+    else if (before && before.audio) cd.audio = clone(before.audio);
     var cover = coverForSaving();
     /* An untouched cover that is already a file stays that file (no need to write it again). */
     if (editingId && editCover.file && !editCover.touched && (!cover || !coverCrop.changed)) cd.photoFile = editCover.file;
@@ -8795,16 +8902,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var btn = $("submit");
     btn.disabled = true;
     btn.textContent = t("saving");
+    if (audioDraft) { audioDraft.saving = true; renderFormAudio(); }
     try {
-      if (wasEditing) await backend.update(targetId, cd);
-      else targetId = await backend.add(cd);
-      if (setData) {
-        var related = cds.filter(function (x) { return x.id !== targetId && x.set && x.set.id === setData.id && (x.set.title !== setData.title || x.set.total !== setData.total); });
-        for (var si = 0; si < related.length; si++) {
-          var sibling = related[si];
-          await backend.update(sibling.id, Object.assign({}, sibling, { set: Object.assign({}, sibling.set, { title: setData.title, total: setData.total }) }));
-        }
-      }
+      if (wasEditing) await backend.update(targetId, cd, !!audioDraft);
+      else targetId = await backend.add(cd, audioDraft && audioDraft.id, !!audioDraft);
+      await commitFormAudio(audioDraft);
+      if (audioDraft) audioDraft.saving = false;
       setMembership(targetId, chosenAlbums);
       clearForm();
       closeWin("cd");
@@ -8812,7 +8915,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       toast(t(wasEditing ? "toastSaved" : "toastAdded", { title: title }));
     } catch (err) {
       var code = err && err.code;
+      if (audioDraft) audioDraft.saving = false;
       if (code === "local_full") {
+        await commitFormAudio(audioDraft);
         setMembership(err.id || targetId, chosenAlbums);
         clearForm();
         closeWin("cd");
@@ -8826,6 +8931,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         toast(t("toastSaveFail"));
       }
     } finally {
+      if (audioDraft) audioDraft.saving = false;
       btn.disabled = false;
       applyMode();
     }

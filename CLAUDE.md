@@ -110,6 +110,15 @@ Internally, favorites are still called `albums`, in code, ids and translation ke
 - Covers in the desktop app (`Covers`, `coverSrc`, `withCoverData`): shown from `covers/` through the asset protocol (scope `$APPDATA/covers/**`); new covers stay data URLs until `storeCovers` writes them on save (updatedAt unchanged). Older files are converted on start. Sync pushes and exports carry the picture itself. Editing a CD whose cover is a file loads it back with `cover_data` for the cropper; an untouched cover keeps its file (`editCover`).
 - Editing a CD keeps `audio`; removing a CD (here, or on another computer via sync) deletes its copies and takes it off the playlist.
 
+## Album defaults and work overrides
+
+- Feedback round 2-2 (2026-10-30): the form calls the required field "Title". Composer, "Type of work" (`cd.type`) and performers are grouped as album-wide defaults before the works.
+- Work details start folded. Optional `work.composer`, `work.type` and `work.performers` override the corresponding album field independently; blank values inherit without copying defaults into the work. Work performer rows use the same multiple/custom role controls as album performers.
+- Profiles and shelf cards show work-specific metadata only in a small disclosure, and only if it differs from album defaults. The album type appears below the composer, above the performers. Work-specific performers participate in search and filters.
+- Set controls and set displays are temporarily removed. Editing preserves existing `cd.set`; imports, exports, backups and sync keep it. Online multi-disc lookup still selects an individual disc without creating new set links.
+- Chinese clear-hub wording is "胶圈"; the old "透明圈" text remains accepted when reading existing data.
+- Audio file management is in the CD form beside Disc details. A profile with no audio has no Audio section. Audio changes are drafts until saved; newly copied draft files are cleaned up on discard.
+
 ## Roadmap
 
 1. Get the first Windows build passing on GitHub Actions, then publish v0.1.0.
