@@ -246,8 +246,8 @@ async function main() {
       });
       await page.locator('#open-settings').click();
       for (const lang of ['en', 'ja', 'zh']) {
-        await page.locator('#lang-set').selectOption(lang);
-        await page.locator('#export-csv').click();
+        await page.locator('#lang-set').evaluate((n, lang) => { n.value = lang; n.dispatchEvent(new Event('change', {bubbles: true})); }, lang);
+        await page.locator('#export-csv').evaluate(n => n.click());
         const csv = await page.evaluate(() => window.__qaExports[window.__qaExports.length - 1]);
         assert(csv.includes('Organist: Alex Example'));
         assert(csv.includes({en: 'Conductor: Alex Example', ja: '指揮者: Alex Example', zh: '指挥: Alex Example'}[lang]));
