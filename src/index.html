@@ -318,6 +318,9 @@ legend { margin-bottom: 8px; }
 .perf-role-option { display: flex; align-items: center; gap: 8px; padding: 7px 8px; cursor: pointer; font-size: 14px; color: var(--ink); }
 .perf-role-option:hover, .perf-role-option:focus-within { background: var(--accent-soft); }
 .perf-role-option input { margin: 0; accent-color: var(--accent); }
+.perf-custom-role { display: grid; gap: 6px; padding: 7px 8px; font-size: 13px; }
+.perf-custom-role[hidden] { display: none; }
+.perf-custom-role .input { width: 100%; min-width: 0; }
 @media (prefers-reduced-motion: reduce) { .perf-roles[open] > .perf-role-options { animation: none; } }
 .iconbtn {
   height: 42px;
@@ -1053,6 +1056,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 .pwork { display: flex; flex-direction: column; gap: 4px; }
 .pwork + .pwork { margin-top: 8px; }
 .pwork-title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 20px; line-height: 1.25; overflow-wrap: anywhere; }
+.pwork-heading { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; }
+.pwork-heading .pwork-title { min-width: 0; }
+.pwork-duration { flex: none; margin-left: auto; font-family: var(--font-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
 .pwork .composer { margin: 0; font-size: 16px; }
 .ptracks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .ptracks li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; font-size: 14px; }
@@ -1737,6 +1743,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       performers: "Performers", performerName: "Name", performerNameAria: "Performer name", roleAria: "Role",
       removePerformer: "Remove this performer", addPerformer: "+ Add performer",
       performerRoles: "Roles (choose one or more)",
+      customRole: "Custom role (optional)", customRolePh: "e.g. Organist", addRole: "Add role",
       "role.Conductor": "Conductor", "role.Orchestra": "Orchestra", "role.Ensemble": "Ensemble", "role.Singer": "Singer",
       "role.Pianist": "Pianist", "role.Violinist": "Violinist", "role.Cellist": "Cellist", "role.Other": "Other",
       label: "Label", labelPh: "e.g. Deutsche Grammophon",
@@ -1954,6 +1961,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       performers: "演奏者", performerName: "名前", performerNameAria: "演奏者名", roleAria: "役割",
       removePerformer: "この演奏者を削除", addPerformer: "+ 演奏者を追加",
       performerRoles: "役割（複数選択可）",
+      customRole: "役割名（任意）", customRolePh: "例：オルガン奏者", addRole: "役割を追加",
       "role.Conductor": "指揮者", "role.Orchestra": "オーケストラ", "role.Ensemble": "アンサンブル", "role.Singer": "歌手",
       "role.Pianist": "ピアニスト", "role.Violinist": "ヴァイオリニスト", "role.Cellist": "チェリスト", "role.Other": "その他",
       label: "レーベル", labelPh: "例：ドイツ・グラモフォン",
@@ -2171,6 +2179,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       performers: "演奏者", performerName: "姓名", performerNameAria: "演奏者姓名", roleAria: "角色",
       removePerformer: "删除此演奏者", addPerformer: "+ 添加演奏者",
       performerRoles: "角色（可多选）",
+      customRole: "自定义角色（可选）", customRolePh: "如：管风琴演奏者", addRole: "添加角色",
       "role.Conductor": "指挥", "role.Orchestra": "乐团", "role.Ensemble": "合奏团", "role.Singer": "歌手",
       "role.Pianist": "钢琴家", "role.Violinist": "小提琴家", "role.Cellist": "大提琴家", "role.Other": "其他",
       label: "厂牌", labelPh: "例如：德国留声机",
@@ -2447,6 +2456,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   };
   var ROLES = ["Conductor", "Orchestra", "Ensemble", "Singer", "Pianist", "Violinist", "Cellist", "Other"];
   var DEFAULT_ROLES = ["Conductor", "Orchestra", "Pianist", "Singer"];
+  /* Plain text: callers render it with el()/textContent, including custom role names. */
+  function roleText(role) {
+    role = role || "Other";
+    return ROLES.indexOf(role) === -1 ? role : t("role." + role);
+  }
 
   var $ = function (id) { return document.getElementById(id); };
   function qsa(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
@@ -2705,7 +2719,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var inp = row.querySelector(".perf-name");
       inp.placeholder = t("performerName");
       inp.setAttribute("aria-label", t("performerNameAria"));
-      row.querySelector("button").setAttribute("aria-label", t("removePerformer"));
+      row.querySelector(".iconbtn").setAttribute("aria-label", t("removePerformer"));
     });
   }
   function setLang(code, persist) {
@@ -2953,15 +2967,25 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   function syncPerformerRoles(row) {
     var chosen = [];
-    var boxes = qsa(".perf-role-option input", row);
+    var boxes = qsa(".perf-role-option input[type=checkbox]", row);
     var count = boxes.filter(function (box) { return box.checked; }).length;
     boxes.forEach(function (box) {
-      var label = ROLES.indexOf(box.value) === -1 ? box.value : t("role." + box.value);
+      var label = roleText(box.value);
       box.nextSibling.textContent = label;
       /* Keep at least one role so a named performer cannot disappear on save. */
       box.disabled = box.checked && count === 1;
-      if (box.checked) chosen.push(label);
+      if (box.checked) chosen.push(box.value === "Other" ? roleText(row.querySelector(".perf-custom-name").value.trim()) : label);
     });
+    var other = boxes.filter(function (box) { return box.value === "Other"; })[0];
+    row.querySelector(".perf-custom-role").hidden = !other.checked;
+    var custom = row.querySelector(".perf-custom-name");
+    custom.setAttribute("aria-label", t("customRole"));
+    custom.placeholder = t("customRolePh");
+    row.querySelector(".perf-custom-label").textContent = t("customRole");
+    var add = row.querySelector(".perf-custom-add");
+    add.textContent = t("addRole");
+    add.setAttribute("aria-label", t("addRole"));
+    add.disabled = !custom.value.trim();
     var summary = row.querySelector("summary");
     row.querySelector(".perf-role-text").textContent = chosen.join(", ");
     summary.title = chosen.join(", ");
@@ -2979,16 +3003,31 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     summary.id = "perf-role-" + n;
     summary.appendChild(el("span", "perf-role-text"));
     var options = el("fieldset", "perf-role-options");
-    ROLES.concat(roles.filter(function (r, i) { return ROLES.indexOf(r) === -1 && roles.indexOf(r) === i; })).forEach(function (r) {
+    function roleOption(r, checked) {
       var label = el("label", "perf-role-option");
       var box = el("input");
       box.type = "checkbox";
       box.value = r;
-      box.checked = roles.indexOf(r) !== -1;
+      box.checked = checked;
       label.appendChild(box);
       label.appendChild(el("span"));
-      options.appendChild(label);
+      options.insertBefore(label, options.querySelector(".perf-custom-role"));
+      return box;
+    }
+    ROLES.concat(roles.filter(function (r, i) { return ROLES.indexOf(r) === -1 && roles.indexOf(r) === i; })).forEach(function (r) {
+      roleOption(r, roles.indexOf(r) !== -1);
     });
+    var customEditor = el("div", "perf-custom-role");
+    var customLabel = el("label", "perf-custom-label");
+    var custom = el("input", "input perf-custom-name");
+    custom.id = "perf-custom-" + n;
+    custom.type = "text";
+    custom.autocomplete = "off";
+    customLabel.htmlFor = custom.id;
+    var add = el("button", "btn perf-custom-add");
+    add.type = "button";
+    customEditor.appendChild(customLabel); customEditor.appendChild(custom); customEditor.appendChild(add);
+    options.appendChild(customEditor);
     menu.appendChild(summary); menu.appendChild(options);
     var inp = el("input", "input perf-name");
     inp.id = "perf-name-" + n;
@@ -3006,6 +3045,27 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     options.addEventListener("change", function () {
       inp.classList.remove("filled");
       syncPerformerRoles(row);
+      if (menu.open) positionPerformerRoles(menu);
+    });
+    custom.addEventListener("input", function () { inp.classList.remove("filled"); syncPerformerRoles(row); });
+    function addCustomRole() {
+      var value = custom.value.trim();
+      if (!value) return;
+      var boxes = qsa(".perf-role-option input[type=checkbox]", row);
+      var box = boxes.filter(function (b) { return b.value === value; })[0] || roleOption(value, true);
+      box.checked = true;
+      boxes.forEach(function (b) { if (b.value === "Other" && value !== "Other") b.checked = false; });
+      custom.value = "";
+      inp.classList.remove("filled");
+      /* Move focus before hiding the editor; a sole selected role becomes disabled. */
+      summary.focus();
+      syncPerformerRoles(row);
+      if (!box.disabled) box.focus();
+      positionPerformerRoles(menu);
+    }
+    add.addEventListener("click", addCustomRole);
+    custom.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); addCustomRole(); }
     });
     menu.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && menu.open) {
@@ -3053,8 +3113,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     qsa(".prow").forEach(function (row) {
       var name = row.querySelector(".perf-name").value.trim();
       /* Keep the old record shape: one person may have several distinct roles. */
-      qsa(".perf-role-option input:checked", row).forEach(function (box) {
-        var role = box.value;
+      qsa(".perf-role-option input[type=checkbox]:checked", row).forEach(function (box) {
+        var role = box.value === "Other" ? row.querySelector(".perf-custom-name").value.trim() || "Other" : box.value;
         if (name && !out.some(function (p) { return p.name === name && p.role === role; })) out.push({ role: role, name: name });
       });
     });
@@ -4369,11 +4429,23 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
 
   /* ---------- rendering ---------- */
+  function groupedPerformers(perfs) {
+    var people = [];
+    (perfs || []).forEach(function (p) {
+      var name = (p.name || "").trim();
+      if (!name) return;
+      var person = people.filter(function (x) { return x.name === name; })[0];
+      if (!person) { person = { name: name, roles: [] }; people.push(person); }
+      var role = p.role || "Other";
+      if (person.roles.indexOf(role) === -1) person.roles.push(role);
+    });
+    return people;
+  }
   function perfList(perfs) {
     var ul = el("ul", "perfs");
-    perfs.forEach(function (p) {
+    groupedPerformers(perfs).forEach(function (p) {
       var li = el("li");
-      li.appendChild(el("span", "role", t("role." + p.role)));
+      li.appendChild(el("span", "role", p.roles.map(roleText).join(" / ")));
       li.appendChild(el("span", "name", p.name));
       ul.appendChild(li);
     });
@@ -4549,7 +4621,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function matches(cd, q) {
     var hay = [cd.title, cd.composer, cd.label, cd.issuer, cd.recordingYear, cd.releaseYear, cd.year, cd.notes, cd.set && cd.set.title]
       .concat(DETAIL_FIELDS.map(function (f) { return cd[f]; }))
-      .concat((cd.performers || []).map(function (p) { return p.name + " " + t("role." + p.role); }))
+      .concat((cd.performers || []).map(function (p) { return p.name + " " + roleText(p.role); }))
       .concat((cd.works || []).map(function (w) {
         return [w.title, w.composer, w.type ? workTypeText(w.type) : ""].concat((w.tracks || []).map(function (tr) { return tr.title; })).join(" ");
       }))
@@ -4701,8 +4773,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         var prompt = el("option", null, t("fChooseRole"));
         prompt.value = "";
         role.appendChild(prompt);
-        Object.keys(roles).sort(function (a, b) { return cmpText(t("role." + a), t("role." + b)); }).forEach(function (r) {
-          var opt = el("option", null, t("role." + r)); opt.value = r; role.appendChild(opt);
+        Object.keys(roles).sort(function (a, b) { return cmpText(roleText(a), roleText(b)); }).forEach(function (r) {
+          var opt = el("option", null, roleText(r)); opt.value = r; role.appendChild(opt);
         });
         role.value = filterRole;
         role.addEventListener("change", function () { filterRole = role.value; renderFilters(baseList()); });
@@ -4729,7 +4801,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       box.appendChild(options);
       options.scrollTop = scrolls[options.id] || 0;
       if (k === "performer" && filters.performer.length) {
-        var selectedNames = filters.performer.map(function (v) { var p = JSON.parse(v); return t("role." + p[0]) + ": " + p[1]; });
+        var selectedNames = filters.performer.map(function (v) { var p = JSON.parse(v); return roleText(p[0]) + ": " + p[1]; });
         box.appendChild(el("p", "hint shelf-performer-summary", selectedNames.join(" · ")));
       }
     });
@@ -4742,7 +4814,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (kind === "performer") {
       cds.forEach(function (cd) { (cd.performers || []).forEach(function (p) {
         var key = performerFilterKey(p);
-        if (p.name === value && (!role || (p.role || "Other") === role) && filters.performer.indexOf(key) === -1) filters.performer.push(key);
+        if ((p.name || "").trim() === value && (!role || (p.role || "Other") === role) && filters.performer.indexOf(key) === -1) filters.performer.push(key);
       }); });
       if (filters.performer.length) filterRole = JSON.parse(filters.performer[0])[0];
     } else filters[kind] = [value];
@@ -5003,7 +5075,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     c1.appendChild(el("strong", null, cd.title));
     tr.appendChild(c1);
     tr.appendChild(el("td", null, discComposer(cd)));
-    tr.appendChild(el("td", "lperf", (cd.performers || []).slice(0, 2).map(function (p) { return p.name; }).join(", ")));
+    tr.appendChild(el("td", "lperf", groupedPerformers(cd.performers).slice(0, 2).map(function (p) { return p.name; }).join(", ")));
     tr.appendChild(el("td", null, cd.label || ""));
     tr.appendChild(el("td", "lnum", String(cd.releaseYear || cd.year || cd.recordingYear || "")));
     tr.appendChild(el("td", "lnum", cd.catalogNo || ""));
@@ -5225,7 +5297,19 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var plGroup = el("div", "favgroup");
     plGroup.id = "pl-group";
     plGroup.hidden = !plOpenNow;
-    meta.playlists.forEach(function (p) { plGroup.appendChild(chip("pl:" + p.id, p.name, p.items.length, "pl", p.id)); });
+    meta.playlists.forEach(function (p) {
+      var row = el("div", "shelf-fav-row");
+      row.appendChild(chip("pl:" + p.id, p.name, p.items.length, "pl", p.id));
+      if (p.id === plId) {
+        var edit = el("button", "iconbtn shelf-fav-edit", "✎");
+        edit.type = "button";
+        edit.title = t("plEdit");
+        edit.setAttribute("aria-label", t("plEdit") + ": " + p.name);
+        edit.addEventListener("click", function () { openAlbumDlg("edit", p.id, "playlist"); });
+        row.appendChild(edit);
+      }
+      plGroup.appendChild(row);
+    });
     var np = el("button", "linkbtn", t("plNew"));
     np.type = "button";
     np.addEventListener("click", function () { openAlbumDlg("new", null, "playlist"); });
@@ -6063,7 +6147,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           c.title,
           discComposer(c),
           (c.works || []).map(function (w) { return w.title; }).filter(Boolean).join("; "),
-          (c.performers || []).map(function (p) { return t("role." + p.role) + ": " + p.name; }).join("; "),
+          (c.performers || []).map(function (p) { return roleText(p.role) + ": " + p.name; }).join("; "),
           c.label,
           c.issuer,
           c.recordingYear,
@@ -8452,7 +8536,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       dd.appendChild(typeof value === "string" ? document.createTextNode(value) : value);
       dl.appendChild(dd);
     }
-    (cd.performers || []).forEach(function (p) { if (p.name) fact(t("role." + (p.role || "Other")), nameLink("performer", p.name, null, p.role || "Other")); });
+    groupedPerformers(cd.performers).forEach(function (p) {
+      fact(p.roles.map(roleText).join(" / "), nameLink("performer", p.name));
+    });
 
     var pk = favPicker(detailFav, "detail-fav",
       function (id) { var a = findAlbum(id); return !!a && a.cdIds.indexOf(cd.id) !== -1; },
@@ -8486,7 +8572,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var no = 0;
       cd.works.forEach(function (w) {
         var wbox = el("div", "pwork");
-        if (w.title || w.duration) wbox.appendChild(el("p", "pwork-title", [w.title, !(w.tracks || []).length ? w.duration : ""].filter(Boolean).join(" · ")));
+        if (w.title || (!(w.tracks || []).length && w.duration)) {
+          var workHeading = el("div", "pwork-heading");
+          workHeading.appendChild(el("p", "pwork-title", w.title || "—"));
+          if (!(w.tracks || []).length && w.duration) workHeading.appendChild(el("span", "pwork-duration", w.duration));
+          wbox.appendChild(workHeading);
+        }
         if (w.type) wbox.appendChild(el("p", "hint", workTypeText(w.type)));
         if (w.composer && w.composer !== cd.composer) {
           var wc = el("p", "composer");

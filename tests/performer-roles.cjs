@@ -74,6 +74,43 @@ async function main() {
     assert(!html.includes('perf-more'));
   });
   browser = await playwright.chromium.launch({headless: true, ...(executablePath ? {executablePath} : {})});
+  await test('Other accepts repeated custom roles mixed with standard roles and persists a blank Other', async () => {
+    const f = await fixture(), {page, state} = f;
+    try {
+      await page.locator('#open-add').click();
+      await page.locator('#title').fill('Custom roles QA');
+      const row = page.locator('.prow').first();
+      await row.locator('.perf-name').fill('Alex Example');
+      await row.locator('summary').click();
+      await row.getByRole('checkbox', {name: 'Pianist', exact: true}).check();
+      await row.getByRole('checkbox', {name: 'Other', exact: true}).check();
+      await row.getByRole('textbox', {name: 'Custom role (optional)', exact: true}).fill('  Organist  ');
+      await row.getByRole('button', {name: 'Add role', exact: true}).click();
+      assert.deepEqual(await selected(row), ['Conductor', 'Pianist', 'Organist']);
+      await row.getByRole('checkbox', {name: 'Other', exact: true}).check();
+      await row.getByRole('textbox', {name: 'Custom role (optional)', exact: true}).fill('Harpsichord');
+      await page.keyboard.press('Enter');
+      assert.equal(await page.locator('#win-cd').isVisible(), true, 'Enter adds a role without submitting the CD');
+      assert.deepEqual(await selected(row), ['Conductor', 'Pianist', 'Organist', 'Harpsichord']);
+      await row.getByRole('checkbox', {name: 'Other', exact: true}).check();
+      await row.getByRole('textbox', {name: 'Custom role (optional)', exact: true}).fill('   ');
+      await page.keyboard.press('Escape'); await save(page);
+      const expected = ['Conductor', 'Pianist', 'Other', 'Organist', 'Harpsichord'].map(role => ({role, name: 'Alex Example'}));
+      assert.deepEqual(state.doc.cds[0].performers, expected);
+      await page.reload(); await edit(page, 'Custom roles QA');
+      assert.equal(await page.locator('.prow').count(), 1);
+      assert.deepEqual(await selected(row), expected.map(p => p.role));
+      await row.locator('summary').click();
+      for (const role of ['Conductor', 'Pianist', 'Other', 'Organist']) await row.getByRole('checkbox', {name: role, exact: true}).uncheck();
+      assert.equal(await row.getByRole('checkbox', {name: 'Harpsichord', exact: true}).isDisabled(), true);
+      await row.getByRole('checkbox', {name: 'Other', exact: true}).check();
+      assert.equal(await row.getByRole('checkbox', {name: 'Harpsichord', exact: true}).isDisabled(), false);
+      await row.getByRole('checkbox', {name: 'Harpsichord', exact: true}).uncheck();
+      assert.equal(await row.getByRole('checkbox', {name: 'Other', exact: true}).isDisabled(), true);
+      await page.keyboard.press('Escape'); await save(page);
+      assert.deepEqual(state.doc.cds[0].performers, [{role: 'Other', name: 'Alex Example'}]);
+    } finally { await f.close(); }
+  });
   await test('keyboard multi-role selection, dismissal, pair persistence and edit/reload', async () => {
     const f = await fixture(), {page, state} = f;
     try {
@@ -142,6 +179,81 @@ async function main() {
       await page.keyboard.press('Escape'); await lookup(page, 1);
       assert.equal(await row.locator('.perf-name').inputValue(), 'Alex Example');
       assert.deepEqual(await selected(row), ['Conductor', 'Singer', 'Pianist']);
+    } finally { await f.close(); }
+  });
+  await test('pending custom role survives lookup, saves directly, filters and searches by its literal text', async () => {
+    const f = await fixture(), {page, state} = f;
+    try {
+      await page.locator('#open-add').click(); await lookup(page, 0);
+      const row = page.locator('.prow').first();
+      await row.locator('summary').click();
+      await row.getByRole('checkbox', {name: 'Other', exact: true}).check();
+      await row.getByRole('textbox', {name: 'Custom role (optional)', exact: true}).fill('  Organist  ');
+      await page.keyboard.press('Escape'); await lookup(page, 1);
+      assert.equal(await row.locator('.perf-name').inputValue(), 'Alex Example');
+      assert.equal(await row.locator('.perf-custom-name').inputValue(), '  Organist  ');
+      await page.locator('#title').fill('Pending custom QA'); await save(page);
+      assert.deepEqual(state.doc.cds[0].performers, ['Conductor', 'Pianist', 'Organist'].map(role => ({role, name: 'Alex Example'})));
+      await page.reload();
+      await page.locator('#filter-btn').click();
+      assert.equal(await page.locator('#f-role option').filter({hasText: /^Organist$/}).count(), 1);
+      await page.locator('#f-role').selectOption('Organist');
+      await page.locator('#f-performer').getByRole('checkbox', {name: 'Alex Example', exact: true}).check();
+      assert.equal(await page.locator('.shelf-performer-summary').textContent(), 'Organist: Alex Example');
+      assert.equal(await page.locator('#grid .card').count(), 1);
+      await page.locator('#f-clear').click();
+      await page.keyboard.press('Control+f'); await page.locator('#search').fill('organist');
+      assert.equal(await page.locator('#grid .card').count(), 1);
+      await page.locator('#search').fill('role.organist');
+      assert.equal(await page.locator('#grid .card').count(), 0, 'search does not invent a translation key for custom roles');
+    } finally { await f.close(); }
+  });
+  await test('duplicate custom/standard labels coalesce and markup-like custom labels remain plain text', async () => {
+    const custom = '<img src=x onerror=alert(1)>', f = await fixture(), {page, state} = f;
+    try {
+      await page.locator('#open-add').click(); await page.locator('#title').fill('Literal roles QA');
+      const row = page.locator('.prow').first();
+      await row.locator('.perf-name').fill('Alex Example'); await row.locator('summary').click();
+      await row.getByRole('checkbox', {name: 'Other', exact: true}).check();
+      await row.locator('.perf-custom-name').fill('Conductor'); await row.locator('.perf-custom-add').click();
+      assert.deepEqual(await selected(row), ['Conductor']);
+      assert.equal(await row.getByRole('checkbox', {name: 'Conductor', exact: true}).isDisabled(), true);
+      for (let i = 0; i < 2; i++) {
+        await row.getByRole('checkbox', {name: 'Other', exact: true}).check();
+        await row.locator('.perf-custom-name').fill(custom); await row.locator('.perf-custom-add').click();
+      }
+      assert.deepEqual(await selected(row), ['Conductor', custom]);
+      assert.equal(await row.locator('img').count(), 0);
+      await page.keyboard.press('Escape'); await save(page);
+      assert.deepEqual(state.doc.cds[0].performers, ['Conductor', custom].map(role => ({role, name: 'Alex Example'})));
+      await page.locator('#filter-btn').click();
+      assert.equal(await page.locator('#f-role option').filter({hasText: custom}).textContent(), custom);
+      assert.equal(await page.locator('#f-role img').count(), 0);
+    } finally { await f.close(); }
+  });
+  await test('CSV exports translated standards and literal custom roles', async () => {
+    const f = await fixture([{id: 'csv', title: 'CSV QA', addedAt: 1, performers: [
+      {role: 'Conductor', name: 'Alex Example'}, {role: 'Organist', name: 'Alex Example'}, {role: 'Other', name: 'Sam Example'}
+    ]}]), {page} = f;
+    try {
+      await page.evaluate(() => {
+        const original = URL.createObjectURL;
+        window.__qaExports = [];
+        URL.createObjectURL = blob => {
+          window.__qaExports.push(blob.text());
+          return original.call(URL, blob);
+        };
+      });
+      await page.locator('#open-settings').click();
+      for (const lang of ['en', 'ja', 'zh']) {
+        await page.locator('#lang-set').selectOption(lang);
+        await page.locator('#export-csv').click();
+        const csv = await page.evaluate(() => window.__qaExports[window.__qaExports.length - 1]);
+        assert(csv.includes('Organist: Alex Example'));
+        assert(csv.includes({en: 'Conductor: Alex Example', ja: '指揮者: Alex Example', zh: '指挥: Alex Example'}[lang]));
+        assert(csv.includes({en: 'Other: Sam Example', ja: 'その他: Sam Example', zh: '其他: Sam Example'}[lang]));
+        assert(!csv.includes('role.Organist'));
+      }
     } finally { await f.close(); }
   });
   await test('translated accessible menus fit light/dark desktop and narrow screens; reduced motion', async () => {

@@ -203,7 +203,8 @@ async function main() {
       assert.deepEqual(state.doc.cds[0].works[0].tracks, []);
       assert.equal(state.doc.cds[0].works[0].type, customType);
       await openCard(page, 'Duration QA');
-      assert.equal(await page.locator('.pwork-title').textContent(), 'Overture · 12:34');
+      assert.equal(await page.locator('.pwork-title').textContent(), 'Overture');
+      assert.equal(await page.locator('.pwork-duration').textContent(), '12:34');
       assert.equal(await page.locator('.ptracks li').count(), 0);
       assert((await page.locator('.ptotal').textContent()).includes('12:34'));
       await page.getByRole('button', {name: 'Edit', exact: true}).click();
@@ -237,7 +238,8 @@ async function main() {
       await save(page); await page.reload();
       await openCard(page, 'Duration QA');
       assert((await page.locator('.ptotal').textContent()).includes('3:21'));
-      assert.equal(await page.locator('.pwork-title').textContent(), 'Overture · 3:21');
+      assert.equal(await page.locator('.pwork-title').textContent(), 'Overture');
+      assert.equal(await page.locator('.pwork-duration').textContent(), '3:21');
       await page.getByRole('button', {name: 'Edit', exact: true}).click();
       assert.equal(await page.locator('.trow').count(), 0);
       assert.equal(await page.locator('.w-duration').inputValue(), '3:21');
