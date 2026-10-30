@@ -139,6 +139,75 @@ async function main() {
       await save(page); assert.equal(state.doc.cds[0].hub, 'other');
     } finally { await f.close(); }
   });
+  await test('album and works summary titles, parentheses and hint text have equal computed font sizes in every locale', async () => {
+    const f = await fixture(), {page} = f;
+    try {
+      await openEdit(page);
+      for (const width of [1100, 375]) {
+        await page.setViewportSize({width, height: 850});
+        for (const lang of ['en', 'ja', 'zh']) {
+          await page.evaluate(lang => window.sectionQA.setLang(lang, false), lang);
+          for (const theme of ['light', 'dark']) {
+            await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme);
+            for (const id of ['albumOverall', 'works-set']) {
+              for (const open of [false, true]) {
+                await page.locator('#' + id).evaluate((n, value) => n.open = value, open);
+                const sizes = await page.locator('#' + id + ' > summary').evaluate(summary => {
+                  const title = summary.querySelector(':scope > [data-i18n]');
+                  const parentheses = summary.querySelector('.section-hint');
+                  const hintText = parentheses.querySelector('[data-i18n]');
+                  return [title, parentheses, hintText].map(n => getComputedStyle(n).fontSize);
+                });
+                const context = `${id}, ${lang}, ${theme}, ${width}px, open=${open}`;
+                assert(Number.parseFloat(sizes[0]) > 0, context + ': title must have a visible font size');
+                assert.equal(sizes[1], sizes[0], context + ': parentheses must match the title');
+                assert.equal(sizes[2], sizes[0], context + ': translated hint text must match the title');
+              }
+            }
+          }
+        }
+      }
+    } finally { await f.close(); }
+  });
+  await test('exact localized example placeholders omit optional wording and type/hub accept custom text beyond suggestions', async () => {
+    const f = await fixture({cds: []}), {page, state} = f;
+    const examples = [
+      ['en', 'e.g. Sergei Rachmaninoff', 'e.g. Piano concerto', 'e.g. Full silver hub', 'Piano concerto', 'Full silver hub'],
+      ['ja', '例：ラフマニノフ', '例：ピアノ協奏曲', '例：全面銀色ハブ', 'ピアノ協奏曲', '全面銀色ハブ'],
+      ['zh', '例如：拉赫玛尼诺夫', '例如：钢琴协奏曲', '例如：满银圈', '钢琴协奏曲', '满银圈']
+    ];
+    try {
+      const staticPlaceholders = await page.evaluate(source => {
+        const doc = new DOMParser().parseFromString(source, 'text/html');
+        return ['composer', 'type', 'hub'].map(id => doc.getElementById(id).getAttribute('placeholder'));
+      }, html);
+      assert.deepEqual(staticPlaceholders, examples[0].slice(1, 4), 'static English HTML must match the translated examples');
+      for (const [lang, composer, type, hub, typeSuggestion, hubSuggestion] of examples) {
+        await page.locator('#open-add').click();
+        await page.evaluate(lang => window.sectionQA.setLang(lang, false), lang);
+        const placeholders = await page.locator('#composer, #type, #hub').evaluateAll(ns => ns.map(n => n.placeholder));
+        assert.deepEqual(placeholders, [composer, type, hub], lang + ': exact examples');
+        for (const placeholder of placeholders) assert(!/optional|任意|可选|选填|if known/i.test(placeholder), lang + ': optional wording');
+        await page.locator('#more-details > summary').click();
+        for (const [id, listId, suggestion] of [['type', 'work-type-options', typeSuggestion], ['hub', 'hub-options', hubSuggestion]]) {
+          assert.deepEqual(await page.locator('#' + id).evaluate(n => [n.tagName, n.type, n.getAttribute('list'), n.readOnly, n.disabled]),
+            ['INPUT', 'text', listId, false, false], lang + ': ' + id + ' must remain editable free text');
+          assert((await page.locator('#' + listId + ' option').evaluateAll(ns => ns.map(n => n.value))).includes(suggestion),
+            lang + ': ' + id + ' must retain its translated suggestion');
+        }
+        const customType = 'Hybrid work / 創作 / 混合 ' + lang, customHub = 'Mirror ring / 手工 ' + lang;
+        await page.locator('#title').fill('Typography QA ' + lang);
+        await page.locator('#type').fill(customType); await page.locator('#hub').fill(customHub);
+        await save(page);
+        const stored = state.doc.cds.find(cd => cd.title === 'Typography QA ' + lang);
+        assert.equal(stored.type, customType); assert.equal(stored.hub, customHub);
+        await openEdit(page, stored);
+        assert.equal(await page.locator('#type').inputValue(), customType);
+        assert.equal(await page.locator('#hub').inputValue(), customHub);
+        await save(page);
+      }
+    } finally { await f.close(); }
+  });
   await test('submit expands closed works/disc sections and focuses real invalid duration/year fields', async () => {
     const f = await fixture(), {page} = f;
     try {
@@ -163,7 +232,7 @@ async function main() {
       await page.locator('#submit').click();
       assert.equal(await page.locator('#works-set').evaluate(n => n.open), true);
       assert.equal(await page.locator('.w-details').evaluate(n => n.open), true);
-      assert.equal(await page.locator('.w-perf-rows .perf-roles').evaluate(n => n.open), true);
+      assert.equal(await page.locator('.w-perf-rows .perf-role-trigger').evaluate(n => n.getAttribute('aria-expanded') === 'true'), true);
       assert.equal(await page.locator('.w-perf-rows .perf-custom-name').evaluate(n => document.activeElement === n), true);
     } finally { await f.close(); }
   });

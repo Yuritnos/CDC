@@ -132,7 +132,7 @@ async function main() {
       await page.locator('.w-composer').fill('Own composer'); await page.locator('.w-type').fill('Sonata');
       await page.locator('.w-add-perf').click();
       const row = page.locator('.w-perf-rows .prow').first();
-      await row.locator('.perf-name').fill('  Work soloist  '); await row.locator('summary').click();
+      await row.locator('.perf-name').fill('  Work soloist  '); await row.locator('.perf-role-trigger').click();
       assert.equal(await row.getByRole('checkbox', {name: 'Conductor', exact: true}).isDisabled(), true);
       await row.getByRole('checkbox', {name: 'Pianist', exact: true}).check();
       await row.getByRole('checkbox', {name: 'Conductor', exact: true}).uncheck();
@@ -140,7 +140,7 @@ async function main() {
       await row.locator('.perf-custom-name').fill('Organist'); await page.keyboard.press('Enter');
       assert.deepEqual(await selected(row), ['Pianist', 'Organist']);
       await page.keyboard.press('Escape');
-      assert.equal(await row.locator('details').getAttribute('open'), null);
+      assert.equal(await row.locator('.perf-role-trigger').getAttribute('aria-expanded'), 'false');
       assert.equal(await page.locator('#win-cd').isVisible(), true);
       await page.locator('#add-work').click(); await page.locator('.w-title').nth(1).fill('Work two');
       await save(page);
@@ -184,7 +184,7 @@ async function main() {
       await page.locator('#open-add').click(); await page.evaluate(p => window.workFormQA.fillFromLookup(p), lookup);
       await page.locator('.w-details > summary').click();
       const row = page.locator('.w-perf-rows .prow');
-      await row.locator('summary').click();
+      await row.locator('.perf-role-trigger').click();
       await row.getByRole('checkbox', {name: 'Conductor', exact: true}).check();
       await page.keyboard.press('Escape');
       assert.equal(await row.locator('.perf-name.filled').count(), 0);

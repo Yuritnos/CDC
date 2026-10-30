@@ -304,24 +304,22 @@ label.lbl, legend, .sect h3 {
 /* Performers */
 fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 legend { margin-bottom: 8px; }
-.prow { display: grid; grid-template-columns: 132px minmax(0, 1fr) 38px; gap: 8px; }
-.perf-roles { position: relative; min-width: 0; }
-.prow:has(.perf-roles[open]) { position: relative; z-index: 2; }
-.perf-roles > summary { display: flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; }
-.perf-roles > summary::-webkit-details-marker { display: none; }
+.prow { display: grid; grid-template-columns: 132px minmax(0, 1fr) 38px; gap: 8px; align-items: start; }
+.perf-roles { min-width: 0; }
+.perf-role-trigger { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; cursor: pointer; }
 .perf-role-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.perf-roles > summary::after { content: "▾"; margin-left: auto; font-size: 11px; }
-.perf-roles > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.perf-role-options { position: absolute; top: calc(100% + 4px); left: 0; width: 224px; max-height: 240px; overflow-y: auto; padding: 6px; gap: 2px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); box-shadow: 0 8px 24px rgba(0, 0, 0, .2); }
-.perf-roles-up > .perf-role-options { top: auto; bottom: calc(100% + 4px); }
-.perf-roles[open] > .perf-role-options { animation: pop-in .16s ease-out; }
+.perf-role-trigger::after { content: "▾"; margin-left: auto; font-size: 11px; }
+.perf-role-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The popup occupies space below its button. No native disclosure, layout animation,
+   flipping, or scroll-driven measurement is needed while checkboxes change. */
+.perf-role-options { width: 224px; max-width: calc(100vw - 80px); max-height: min(240px, 40vh); overflow-y: auto; margin-top: 4px; padding: 6px; gap: 2px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); box-shadow: 0 8px 24px rgba(0, 0, 0, .2); }
+.perf-role-options[hidden] { display: none; }
 .perf-role-option { display: flex; align-items: center; gap: 8px; padding: 7px 8px; cursor: pointer; font-size: 14px; color: var(--ink); }
 .perf-role-option:hover, .perf-role-option:focus-within { background: var(--accent-soft); }
 .perf-role-option input { margin: 0; accent-color: var(--accent); }
 .perf-custom-role { display: grid; gap: 6px; padding: 7px 8px; font-size: 13px; }
 .perf-custom-role[hidden] { display: none; }
 .perf-custom-role .input { width: 100%; min-width: 0; }
-@media (prefers-reduced-motion: reduce) { .perf-roles[open] > .perf-role-options { animation: none; } }
 .iconbtn {
   height: 42px;
   width: 38px;
@@ -390,7 +388,7 @@ details.more[open] > summary { margin-bottom: 14px; }
 #cd-form > .form-section { border-bottom: 1px solid var(--line); padding-bottom: 14px; }
 #cd-form > .form-section:not(#albumOverall) { border-top: 0; padding-top: 0; }
 .form-section > summary { white-space: normal; overflow-wrap: anywhere; }
-.form-section .section-hint { font-family: var(--font-body); font-size: 13px; letter-spacing: normal; text-transform: none; }
+.form-section .section-hint { font-family: var(--font-body); font-size: inherit; letter-spacing: normal; text-transform: none; }
 .work-overrides > summary { font-size: 12px; font-weight: 400; color: var(--muted); }
 .work-overrides[open] > .more-body { animation: pop-in .15s ease-out; }
 @media (prefers-reduced-motion: reduce) { .work-overrides[open] > .more-body { animation: none; } }
@@ -1275,12 +1273,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         <div class="more-body">
         <div class="field">
           <label class="lbl" for="composer" data-i18n="composer">Composer</label>
-          <input class="input" id="composer" name="composer" type="text" autocomplete="off" list="composers" data-i18n-ph="composerPh" placeholder="e.g. Sergei Rachmaninoff (optional)">
+          <input class="input" id="composer" name="composer" type="text" autocomplete="off" list="composers" data-i18n-ph="composerPh" placeholder="e.g. Sergei Rachmaninoff">
           <datalist id="composers"></datalist>
         </div>
         <div class="field">
           <label class="lbl" for="type" data-i18n="cdType">Type of work</label>
-          <input class="input" id="type" type="text" list="work-type-options" data-i18n-ph="cdTypePh" placeholder="Type of work, if known" autocomplete="off">
+          <input class="input" id="type" type="text" list="work-type-options" data-i18n-ph="cdTypePh" placeholder="e.g. Piano concerto" autocomplete="off">
           <datalist id="work-type-options"></datalist>
         </div>
         <fieldset id="perf-set">
@@ -1370,7 +1368,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           </div>
           <div class="field">
             <label class="lbl" for="hub" data-i18n="hub">Inner ring manufacturing</label>
-            <input class="input" id="hub" type="text" list="hub-options" data-i18n-ph="hubPh" placeholder="Inner ring manufacturing details, if known" autocomplete="off">
+            <input class="input" id="hub" type="text" list="hub-options" data-i18n-ph="hubPh" placeholder="e.g. Full silver hub" autocomplete="off">
             <datalist id="hub-options"></datalist>
           </div>
           <div class="field">
@@ -2470,6 +2468,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   Object.assign(I18N.en, { cdUnsavedHead: "Save your changes?", cdUnsavedHint: "This CD has unsaved changes.", cdUnsavedSave: "Save", cdUnsavedDiscard: "Discard", cdUnsavedKeep: "Keep editing" });
   Object.assign(I18N.ja, { cdUnsavedHead: "変更を保存しますか？", cdUnsavedHint: "このCDには未保存の変更があります。", cdUnsavedSave: "保存", cdUnsavedDiscard: "変更を破棄", cdUnsavedKeep: "編集を続ける" });
   Object.assign(I18N.zh, { cdUnsavedHead: "保存更改？", cdUnsavedHint: "这张CD有尚未保存的更改。", cdUnsavedSave: "保存", cdUnsavedDiscard: "放弃更改", cdUnsavedKeep: "继续编辑" });
+  Object.assign(I18N.en, { composerPh: "e.g. Sergei Rachmaninoff", cdTypePh: "e.g. Piano concerto", hubPh: "e.g. Full silver hub" });
+  Object.assign(I18N.ja, { composerPh: "例：ラフマニノフ", cdTypePh: "例：ピアノ協奏曲", hubPh: "例：全面銀色ハブ" });
+  Object.assign(I18N.zh, { composerPh: "例如：拉赫玛尼诺夫", cdTypePh: "例如：钢琴协奏曲", hubPh: "例如：满银圈" });
   var LANGS = {
     en: { tag: "en", name: "English" },
     ja: { tag: "ja", name: "日本語" },
@@ -2989,17 +2990,15 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   $("photo-remove").addEventListener("click", function () { editCover.touched = true; photoData = null; $("drop").classList.remove("filled"); showPhoto(); });
 
   /* ---------- performer rows ---------- */
-  function positionPerformerRoles(menu) {
-    // Toggle events can arrive after a save/reset removed this row.
-    if (!menu.isConnected || !menu.open || !menu.closest(".panel")) return;
-    var rect = menu.querySelector("summary").getBoundingClientRect();
-    var panel = menu.closest(".panel").getBoundingClientRect();
-    var above = rect.top - Math.max(0, panel.top) - 8;
-    var below = Math.min(window.innerHeight, panel.bottom) - rect.bottom - 8;
-    var options = menu.querySelector(".perf-role-options");
-    var up = below < Math.min(240, options.scrollHeight) && above > below;
-    menu.classList.toggle("perf-roles-up", up);
-    options.style.maxHeight = Math.max(42, Math.min(240, up ? above : below)) + "px";
+  var rolePointerActive = false;
+  function setPerformerRolesOpen(menu, open, focus) {
+    if (open) qsa(".perf-roles.is-open").forEach(function (other) {
+      if (other !== menu) setPerformerRolesOpen(other, false);
+    });
+    menu.classList.toggle("is-open", open);
+    menu.querySelector(".perf-role-trigger").setAttribute("aria-expanded", String(open));
+    menu.querySelector(".perf-role-options").hidden = !open;
+    if (focus && menu.isConnected) menu.querySelector(".perf-role-trigger").focus();
   }
   function syncPerformerRoles(row) {
     var chosen = [];
@@ -3007,7 +3006,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var count = boxes.filter(function (box) { return box.checked; }).length;
     boxes.forEach(function (box) {
       var label = roleText(box.value);
-      box.nextSibling.textContent = label;
+      if (box.nextSibling.textContent !== label) box.nextSibling.textContent = label;
       /* Keep at least one role so a named performer cannot disappear on save. */
       box.disabled = box.checked && count === 1;
       if (box.checked) chosen.push(box.value === "Other" ? roleText(row.querySelector(".perf-custom-name").value.trim()) : label);
@@ -3022,7 +3021,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     add.textContent = t("addRole");
     add.setAttribute("aria-label", t("addRole"));
     add.disabled = !custom.value.trim();
-    var summary = row.querySelector("summary");
+    var summary = row.querySelector(".perf-role-trigger");
     row.querySelector(".perf-role-text").textContent = chosen.join(", ");
     summary.title = chosen.join(", ");
     summary.setAttribute("aria-label", t("performerRoles") + ": " + chosen.join(", "));
@@ -3035,11 +3034,16 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var roles = Array.isArray(role) ? role : [role || DEFAULT_ROLES[root.children.length] || "Other"];
     roles = roles.filter(Boolean);
     if (!roles.length) roles = ["Other"];
-    var menu = el("details", "perf-roles");
-    var summary = el("summary", "input");
+    var menu = el("div", "perf-roles");
+    var summary = el("button", "input perf-role-trigger");
+    summary.type = "button";
+    summary.setAttribute("aria-expanded", "false");
+    summary.setAttribute("aria-controls", "perf-options-" + n);
     summary.id = "perf-role-" + n;
     summary.appendChild(el("span", "perf-role-text"));
     var options = el("fieldset", "perf-role-options");
+    options.id = "perf-options-" + n;
+    options.hidden = true;
     function roleOption(r, checked) {
       var label = el("label", "perf-role-option");
       var box = el("input");
@@ -3087,7 +3091,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     options.addEventListener("change", function () {
       markPerformerEdited();
       syncPerformerRoles(row);
-      if (menu.open) positionPerformerRoles(menu);
     });
     custom.addEventListener("input", function () { markPerformerEdited(); syncPerformerRoles(row); });
     function addCustomRole() {
@@ -3103,37 +3106,39 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       summary.focus();
       syncPerformerRoles(row);
       if (!box.disabled) box.focus();
-      positionPerformerRoles(menu);
     }
     add.addEventListener("click", addCustomRole);
     custom.addEventListener("keydown", function (e) {
       if (e.key === "Enter") { e.preventDefault(); addCustomRole(); }
     });
     menu.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && menu.open) {
+      if (e.key === "Escape" && menu.classList.contains("is-open")) {
         e.preventDefault(); e.stopPropagation();
-        menu.open = false; summary.focus();
+        setPerformerRolesOpen(menu, false, true);
       }
     });
-    menu.addEventListener("toggle", function () {
-      if (menu.open) {
-        qsa(".perf-roles[open]").forEach(function (other) { if (other !== menu) other.open = false; });
-        positionPerformerRoles(menu);
-      }
+    summary.addEventListener("click", function () {
+      var open = !menu.classList.contains("is-open");
+      setPerformerRolesOpen(menu, open);
+      if (open) options.scrollIntoView({ block: "nearest" });
     });
     menu.addEventListener("focusout", function (e) {
-      if (!menu.contains(e.relatedTarget)) menu.open = false;
+      // A pointer click must reach its original target before the inline popup shrinks.
+      // Keyboard/programmatic focus changes can dismiss it immediately.
+      if (!rolePointerActive && !menu.contains(e.relatedTarget)) setPerformerRolesOpen(menu, false);
     });
     syncPerformerRoles(row);
     root.appendChild(row);
     return inp;
   }
   $("add-perf").addEventListener("click", function () { addRow().focus(); });
-  document.addEventListener("pointerdown", function (e) {
-    qsa(".perf-roles[open]").forEach(function (menu) { if (!menu.contains(e.target)) menu.open = false; });
+  document.addEventListener("pointerdown", function () { rolePointerActive = true; }, true);
+  document.addEventListener("pointercancel", function () { rolePointerActive = false; }, true);
+  document.addEventListener("keydown", function () { rolePointerActive = false; }, true);
+  document.addEventListener("click", function (e) {
+    qsa(".perf-roles.is-open").forEach(function (menu) { if (!menu.contains(e.target)) setPerformerRolesOpen(menu, false); });
+    rolePointerActive = false;
   });
-  window.addEventListener("resize", function () { qsa(".perf-roles[open]").forEach(positionPerformerRoles); });
-  window.addEventListener("scroll", function () { qsa(".perf-roles[open]").forEach(positionPerformerRoles); }, true);
   function resetRows(performers, filled, root) {
     root = root || $("perf-rows");
     root.textContent = "";
@@ -6771,6 +6776,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     for (var parent = input.parentElement; parent && parent !== $("cd-form"); parent = parent.parentElement) {
       if (parent.tagName === "DETAILS") parent.open = true;
     }
+    var roles = input.closest(".perf-roles");
+    if (roles) setPerformerRolesOpen(roles, true);
     input.focus();
   }
   function applyMode() {
@@ -7030,6 +7037,18 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function dgNormalizeWorks(out) {
     var works = out.lookupDiscs ? [].concat.apply([], out.lookupDiscs.map(function (d) { return d.works; })) : out.works;
     if (!works.length) return out;
+    /* Lookup only: an independent piece repeated as its sole track is a work with a duration.
+       Keep distinct movement labels and musical accidentals significant when comparing titles. */
+    function titleKey(title) {
+      return String(title || "").normalize("NFKC").toLowerCase().replace(/[\s.,:;!?'"“”‘’()[\]{}\-‐‑‒–—…·]/g, "");
+    }
+    works.forEach(function (w) {
+      var key = titleKey(w.title);
+      if (key && w.tracks.length === 1 && key === titleKey(w.tracks[0].title)) {
+        w.duration = w.tracks[0].duration;
+        w.tracks = [];
+      }
+    });
     ["type", "composer"].forEach(function (field) {
       var common = works.length && works[0][field];
       if (common && works.every(function (w) { return w[field] === common; })) {

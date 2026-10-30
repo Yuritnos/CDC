@@ -135,11 +135,11 @@ async function main() {
     const f=await fixture();const {page,state}=f;
     try {
       await edit(page);const global=page.locator('#perf-rows .prow').first();await global.locator('.perf-name').fill('Global Person');
-      await global.locator('summary').click();await global.getByRole('checkbox',{name:'Pianist',exact:true}).check();
+      await global.locator('.perf-role-trigger').click();await global.getByRole('checkbox',{name:'Pianist',exact:true}).check();
       for(let i=0;i<2;i++){await global.getByRole('checkbox',{name:'Pianist',exact:true}).uncheck();await global.getByRole('checkbox',{name:'Pianist',exact:true}).check();}
       await page.keyboard.press('Escape');await openWorks(page);await page.locator('.w-details summary').first().click();
       await page.locator('.w-add-perf').first().click();const row=page.locator('.w-perf-rows .prow').first();await row.locator('.perf-name').fill('Work Person');
-      await row.locator('summary').click();await row.getByRole('checkbox',{name:'Conductor',exact:true}).check();await row.getByRole('checkbox',{name:'Pianist',exact:true}).check();
+      await row.locator('.perf-role-trigger').click();await row.getByRole('checkbox',{name:'Conductor',exact:true}).check();await row.getByRole('checkbox',{name:'Pianist',exact:true}).check();
       await row.getByRole('checkbox',{name:'Orchestra',exact:true}).uncheck();
       await row.getByRole('checkbox',{name:'Other',exact:true}).check();await row.locator('.perf-custom-name').fill('Organist');
       await row.locator('.perf-custom-add').click();await page.keyboard.press('Escape');
@@ -151,9 +151,9 @@ async function main() {
       await page.reload();await edit(page);await page.locator('#close-cd').click();assert.equal(await page.locator('#win-cd').isVisible(),false);
     }finally{await f.close();}
   });
-  await test('queued role-menu toggle after row removal does not measure a detached panel',async()=>{
+  await test('removing an open role picker does not leave layout callbacks behind',async()=>{
     const f=await fixture();const {page}=f;
-    try {await edit(page);await page.evaluate(()=>{const row=document.querySelector('#perf-rows .prow');row.querySelector('details').open=true;row.remove();});
+    try {await edit(page);await page.evaluate(()=>{const row=document.querySelector('#perf-rows .prow');row.querySelector('.perf-role-trigger').click();row.remove();});
       await page.waitForTimeout(100);assert.deepEqual(f.state.errors,[]);await save(page);
     }finally{await f.close();}
   });

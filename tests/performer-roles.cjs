@@ -81,7 +81,7 @@ async function main() {
       await page.locator('#title').fill('Custom roles QA');
       const row = page.locator('.prow').first();
       await row.locator('.perf-name').fill('Alex Example');
-      await row.locator('summary').click();
+      await row.locator('.perf-role-trigger').click();
       await row.getByRole('checkbox', {name: 'Pianist', exact: true}).check();
       await row.getByRole('checkbox', {name: 'Other', exact: true}).check();
       await row.getByRole('textbox', {name: 'Custom role (optional)', exact: true}).fill('  Organist  ');
@@ -100,7 +100,7 @@ async function main() {
       await page.reload(); await edit(page, 'Custom roles QA');
       assert.equal(await page.locator('.prow').count(), 1);
       assert.deepEqual(await selected(row), expected.map(p => p.role));
-      await row.locator('summary').click();
+      await row.locator('.perf-role-trigger').click();
       for (const role of ['Conductor', 'Pianist', 'Other', 'Organist']) await row.getByRole('checkbox', {name: role, exact: true}).uncheck();
       assert.equal(await row.getByRole('checkbox', {name: 'Harpsichord', exact: true}).isDisabled(), true);
       await row.getByRole('checkbox', {name: 'Other', exact: true}).check();
@@ -116,7 +116,7 @@ async function main() {
     try {
       await page.locator('#open-add').click();
       await page.locator('#title').fill('Performer QA');
-      const row = page.locator('.prow').first(), summary = row.locator('summary');
+      const row = page.locator('.prow').first(), summary = row.locator('.perf-role-trigger');
       await row.locator('.perf-name').fill('  Alex Example  ');
       assert.equal(await row.locator('select').count(), 0);
       await summary.focus(); await page.keyboard.press('Enter');
@@ -127,11 +127,11 @@ async function main() {
       await row.getByRole('checkbox', {name: 'Orchestra', exact: true}).uncheck();
       assert.deepEqual(await selected(row), ['Conductor', 'Pianist']);
       await page.keyboard.press('Escape');
-      assert.equal(await row.locator('details').getAttribute('open'), null);
+      assert.equal(await row.locator('.perf-role-trigger').getAttribute('aria-expanded'), 'false');
       assert.equal(await summary.evaluate(n => document.activeElement === n), true);
       assert.equal(await page.locator('#win-cd').isVisible(), true);
       await summary.click(); await row.locator('.perf-name').click();
-      assert.equal(await row.locator('details').getAttribute('open'), null);
+      assert.equal(await row.locator('.perf-role-trigger').getAttribute('aria-expanded'), 'false');
       await save(page);
       const expected = [{role: 'Conductor', name: 'Alex Example'}, {role: 'Pianist', name: 'Alex Example'}];
       assert.deepEqual(state.doc.cds[0].performers, expected);
@@ -174,7 +174,7 @@ async function main() {
       await lookup(page, 1);
       assert.equal(await row.locator('.perf-name').inputValue(), '');
       assert.deepEqual(await selected(row), ['Conductor']);
-      await lookup(page, 0); await row.locator('summary').click();
+      await lookup(page, 0); await row.locator('.perf-role-trigger').click();
       await row.getByRole('checkbox', {name: 'Singer', exact: true}).check();
       await page.keyboard.press('Escape'); await lookup(page, 1);
       assert.equal(await row.locator('.perf-name').inputValue(), 'Alex Example');
@@ -186,7 +186,7 @@ async function main() {
     try {
       await page.locator('#open-add').click(); await lookup(page, 0);
       const row = page.locator('.prow').first();
-      await row.locator('summary').click();
+      await row.locator('.perf-role-trigger').click();
       await row.getByRole('checkbox', {name: 'Other', exact: true}).check();
       await row.getByRole('textbox', {name: 'Custom role (optional)', exact: true}).fill('  Organist  ');
       await page.keyboard.press('Escape'); await lookup(page, 1);
@@ -213,7 +213,7 @@ async function main() {
     try {
       await page.locator('#open-add').click(); await page.locator('#title').fill('Literal roles QA');
       const row = page.locator('.prow').first();
-      await row.locator('.perf-name').fill('Alex Example'); await row.locator('summary').click();
+      await row.locator('.perf-name').fill('Alex Example'); await row.locator('.perf-role-trigger').click();
       await row.getByRole('checkbox', {name: 'Other', exact: true}).check();
       await row.locator('.perf-custom-name').fill('Conductor'); await row.locator('.perf-custom-add').click();
       assert.deepEqual(await selected(row), ['Conductor']);
@@ -268,7 +268,7 @@ async function main() {
           for (const theme of ['light', 'dark']) {
             await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme);
             const row = page.locator('.prow').first();
-            await row.locator('summary').click();
+            await row.locator('.perf-role-trigger').click();
             await page.getByRole('group', {name: roles, exact: true}).waitFor();
             const geometry = await row.locator('.perf-role-options').evaluate(n => {
               const r = n.getBoundingClientRect(), panel = n.closest('.panel').getBoundingClientRect();
@@ -285,8 +285,8 @@ async function main() {
         }
       }
       await page.emulateMedia({reducedMotion: 'no-preference'});
-      await page.locator('.prow summary').click();
-      assert.equal(await page.locator('.perf-role-options').evaluate(n => getComputedStyle(n).animationName), 'pop-in');
+      await page.locator('.prow .perf-role-trigger').click();
+      assert.equal(await page.locator('.perf-role-options').evaluate(n => getComputedStyle(n).animationName), 'none');
     } finally { await f.close(); }
   });
   await test('last performer popup fits a short window and only one menu stays open', async () => {
@@ -296,7 +296,7 @@ async function main() {
       await page.locator('#open-add').click();
       for (let i = 0; i < 8; i++) await page.locator('#add-perf').click();
       const last = page.locator('.prow').last();
-      await last.locator('summary').click();
+      await last.locator('.perf-role-trigger').click();
       await last.getByRole('checkbox', {name: 'Pianist', exact: true}).waitFor();
       const fits = await last.locator('.perf-role-options').evaluate(n => {
         const r = n.getBoundingClientRect(), panel = n.closest('.panel').getBoundingClientRect();
@@ -304,8 +304,8 @@ async function main() {
       });
       assert.equal(fits, true, 'last performer popup is clipped by the form');
       await last.getByRole('checkbox', {name: 'Pianist', exact: true}).check();
-      await page.locator('.prow').nth(7).locator('summary').click();
-      assert.equal(await page.locator('.perf-roles[open]').count(), 1);
+      await page.locator('.prow').nth(7).locator('.perf-role-trigger').click();
+      assert.equal(await page.locator('.perf-roles.is-open').count(), 1);
       await page.keyboard.press('Tab'); await page.keyboard.press('Escape');
       assert.equal(await page.locator('#win-cd').isVisible(), true);
     } finally { await f.close(); }

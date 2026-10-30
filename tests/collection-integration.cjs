@@ -522,7 +522,8 @@ async function main() {
       assert.equal(await page.locator('#title').inputValue(), 'New Single');
       assert.equal(await page.locator('#lookup-disc-row').isHidden(), true);
       assert.equal(await page.locator('#set-title').count(), 0);
-      assert.equal(await page.locator('.t-title').inputValue(), 'New Track');
+      assert.equal(await page.locator('.w-title').inputValue(), 'New Track');
+      assert.equal(await page.locator('.t-title').count(), 0, 'same-name single track stays collapsed after stale details arrive');
     } finally { await f.close(); }
   });
   await test('late details cannot fill a reset form after saving a manually entered CD', async () => {
