@@ -78,6 +78,7 @@ const card = page => page.locator('#card-inheritance');
 async function edit(page) {
   await card(page).locator('h3').click();
   await page.locator('.profile-actions > button').first().click();
+  if (!await page.locator('#works-set').evaluate(n => n.open)) await page.locator('#works-set > summary').click();
 }
 async function save(page, state) {
   const before = state.saves;
@@ -107,6 +108,11 @@ async function main() {
       {composer: album.composer, type: 'Opera', performers: credits});
     assert.deepEqual(plain(helpers.workMetadata({}, {composer: 'Only work', performers: []})),
       {composer: 'Only work', type: '', performers: []});
+    assert.deepEqual(plain(helpers.workMetadata(album, {performersMode: 'additional', performers: [credits[0], ...workCredits]})),
+      {composer: album.composer, type: album.type, performers: [...credits, ...workCredits]});
+    assert.deepEqual(plain(helpers.workOverrides(album, {performersMode: 'additional', performers: [credits[0]]})), {});
+    assert.deepEqual(plain(helpers.workMetadata(album, {performers: workCredits})).performers, workCredits,
+      'normal overrides must not merge in global performers');
     assert.deepEqual(album, before, 'resolving metadata mutated the input');
   });
   browser = await playwright.chromium.launch({headless: true, ...(executablePath ? {executablePath} : {})});
@@ -131,56 +137,61 @@ async function main() {
       assert.equal(await work.locator('.w-composer').isVisible(), false);
     } finally { await f.close(); }
   });
-  await test('cards/profiles reveal only actual work differences, start collapsed and toggles do not open cards', async () => {
+  await test('cards/profiles show work-info only for differences; hover and keyboard do not open cards', async () => {
     const f = await fixture(), {page, state} = f;
     try {
       for (const lang of ['en', 'ja', 'zh']) {
         await language(page, lang);
-        const details = card(page).locator('.work-overrides');
-        assert.equal(await details.count(), 1, 'inherited/equal fields created disclosures');
-        assert.equal(await details.evaluate(n => n.open), false);
+        const info = card(page).locator('.work-info');
+        const popup = page.getByRole('tooltip');
+        assert.equal(await info.count(), 1, 'inherited/equal fields created info icons');
+        assert.equal(await info.getAttribute('aria-expanded'), 'false');
+        assert.equal(await card(page).locator('.work-overrides').count(), 0);
         assert(!(await card(page).innerText()).includes('Work Soloist'));
-        await details.locator('summary').click();
-        assert.equal(await details.evaluate(n => n.open), true);
-        assert.equal(await page.locator('#win-detail').isVisible(), false, 'summary click opened the card');
-        assert.deepEqual(await details.locator('.perfs .name').allTextContents(), ['Work Soloist']);
-        assert.equal(await details.locator('.composer').textContent(), 'Work Composer');
-        await details.locator('summary').press('Enter');
-        assert.equal(await details.evaluate(n => n.open), false);
-        assert.equal(await page.locator('#win-detail').isVisible(), false, 'keyboard toggle opened the card');
+        await info.hover(); await popup.waitFor();
+        assert.equal(await info.getAttribute('aria-expanded'), 'true');
+        assert.equal(await page.locator('#win-detail').isVisible(), false, 'info hover opened the card');
+        assert.deepEqual(await popup.locator('.perfs .name').allTextContents(), ['Work Soloist']);
+        assert.equal(await popup.locator('.composer').textContent(), 'Work Composer');
+        await info.focus(); await info.press('Escape');
+        await popup.waitFor({state: 'hidden'});
+        assert.equal(await info.getAttribute('aria-expanded'), 'false');
+        assert.equal(await page.locator('#win-detail').isVisible(), false, 'keyboard interaction opened the card');
         await card(page).locator('h3').click();
-        assert.deepEqual(await page.locator('#detail-body .pwork .work-overrides').evaluateAll(ns => ns.map(n => n.open)), [false]);
-        assert.equal(await page.locator('#detail-body .pwork').nth(0).locator('details').count(), 0);
-        assert.equal(await page.locator('#detail-body .pwork').nth(1).locator('details').count(), 0);
-        await page.locator('#detail-body .work-overrides > summary').click();
-        assert((await page.locator('#detail-body .work-overrides').innerText()).includes('Work Soloist'));
+        assert.equal(await page.locator('#detail-body .work-overrides').count(), 0);
+        assert.equal(await page.locator('#detail-body .pwork').nth(0).locator('.work-info').count(), 0);
+        assert.equal(await page.locator('#detail-body .pwork').nth(1).locator('.work-info').count(), 0);
+        const profileInfo = page.locator('#detail-body .work-info');
+        assert.equal(await profileInfo.getAttribute('aria-expanded'), 'false');
+        await profileInfo.hover(); await popup.waitFor();
+        assert((await popup.innerText()).includes('Work Soloist'));
         await page.locator('#close-detail').click();
       }
       assert.deepEqual(state.doc.cds, [album], 'viewing/toggling details changed CD metadata');
     } finally { await f.close(); }
   });
-  await test('without an album composer, a work-only composer stays folded on cards/profiles and remains filterable', async () => {
+  await test('without an album composer, a work-only composer stays in the tooltip and remains filterable', async () => {
     const composer = 'Work-only Composer';
     const f = await fixture({cds: [
       {id: 'inheritance', title: 'No album composer QA', composer: '',
         works: [{title: 'Independent work', composer, tracks: []}]},
       {id: 'unrelated', title: 'Unrelated QA'}]}), {page} = f;
     try {
-      const details = card(page).locator('.work-overrides');
-      assert.equal(await details.evaluate(n => n.open), false);
+      const info = card(page).locator('.work-info'), popup = page.getByRole('tooltip');
+      assert.equal(await info.getAttribute('aria-expanded'), 'false');
       assert(!(await card(page).innerText()).includes(composer), 'work composer leaked onto the collapsed card');
       assert.equal(await card(page).locator('.card-body > .composer').count(), 0);
-      await details.locator('summary').click();
-      assert((await details.innerText()).includes(composer));
+      await info.hover(); await popup.waitFor();
+      assert((await popup.innerText()).includes(composer));
       assert.equal(await page.locator('#win-detail').isVisible(), false);
-      await details.locator('summary').click();
+      await info.press('Escape'); await popup.waitFor({state: 'hidden'});
       await card(page).locator('h3').click();
       const profile = page.locator('#detail-body');
-      assert.equal(await profile.locator('.work-overrides').evaluate(n => n.open), false);
+      assert.equal(await profile.locator('.work-info').getAttribute('aria-expanded'), 'false');
       assert(!(await profile.innerText()).includes(composer), 'work composer leaked onto the collapsed profile');
       assert.equal(await profile.locator('.profile-main > .composer').count(), 0);
-      await profile.locator('.work-overrides > summary').click();
-      assert((await profile.locator('.work-overrides').innerText()).includes(composer));
+      await profile.locator('.work-info').hover(); await popup.waitFor();
+      assert((await popup.innerText()).includes(composer));
       await page.locator('#close-detail').click();
       await page.locator('#filter-btn').click();
       await page.locator('#f-composer').getByRole('checkbox', {name: composer, exact: true}).check();
@@ -235,7 +246,7 @@ async function main() {
       await save(page, state);
       stored = state.doc.cds[0];
       assert(!stored.works[2].composer && !stored.works[2].type && !stored.works[2].performers?.length);
-      assert.equal(await card(page).locator('.work-overrides').count(), 1, 'cleared work still has a disclosure');
+      assert.equal(await card(page).locator('.work-info').count(), 1, 'cleared work still has an info icon');
     } finally { await f.close(); }
   });
   await test('work-specific performers are searchable and available in role-specific shelf filters', async () => {
@@ -261,14 +272,14 @@ async function main() {
       {id: 'unrelated', title: 'Unrelated QA'}]}), {page} = f;
     try {
       await card(page).locator('h3').click();
-      await page.locator('#detail-body .work-overrides > summary').click();
-      await page.locator('#detail-body .work-overrides').getByRole('button', {name: 'Work Composer', exact: true}).click();
+      await page.locator('#detail-body .work-info').hover();
+      await page.getByRole('tooltip').getByRole('button', {name: 'Work Composer', exact: true}).click();
       assert.equal(await page.locator('#win-detail').isVisible(), false);
       assert.deepEqual((await page.locator('#grid .card h3').allTextContents()).sort(), ['Inheritance QA', 'Same composer QA']);
       await page.locator('#f-clear').click(); await page.locator('#f-done').click();
       await card(page).locator('h3').click();
-      await page.locator('#detail-body .work-overrides > summary').click();
-      const person = page.locator('#detail-body .work-overrides').getByRole('button', {name: 'Work Soloist', exact: true});
+      await page.locator('#detail-body .work-info').hover();
+      const person = page.getByRole('tooltip').getByRole('button', {name: 'Work Soloist', exact: true});
       assert.equal(await person.count(), 1, 'work-specific performer has no profile filter link');
       await person.click();
       assert.equal(await page.locator('#win-detail').isVisible(), false);
@@ -300,6 +311,7 @@ async function main() {
       assert.equal(await page.locator('#detail-body .paudio-head').count(), 0, 'empty profile Audio section');
       assert.equal(await page.locator('#detail-body #audio-add').count(), 0, 'profile Add audio button');
       await page.locator('.profile-actions > button').first().click();
+      if (!await page.locator('#form-audio-set').evaluate(n => n.open)) await page.locator('#form-audio-set > summary').click();
       assert.equal(await page.locator('#form-audio-add').isVisible(), true, 'edit form Add audio is unavailable');
     } finally { await f.close(); }
   });

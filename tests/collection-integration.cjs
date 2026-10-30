@@ -114,6 +114,22 @@ async function fixture({cds = [], settings = {}, nativeAudio = false} = {}) {
 async function openCard(page, title) {
   await page.locator('#grid .card').filter({has: page.getByRole('heading', {name: title, exact: true})}).click();
 }
+// These integration cases exercise editing; section defaults have their own dedicated suite.
+async function prepareEditor(page) {
+  await page.locator('#win-cd').waitFor();
+  await page.locator('#works-set').evaluate(n => n.open = true);
+  if (await page.locator('#form-audio-set').isVisible()) {
+    await page.locator('#form-audio-set').evaluate(n => n.open = true);
+  }
+}
+async function openAdd(page) {
+  await page.locator('#open-add').click();
+  await prepareEditor(page);
+}
+async function edit(page) {
+  await page.locator('.profile-actions > button').first().click();
+  await prepareEditor(page);
+}
 async function save(page) {
   await page.locator('#submit').click();
   await page.locator('#win-cd').waitFor({state: 'hidden'});
@@ -184,7 +200,7 @@ async function main() {
     const f = await fixture(), {page, state} = f;
     const customType = 'Tone poem / 诗篇';
     try {
-      await page.locator('#open-add').click();
+      await openAdd(page);
       await page.locator('#title').fill('Duration QA');
       await page.locator('.w-title').fill('Overture');
       assert.equal(await page.locator('.w-type').evaluate(n => n.tagName), 'INPUT');
@@ -208,7 +224,7 @@ async function main() {
       assert.equal(await page.locator('.pwork-duration').textContent(), '12:34');
       assert.equal(await page.locator('.ptracks li').count(), 0);
       assert((await page.locator('.ptotal').textContent()).includes('12:34'));
-      await page.getByRole('button', {name: 'Edit', exact: true}).click();
+      await edit(page);
       assert.equal(await page.locator('.trow').count(), 0);
       assert.equal(await page.locator('.w-duration').inputValue(), '12:34');
       await page.getByRole('button', {name: '+ Add track', exact: true}).click();
@@ -228,7 +244,7 @@ async function main() {
       assert.equal(state.doc.cds[0].works[0].type, customType);
       await openCard(page, 'Duration QA');
       assert((await page.locator('.ptotal').textContent()).includes('15:55'));
-      await page.getByRole('button', {name: 'Edit', exact: true}).click();
+      await edit(page);
       await page.locator('.trow .iconbtn').first().click();
       assert.equal(await page.locator('.w-duration').isHidden(), true, 'one track still uses its own duration');
       assert.equal(await page.locator('.t-len').inputValue(), '3:21');
@@ -241,7 +257,7 @@ async function main() {
       assert((await page.locator('.ptotal').textContent()).includes('3:21'));
       assert.equal(await page.locator('.pwork-title').textContent(), 'Overture');
       assert.equal(await page.locator('.pwork-duration').textContent(), '3:21');
-      await page.getByRole('button', {name: 'Edit', exact: true}).click();
+      await edit(page);
       assert.equal(await page.locator('.trow').count(), 0);
       assert.equal(await page.locator('.w-duration').inputValue(), '3:21');
       assert.equal(await page.locator('.w-type').inputValue(), customType);
@@ -253,7 +269,7 @@ async function main() {
     const f = await fixture({cds: [{id: 'other-type', title: 'Other type QA', type: 'Symphony'}],
       settings: {cardFields: ['type', 'workTypes', 'hub']}}), {page, state} = f;
     try {
-      await page.locator('#open-add').click(); await page.locator('#title').fill('Custom type QA');
+      await openAdd(page); await page.locator('#title').fill('Custom type QA');
       assert.equal(await page.locator('#type').getAttribute('list'), 'work-type-options');
       await page.locator('#type').fill(overall);
       await page.locator('.w-title').fill('Nocturne');
@@ -266,10 +282,12 @@ async function main() {
       assert.equal(cd.type, overall); assert.equal(cd.hub, hub); assert.equal(cd.works[0].type, workType);
       const card = page.locator('#card-' + cd.id);
       for (const text of [overall, hub]) assert((await card.innerText()).includes(text), text);
-      assert(!(await card.innerText()).includes(workType), 'work override starts collapsed');
-      await card.locator('.work-overrides > summary').click();
-      assert((await card.innerText()).includes(workType), workType);
-      assert.equal(await page.locator('#win-detail').isVisible(), false, 'disclosure opened the profile');
+      assert(!(await card.innerText()).includes(workType), 'work override stays out of the card text');
+      assert.equal(await page.locator('.work-info-popup').count(), 0, 'work details start hidden');
+      await card.locator('.work-info').hover();
+      await page.locator('.work-info-popup').waitFor();
+      assert((await page.locator('.work-info-popup').innerText()).includes(workType), workType);
+      assert.equal(await page.locator('#win-detail').isVisible(), false, 'work info hover opened the profile');
       await page.locator('#filter-btn').click();
       for (const [type, title] of [[overall, 'Custom type QA'], [workType, 'Custom type QA'], ['Symphony', 'Other type QA']]) {
         await page.locator('#f-type label').filter({has: page.getByText(type, {exact: true})}).locator('input').check();
@@ -277,10 +295,13 @@ async function main() {
         await page.locator('#f-clear').click();
       }
       await page.locator('#f-done').click(); await openCard(page, 'Custom type QA');
-      assert(!(await page.locator('#win-detail').innerText()).includes(workType), 'profile work override starts collapsed');
-      await page.locator('#detail-body .work-overrides > summary').click();
-      for (const text of [overall, workType, hub]) assert((await page.locator('#win-detail').innerText()).includes(text), text);
-      await page.locator('.profile-actions > button').first().click();
+      assert(!(await page.locator('#win-detail').innerText()).includes(workType), 'profile work override stays in the info popup');
+      assert.equal(await page.locator('.work-info-popup').count(), 0, 'profile work details start hidden');
+      await page.locator('#detail-body .work-info').hover();
+      await page.locator('.work-info-popup').waitFor();
+      assert((await page.locator('.work-info-popup').innerText()).includes(workType), workType);
+      for (const text of [overall, hub]) assert((await page.locator('#win-detail').innerText()).includes(text), text);
+      await edit(page);
       assert.equal(await page.locator('#type').inputValue(), overall);
       assert.equal(await page.locator('.w-type').inputValue(), workType);
       assert.equal(await page.locator('#hub').inputValue(), hub);
@@ -289,7 +310,7 @@ async function main() {
       assert.equal(cleared.hub, undefined); assert.equal(cleared.type, undefined);
       await page.reload(); await openCard(page, 'Custom type QA');
       assert.equal(await page.locator('#win-detail').getByText(hub, {exact: true}).count(), 0);
-      await page.locator('.profile-actions > button').first().click();
+      await edit(page);
       assert.equal(await page.locator('#hub').inputValue(), '');
       assert.equal(await page.locator('#type').inputValue(), '');
       assert.equal(await page.locator('.w-type').inputValue(), workType);
@@ -299,11 +320,11 @@ async function main() {
     const f = await fixture(), {page, state} = f;
     try {
       for (const [lang, type, hub, value, hubs] of [
-        ['en', 'Piano concerto', 'Full silver hub', 'full', ['Full silver hub', 'Partial silver hub', 'Clear hub']],
-        ['ja', 'ピアノ協奏曲', '一部銀色ハブ', 'partial', ['全面銀色ハブ', '一部銀色ハブ', '透明ハブ']],
-        ['zh', '钢琴协奏曲', '胶圈', 'clear', ['满银圈', '半银圈', '胶圈']]
+        ['en', 'Piano concerto', 'Full silver hub', 'full', ['Full silver hub', 'Partial silver hub', 'Clear hub', 'Other']],
+        ['ja', 'ピアノ協奏曲', '一部銀色ハブ', 'partial', ['全面銀色ハブ', '一部銀色ハブ', '透明ハブ', 'その他']],
+        ['zh', '钢琴协奏曲', '胶圈', 'clear', ['满银圈', '半银圈', '胶圈', '其他']]
       ]) {
-        await setLanguage(page, lang); await page.locator('#open-add').click();
+        await setLanguage(page, lang); await openAdd(page);
         assert.deepEqual(await page.locator('#hub-options option').evaluateAll(ns => ns.map(n => n.value)), hubs);
         assert((await page.locator('#work-type-options option').evaluateAll(ns => ns.map(n => n.value))).includes(type));
         await page.locator('#title').fill('Known ' + lang); await page.locator('#type').fill(type);
@@ -315,7 +336,7 @@ async function main() {
         assert.equal(cd.type, 'PianoConcerto'); assert.equal(cd.works[0].type, 'PianoConcerto'); assert.equal(cd.hub, value);
         await openCard(page, cd.title);
         assert((await page.locator('#win-detail').innerText()).includes(hub));
-        await page.locator('.profile-actions > button').first().click();
+        await edit(page);
         assert.equal(await page.locator('#type').inputValue(), type);
         assert.equal(await page.locator('.w-type').inputValue(), type);
         assert.equal(await page.locator('#hub').inputValue(), hub); await save(page);
@@ -345,7 +366,7 @@ async function main() {
       assert.deepEqual(state.doc.cds[0].works[1].tracks, []);
       assert((await page.locator('#card-virtual-audio').innerText()).includes('15:56'), 'sum includes work duration and ignores stale duration on tracked works');
       assert(state.commands.some(c => c.command === 'save_data'));
-      await page.locator('.profile-actions > button').first().click();
+      await edit(page);
       assert.equal(await page.locator('.work').nth(1).locator('.trow').count(), 0);
       assert.equal(await page.locator('.w-duration').nth(1).inputValue(), '0:01');
       assert.equal(await page.locator('.w-duration').nth(2).isHidden(), true);
@@ -364,7 +385,7 @@ async function main() {
       assert.equal(await page.locator('#cf-set, #cf-workTypes').count(), 0);
       assert.equal((await page.locator('#win-settings').innerText()).includes('Album or box set'), false);
       await page.locator('#close-settings').click();
-      await page.locator('#open-add').click();
+      await openAdd(page);
       assert.equal(await page.locator('#set-fields, #set-title, #ff-set, #ff-workTypes').count(), 0);
       await page.locator('#title').fill('Standalone CD');
       await page.locator('#more-details').evaluate(n => n.open = true);
@@ -381,7 +402,7 @@ async function main() {
       assert.equal((await page.locator('#win-detail').innerText()).includes('Box QA'), false);
       assert.equal(await page.locator('.set-siblings').count(), 0);
       assert.equal(await page.getByRole('button', {name: 'Add another disc to this set', exact: true}).count(), 0);
-      await page.getByRole('button', {name: 'Edit', exact: true}).click();
+      await edit(page);
       await page.locator('#title').fill('Edited disc one');
       await page.locator('#more-details').evaluate(n => n.open = true);
       await page.locator('#hub').fill('Partial silver hub'); await save(page);
@@ -389,7 +410,7 @@ async function main() {
       assert.deepEqual(state.doc.cds.find(c => c.id === sibling.id), sibling);
       await page.reload(); await openCard(page, 'Edited disc one');
       assert((await page.locator('#win-detail').innerText()).includes('Partial silver hub'));
-      await page.getByRole('button', {name: 'Edit', exact: true}).click();
+      await edit(page);
       // Online replacement during an edit must preserve the old membership too.
       await search(page); await page.locator('#lookup-use-0').click();
       await page.locator('#lookup-disc-row').waitFor();
@@ -437,7 +458,7 @@ async function main() {
       settings: {cardFields: ['workTypes', 'works']}}), {page} = f;
     try {
       assert((await page.locator('#grid').innerText()).includes('Visible work'));
-      await openCard(page, 'Migrated choices'); await page.getByRole('button', {name: 'Edit', exact: true}).click();
+      await openCard(page, 'Migrated choices'); await edit(page);
       await page.locator('#ff-toggle').click();
       assert.equal(await page.locator('#ff-workTypes').count(), 0);
       assert.equal(await page.locator('#ff-works').isChecked(), true);
@@ -446,7 +467,7 @@ async function main() {
   await test('Discogs cross-disc works, disc selection, source punctuation and saved selected disc', async () => {
     const f = await fixture(), {page, state} = f;
     try {
-      await page.locator('#open-add').click(); await search(page); await page.locator('#lookup-use-0').click();
+      await openAdd(page); await search(page); await page.locator('#lookup-use-0').click();
       await page.locator('#lookup-disc-row').waitFor();
       assert.equal(await page.locator('#title').inputValue(), multiTitle);
       assert.equal(await page.locator('#type').inputValue(), '', 'mixed release must not infer one overall CD type');
@@ -460,7 +481,7 @@ async function main() {
       await save(page);
       assert.equal(Object.hasOwn(state.doc.cds[0], 'set'), false);
       assert.deepEqual(state.doc.cds[0].works.flatMap(w => w.tracks.map(t => t.title)), ['II. Second', 'Finale']);
-      await openCard(page, multiTitle); await page.getByRole('button', {name: 'Edit', exact: true}).click();
+      await openCard(page, multiTitle); await edit(page);
       assert.equal(await page.locator('#set-fields').count(), 0);
       assert.equal(await page.locator('.w-duration').first().isHidden(), true);
       assert.equal(await page.locator('.t-len').first().inputValue(), '3:21');
@@ -474,7 +495,7 @@ async function main() {
         {type_: 'track', position: '1-1', title: 'Symphony No. 1', duration: '1:11'},
         {type_: 'track', position: '2-1', title: 'Symphony No. 2', duration: '2:22'}
       ]};
-      await page.locator('#open-add').click(); await search(page);
+      await openAdd(page); await search(page);
       await page.locator('#lookup-use-2').click();
       await page.waitForFunction(() => document.getElementById('title').value === 'Uniform symphonies');
       assert.equal(await page.locator('#type').inputValue(), 'Symphony');
@@ -494,7 +515,7 @@ async function main() {
     const f = await fixture(), {page, state} = f;
     try {
       state.holds[101] = deferred();
-      await page.locator('#open-add').click(); await search(page); await page.locator('#lookup-use-0').click();
+      await openAdd(page); await search(page); await page.locator('#lookup-use-0').click();
       await page.locator('#lookup-use-1').click();
       await page.waitForFunction(() => document.getElementById('title').value === 'New Single');
       await releaseHeld(page, state, 101);
@@ -508,9 +529,9 @@ async function main() {
     const f = await fixture(), {page, state} = f;
     try {
       state.holds[101] = deferred();
-      await page.locator('#open-add').click(); await search(page); await page.locator('#lookup-use-0').click();
+      await openAdd(page); await search(page); await page.locator('#lookup-use-0').click();
       await page.locator('#title').fill('Manual CD'); await save(page);
-      await page.locator('#open-add').click(); await releaseHeld(page, state, 101);
+      await openAdd(page); await releaseHeld(page, state, 101);
       assert.equal(await page.locator('#title').inputValue(), '');
       assert.equal(await page.locator('#lookup-disc-row').isHidden(), true);
       assert.equal(state.doc.cds.length, 1); assert.equal(state.doc.cds[0].title, 'Manual CD');
@@ -520,7 +541,7 @@ async function main() {
     const f = await fixture(), {page, state} = f;
     try {
       state.holds[101] = deferred(); state.failures[101] = true;
-      await page.locator('#open-add').click(); await search(page); await page.locator('#lookup-use-0').click();
+      await openAdd(page); await search(page); await page.locator('#lookup-use-0').click();
       await page.locator('#lookup-use-1').click();
       await page.waitForFunction(() => document.getElementById('title').value === 'New Single');
       await releaseHeld(page, state, 101);
@@ -531,7 +552,7 @@ async function main() {
   await test('localized import/form/profile controls fit desktop and narrow widths', async () => {
     const f = await fixture(), {page} = f;
     try {
-      await page.locator('#open-add').click(); await search(page); await page.locator('#lookup-use-0').click();
+      await openAdd(page); await search(page); await page.locator('#lookup-use-0').click();
       await page.locator('#lookup-disc-row').waitFor(); await page.locator('#lookup-disc').selectOption('2');
       for (const width of [1280, 420, 360]) {
         await page.setViewportSize({width, height: 800});
