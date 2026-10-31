@@ -55,8 +55,15 @@ async function fixture(cds = [disc]) {
 async function edit(page) {
   await page.locator('#grid .card[data-id="one"]').click();
   await page.locator('#detail-body').getByRole('button',{name:'Edit',exact:true}).click();
+  await page.locator('#works-set').evaluate(n=>n.open=true);
+  await page.locator('#form-audio-set').evaluate(n=>n.open=true);
 }
-async function add(page) { await page.locator('#form-audio-add').click(); await page.locator('#form-audio-add:not([disabled])').waitFor(); }
+async function add(page) { await page.locator('#form-audio-set').evaluate(n=>n.open=true); await page.locator('#form-audio-add').click(); await page.locator('#form-audio-add:not([disabled])').waitFor(); }
+async function discard(page, selector = '#cancel-edit') {
+  if (selector === 'Escape') await page.keyboard.press('Escape'); else await page.locator(selector).click();
+  if (await page.locator('#win-cd-unsaved').isVisible()) await page.locator('#cd-unsaved-discard').click();
+  await page.locator('#win-cd').waitFor({state:'hidden'});
+}
 async function save(page) { await page.locator('#submit').click(); await page.locator('#win-cd').waitFor({state:'hidden'}); }
 async function test(name, fn) { await fn(); passed++; console.log('PASS:',name); }
 async function main() {
@@ -68,14 +75,14 @@ async function main() {
       assert.deepEqual(state.doc.cds[0].audio,disc.audio);
       await page.locator('#form-audio-track-0').selectOption('2');
       await page.locator('#form-audio').getByRole('button',{name:'Remove original.flac',exact:true}).click();
-      await page.locator('#cancel-edit').click();
+      await discard(page);
       await until(()=>state.files.size===1);
       assert.deepEqual(state.doc.cds[0].audio,disc.audio);
       assert(state.files.has(original.file));
       await edit(page);
       assert.equal(await page.locator('#form-audio-track-0').inputValue(),'1');
       await add(page);
-      await page.keyboard.press('Escape');
+      await discard(page,'Escape');
       await page.locator('#win-cd').waitFor({state:'hidden'});
       await until(()=>state.files.size===1);
       assert.deepEqual(state.doc.cds[0].audio,disc.audio);
@@ -102,9 +109,9 @@ async function main() {
       await page.locator('#open-add').click();await page.locator('#title').fill('New CD');await add(page);
       assert.equal(state.doc.cds.length,1);
       const first=state.commands.find(x=>x.cmd==='add_audio').args.cdId;
-      await page.locator('#close-cd').click();await until(()=>!state.files.has(first+'/new-1.flac'));
+      await discard(page,'#close-cd');await until(()=>!state.files.has(first+'/new-1.flac'));
       assert.equal(state.doc.cds.length,1);
-      await page.locator('#open-add').click();await add(page);await save(page);
+      await page.locator('#open-add').click();await page.locator('#title').fill('New CD');await add(page);await save(page);
       const cd=state.doc.cds.find(c=>c.title==='New CD');assert(cd);
       assert(cd.audio[0].file.startsWith(cd.id+'/'));assert(state.files.has(cd.audio[0].file));
     } finally {await f.close();}
@@ -117,7 +124,7 @@ async function main() {
       assert.equal(state.commands.filter(x=>x.cmd==='add_audio').length,0);
       await page.locator('#submit').click();assert.equal(await page.locator('#win-cd').isVisible(),true);
       await page.locator('#work-list .t-len').first().fill('1:01');await add(page);
-      await page.locator('#cancel-edit').click();await until(()=>state.files.size===1);
+      await discard(page);await until(()=>state.files.size===1);
     } finally {await f.close();}
   });
   await test('failed save keeps draft and originals; cancel cleans copies and restores original audio', async()=>{
@@ -130,7 +137,7 @@ async function main() {
       assert.equal(await page.locator('#win-cd').isVisible(),true);
       assert(state.files.has(original.file));assert.equal(state.files.size,2);
       assert.deepEqual(state.doc.cds[0].audio,disc.audio);
-      await page.locator('#cancel-edit').click();await until(()=>state.files.size===1);
+      await discard(page);await until(()=>state.files.size===1);
       await edit(page);assert.equal(await page.locator('#form-audio li').count(),2);
       state.fail=false;await page.locator('#title').fill('After failure');await save(page);
       assert.deepEqual(state.doc.cds[0].audio,disc.audio);
@@ -140,7 +147,7 @@ async function main() {
     const f=await fixture();const {page,state}=f;let release;
     try {
       state.hold=new Promise(r=>release=r);await edit(page);await page.locator('#form-audio-add').click();
-      await until(()=>state.files.size===2);await page.locator('#cancel-edit').click();await edit(page);
+      await until(()=>state.files.size===2);await discard(page);await edit(page);
       release();await until(()=>state.files.size===1);
       assert.equal(await page.locator('#form-audio li').count(),2);assert.deepEqual(state.doc.cds[0].audio,disc.audio);
     } finally {if(release)release();await f.close();}

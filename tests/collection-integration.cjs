@@ -22,6 +22,7 @@ const executablePath = [process.env.CDC_CHROMIUM_PATH, playwright.chromium.execu
 let browser;
 const results = [];
 async function test(name, fn) {
+  if (process.env.CDC_TEST_FILTER && !new RegExp(process.env.CDC_TEST_FILTER, 'i').test(name)) return;
   try { await fn(); results.push({name, pass: true}); console.log('PASS:', name); }
   catch (error) { results.push({name, pass: false}); console.error('FAIL:', name, error.stack); }
 }
@@ -43,6 +44,10 @@ const multiTitle = 'Symphony · Volume · One';
 function deferred() {
   let resolve; const promise = new Promise(r => resolve = r); return {promise, resolve};
 }
+async function until(check) {
+  for (let n = 0; n < 160 && !check(); n++) await new Promise(resolve => setTimeout(resolve, 25));
+  assert(check(), 'isolated persistence did not finish');
+}
 function silenceWav() {
   const pcmBytes = 8000 * 2, wav = Buffer.alloc(44 + pcmBytes);
   wav.write('RIFF', 0); wav.writeUInt32LE(36 + pcmBytes, 4); wav.write('WAVEfmt ', 8);
@@ -52,19 +57,23 @@ function silenceWav() {
   wav.write('data', 36); wav.writeUInt32LE(pcmBytes, 40);
   return wav;
 }
-async function fixture({cds = [], settings = {}, nativeAudio = false} = {}) {
-  const state = {doc: {cds: structuredClone(cds), meta: {albums: [], playlists: [], settings: {lang: 'en', ...settings}}},
+async function fixture({cds = [], settings = {}, nativeAudio = false, albums = [], playlists = [], order} = {}) {
+  const state = {doc: {cds: structuredClone(cds), meta: {albums: structuredClone(albums), playlists: structuredClone(playlists), order, settings: {lang: 'en', ...settings}}},
     releases: {101: multi, 102: single}, holds: {}, failures: {}, requested: [], errors: [], commands: []};
   const context = await browser.newContext({viewport: {width: 1280, height: 860}, reducedMotion: 'reduce'});
   if (nativeAudio) await context.exposeBinding('__cdcNativeInvoke', async (_, command, args = {}) => {
     state.commands.push({command, args});
     switch (command) {
       case 'load_data': return structuredClone(state.doc);
-      case 'save_data': state.doc = structuredClone(args.data); return null;
+      case 'save_data': if (state.saveFail) throw new Error('Isolated save failure'); state.doc = structuredClone(args.data); return null;
       case 'covers_root_dir': return 'C:\\isolated-qa\\covers';
       case 'audio_root_dir': return 'C:\\isolated-qa\\audio';
       case 'audio_present': return args.files.map(() => true);
       case 'tidy_covers': return null;
+      case 'remove_cd_audio': return null;
+      case 'remove_audio': return null;
+      case 'cover_data': return state.coverData || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jFo0AAAAASUVORK5CYII=';
+      case 'save_cover': return 'saved-cover.png';
       default: throw new Error('Unexpected native command in isolated QA: ' + command);
     }
   });
@@ -81,6 +90,7 @@ async function fixture({cds = [], settings = {}, nativeAudio = false} = {}) {
     if (url.hostname === 'cdc-integration.test') {
       if (url.pathname === '/') return route.fulfill({contentType: 'text/html', body: html});
       if (url.pathname === '/api/data') {
+        if (request.method() === 'PUT' && state.saveFail) return route.fulfill({status: 500, body: 'Isolated save failure'});
         if (request.method() === 'PUT') state.doc = request.postDataJSON();
         return route.fulfill({json: state.doc});
       }
@@ -372,21 +382,240 @@ async function main() {
       assert.equal(await page.locator('.w-duration').nth(2).isHidden(), true);
     } finally { await f.close(); }
   });
-  await test('set UI is unavailable; edits preserve existing set data and do not change siblings', async () => {
+  await test('manual album creation, incomplete counts, shared edits and explicit disc overrides', async () => {
+    const f = await fixture(), {page, state} = f;
+    try {
+      await openAdd(page); await page.locator('#title').fill('Disc one');
+      await page.locator('#composer').fill('Shared composer');
+      await page.locator('#set-choice').selectOption('+new');
+      await page.locator('#set-title').fill('Two-disc album');
+      await page.locator('#set-total').fill('3');
+      await page.locator('#more-details').evaluate(n => n.open = true);
+      await page.locator('#label').fill('Original label');
+      await page.locator('#barcode').fill('1234567890123'); await save(page);
+      assert.equal(state.doc.cds.length, 1);
+      await openCard(page, 'Two-disc album');
+      assert((await page.locator('#detail-body').innerText()).includes('1 of 3 CDs catalogued'));
+      await page.locator('#set-add').click(); await prepareEditor(page);
+      await page.locator('#more-details').evaluate(n => n.open = true);
+      assert.equal(await page.locator('#set-disc').inputValue(), '2');
+      assert.equal(await page.locator('#label').inputValue(), 'Original label');
+      await page.locator('#set-subtitle').fill('Bonus disc');
+      await page.locator('#label').fill('Disc-only label');
+      assert.equal(await page.locator('#set-follow-label').isChecked(), false);
+      await save(page);
+      assert.equal(state.doc.cds.length, 2, 'shared barcode does not trigger a duplicate warning');
+      assert.equal(await page.locator('#grid .card').count(), 1);
+      assert.equal(state.doc.cds.find(c => c.set.disc === 2).set.subtitle, 'Bonus disc');
+      await openCard(page, 'Two-disc album'); await page.locator('#set-edit').click();
+      await page.locator('#set-title').fill('Renamed album'); await page.locator('#label').fill('New shared label');
+      await page.locator('#composer').fill('New composer'); await save(page);
+      assert(state.doc.cds.every(c => c.set.title === 'Renamed album' && c.composer === 'New composer'));
+      assert.equal(state.doc.cds.find(c => c.set.disc === 1).label, 'New shared label');
+      assert.equal(state.doc.cds.find(c => c.set.disc === 2).label, 'Disc-only label');
+      await openCard(page, 'Renamed album');
+      const second = state.doc.cds.find(c => c.set.disc === 2);
+      await page.locator('.set-disc').nth(1).locator('summary').click();
+      await page.locator('#set-edit-' + second.id).click();
+      await page.locator('#set-follow-label').check(); await save(page);
+      assert.equal(state.doc.cds.find(c => c.id === second.id).label, 'New shared label');
+    } finally { await f.close(); }
+  });
+  await test('multi-disc lookup imports all or selected discs atomically and retains per-disc works', async () => {
+    const f = await fixture(), {page, state} = f;
+    try {
+      await openAdd(page); await search(page); await page.locator('#lookup-use-0').click();
+      await page.locator('#lookup-multiple').check();
+      assert((await page.locator('#lookup-disc-preview').innerText()).includes('Will save 2 discs'));
+      await page.locator('#lookup-disc').selectOption('2');
+      await page.locator('#lookup-disc').selectOption('1');
+      state.saveFail = true; await page.locator('#submit').click();
+      await page.locator('#submit:not(:disabled)').waitFor();
+      assert.equal(state.doc.cds.length, 0); assert.equal(await page.locator('#win-cd').isVisible(), true);
+      state.saveFail = false; await save(page);
+      assert.equal(state.doc.cds.length, 2);
+      assert.equal(new Set(state.doc.cds.map(c => c.set.id)).size, 1);
+      assert.equal(state.doc.cds.find(c => c.set.disc === 1).works[0].tracks[0].title, 'I. First');
+      assert.deepEqual(state.doc.cds.find(c => c.set.disc === 2).works.flatMap(w => w.tracks.map(t => t.title)), ['II. Second', 'Finale']);
+      assert.equal(await page.locator('#grid .card').count(), 1);
+      await openAdd(page); await search(page); await page.locator('#lookup-use-0').click();
+      await page.locator('#lookup-multiple').check();
+      await page.locator('#lookup-disc-choices input[value="2"]').uncheck();
+      await page.locator('#catalogNo').fill('Different edition'); await save(page);
+      assert.equal(state.doc.cds.length, 3);
+      assert.equal(await page.locator('#grid .card').count(), 2, 'same album title does not merge distinct editions');
+    } finally { await f.close(); }
+  });
+  await test('link existing discs preserves their metadata; detach supports Undo', async () => {
+    const member = {id:'link-one', title:'First', addedAt:1, label:'Shared', set:{id:'link-set',title:'Linked album',disc:1,total:2}};
+    const standalone = {id:'link-two',title:'Existing standalone',addedAt:2,label:'Own label',manufacturer:'Own pressing',extra:{keep:true}};
+    const f = await fixture({cds:[member,standalone]}), {page,state} = f;
+    try {
+      await openCard(page,'Linked album'); await page.locator('#set-link').click();
+      await page.locator('.set-link-list input[value="link-two"]').check(); await page.locator('#set-link-save').click();
+      await page.waitForFunction(() => document.querySelectorAll('.set-disc').length === 2);
+      const linked = state.doc.cds.find(c=>c.id==='link-two');
+      assert.equal(linked.set.disc,2); assert.equal(linked.label,'Own label'); assert.equal(linked.manufacturer,'Own pressing');
+      assert.deepEqual(linked.extra,{keep:true}); assert(linked.set.overrides.includes('label'));
+      await page.locator('.set-disc').nth(1).locator('summary').click();
+      await page.locator('#set-detach-link-two').click();
+      await page.waitForFunction(() => document.querySelectorAll('.set-disc').length === 1);
+      assert.equal(state.doc.cds.find(c=>c.id==='link-two').set,undefined);
+      await page.getByRole('button',{name:'Undo',exact:true}).click();
+      await page.waitForFunction(() => document.querySelectorAll('.set-disc').length === 2);
+      assert.equal(state.doc.cds.find(c=>c.id==='link-two').set.id,'link-set');
+    } finally { await f.close(); }
+  });
+  await test('group selection includes every shown member; ungrouped Favorites can choose individual CDs', async () => {
+    const discs = [1,2].map(n=>({id:'select-'+n,title:'Disc '+n,addedAt:n,set:{id:'selection',title:'Selection album',disc:n,total:2}}));
+    const f = await fixture({cds:discs}), {page,state} = f;
+    try {
+      state.doc.meta.albums = [];
+      await page.locator('#select-btn').click(); await page.locator('#grid .card').click();
+      assert((await page.locator('#sel-count').innerText()).includes('2'));
+      await page.locator('#sel-done').click(); await page.locator('#group-discs').click();
+      assert.equal(await page.locator('#grid .card').count(),2);
+      await page.locator('#select-btn').click(); await page.locator('#card-select-1').click();
+      assert((await page.locator('#sel-count').innerText()).includes('1'));
+      await page.locator('#sel-done').click();
+      await page.locator('#search').fill('Selection album');
+      assert.equal(await page.locator('#grid .card').count(),2,'album title is searchable in separate-disc view');
+      await page.locator('#group-discs').click();
+      assert.equal(await page.locator('#grid .card').count(),1);
+      assert.equal(state.doc.meta.settings.groupDiscs,true);
+    } finally { await f.close(); }
+  });
+  await test('whole-album playback and playlists follow disc/track order; enqueue preserves the playing entry', async () => {
+    const discs = [2,1].map(n=>({id:'play-'+n,title:'Play '+n,addedAt:n,set:{id:'play-set',title:'Playback album',disc:n,total:2},
+      works:[{title:'Work',tracks:[{title:'First',duration:'0:01'},{title:'Second',duration:'0:01'}]}],
+      audio:[{file:'play-'+n+'/b.wav',name:'b.wav',track:2},{file:'play-'+n+'/a.wav',name:'a.wav',track:1}]}));
+    const f = await fixture({cds:discs,nativeAudio:true}), {page,state} = f;
+    try {
+      await openCard(page,'Playback album'); await page.locator('#set-play').click();
+      const queue = await page.evaluate(()=>JSON.parse(localStorage.getItem('cdc.playlist')));
+      assert.deepEqual(queue.queue.map(x=>x.file),['play-1/a.wav','play-1/b.wav','play-2/a.wav','play-2/b.wav']);
+      await page.locator('#set-enqueue').click();
+      const after = await page.evaluate(()=>JSON.parse(localStorage.getItem('cdc.playlist')));
+      assert.equal(after.queue.length,4); assert.deepEqual(after.queue[after.index],queue.queue[queue.index]);
+      await page.locator('#set-playlist').selectOption('+new');
+      await page.locator('#album-name').fill('Album playlist'); await page.locator('#album-form button[type="submit"]').click();
+      assert.deepEqual(state.doc.meta.playlists[0].items.map(x=>x.file),queue.queue.map(x=>x.file));
+      await page.locator('#close-detail').click();
+      await page.getByRole('button',{name:/All music/}).first().click();
+      assert.equal(await page.locator('#grid .card').count(),1);
+      await page.locator('#grid .card').click();
+      assert.equal((await page.evaluate(()=>JSON.parse(localStorage.getItem('cdc.playlist')))).queue.length,4);
+    } finally { await f.close(); }
+  });
+  await test('album deletion restores both CDs and their playlist/Favorites membership with Undo', async () => {
+    const discs = [1,2].map(n=>({id:'delete-'+n,title:'Delete '+n,addedAt:n,set:{id:'delete-set',title:'Delete album',disc:n,total:2}}));
+    const f=await fixture({cds:discs,albums:[{id:'keep-fav',name:'Keep Favorite',cdIds:discs.map(c=>c.id)}],
+      playlists:[{id:'keep-pl',name:'Keep playlist',items:[{cdId:'delete-2',file:'delete-2/audio.wav'}]}],
+      order:{all:['delete-2','delete-1'],music:[]}}), {page,state}=f;
+    try {
+      await openCard(page,'Delete album'); await page.locator('#set-delete-all').click();
+      assert((await page.locator('#detail-body').innerText()).includes('Delete all 2 catalogued CDs'));
+      await page.locator('#set-remove-confirm').click();
+      await page.locator('#toast-action').waitFor();
+      await until(()=>state.doc.cds.length===0);
+      assert.equal(state.doc.cds.length,0);
+      await page.getByRole('button',{name:'Undo',exact:true}).click();
+      await page.waitForFunction(()=>document.querySelectorAll('#grid .card').length===1 && document.querySelector('#grid').textContent.includes('Delete album'));
+      await until(()=>state.doc.cds.length===2 && state.doc.meta.albums[0].cdIds.length===2 && state.doc.meta.playlists[0].items.length===1);
+      assert.equal(state.doc.cds.length,2); assert(state.doc.cds.every(c=>c.set.id==='delete-set'));
+      assert.deepEqual(state.doc.meta.albums[0].cdIds,['delete-1','delete-2']);
+      assert.deepEqual(state.doc.meta.playlists[0].items,[{cdId:'delete-2',file:'delete-2/audio.wav'}]);
+      assert.deepEqual(state.doc.meta.order.all,['delete-2','delete-1']);
+    } finally {await f.close();}
+  });
+  await test('shared album edits preserve physical fields, custom covers, empty overrides and unknown extensions', async () => {
+    const shared={composer:'Shared composer',type:'',performers:[],label:'Shared label',issuer:'',releaseYear:'2000',catalogNo:'CAT',barcode:''};
+    const discs=[1,2].map(n=>({id:'cover-'+n,title:'Cover '+n,addedAt:n,...shared,manufacturer:'Pressing '+n,recordingYear:'199'+n,
+      photoFile:n===1?'shared.png':'own.png',extra:{n},
+      set:{id:'cover-set',title:'Cover album',disc:n,total:2,shared,overrides:n===1?[]:['cover','label'],extra:{preserve:n}}}));
+    discs[1].label='';
+    const f=await fixture({cds:discs,nativeAudio:true}),{page,state}=f;
+    try {
+      await openCard(page,'Cover album'); await page.locator('#set-edit').click();
+      await page.locator('#composer').fill('Changed composer'); await page.locator('#label').fill('Changed label');
+      state.saveFail=true;await page.locator('#submit').click();await page.locator('#submit:not(:disabled)').waitFor();
+      assert(state.doc.cds.every(c=>c.composer==='Shared composer'));
+      state.saveFail=false;await save(page);
+      for(const n of [1,2]) {
+        const c=state.doc.cds.find(c=>c.id==='cover-'+n);
+        assert.equal(c.composer,'Changed composer');assert.equal(c.manufacturer,'Pressing '+n);assert.equal(c.recordingYear,'199'+n);
+        assert.deepEqual(c.extra,{n});assert.deepEqual(c.set.extra,{preserve:n});
+      }
+      assert.equal(state.doc.cds.find(c=>c.id==='cover-1').photoFile,'shared.png');
+      assert.equal(state.doc.cds.find(c=>c.id==='cover-2').photoFile,'own.png');
+      assert.equal(state.doc.cds.find(c=>c.id==='cover-2').label,'');
+      assert.equal(state.commands.filter(c=>c.command==='save_cover').length,0,'untouched cover files stay untouched');
+      await openCard(page,'Cover album');await page.locator('.set-disc').nth(1).locator('summary').click();
+      await page.locator('#set-edit-cover-2').click();await page.locator('#set-follow-cover').check();await save(page);
+      assert.equal(state.doc.cds.find(c=>c.id==='cover-2').photoFile,'shared.png');
+    }finally{await f.close();}
+  });
+  await test('album custom reordering moves every member together, and incomplete disc numbers are validated',async()=>{
+    const discs=[{id:'order-a',title:'A',addedAt:3},{id:'order-b1',title:'B1',addedAt:2,set:{id:'order-b',title:'B album',disc:1,total:3}},
+      {id:'order-b2',title:'B2',addedAt:1,set:{id:'order-b',title:'B album',disc:2,total:3}}];
+    const f=await fixture({cds:discs,order:{all:['order-a','order-b1','order-b2'],music:[]}}),{page,state}=f;
+    try {
+      await page.locator('#card-order-b1').focus();await page.keyboard.press('Alt+ArrowLeft');
+      assert.deepEqual(state.doc.meta.order.all,['order-b1','order-b2','order-a']);
+      await openCard(page,'B album');await page.locator('#set-add').click();
+      await page.locator('#set-disc').fill('2');await page.locator('#submit').click();
+      assert((await page.locator('#set-err').innerText()).includes('already contains disc 2'));
+      assert.equal(state.doc.cds.length,3);
+      await page.locator('#set-disc').fill('3');await page.locator('#set-total').fill('2');await page.locator('#submit').click();
+      assert((await page.locator('#set-err').innerText()).length>0);
+      await page.locator('#close-cd').click();await page.locator('#cd-unsaved-keep').click();
+      assert.equal(await page.locator('#set-disc').inputValue(),'3');
+      await page.locator('#close-cd').click();await page.locator('#cd-unsaved-discard').click();
+      assert.equal(state.doc.cds.length,3);
+    }finally{await f.close();}
+  });
+  await test('album profile/form fit all locales and themes; folds retain state without replaying animations',async()=>{
+    const discs=[1,2].map(n=>({id:'layout-'+n,title:'Disc '+n,addedAt:n,composer:'Shared composer',set:{id:'layout-set',title:'A complete album / box set',disc:n,total:3},
+      works:[{title:'A work on disc '+n,tracks:[{title:'A movement',duration:'1:00'}]}]}));
+    const f=await fixture({cds:discs}),{page}=f;
+    try {
+      await openCard(page,'A complete album / box set');await page.emulateMedia({reducedMotion:'no-preference'});
+      await page.locator('.set-disc').first().locator('summary').click();
+      assert.equal(await page.locator('.set-disc').first().getAttribute('open'),'');
+      await setLanguage(page,'ja');
+      assert.equal(await page.locator('.set-disc[open]').count(),1);
+      assert.equal(await page.locator('.set-disc .is-unfolding').count(),0,'redraw does not replay opening');
+      await page.emulateMedia({reducedMotion:'reduce'});
+      for(const width of [1280,420,360])for(const lang of ['en','ja','zh'])for(const theme of ['light','dark']) {
+        await page.setViewportSize({width,height:860});await setLanguage(page,lang);
+        await page.evaluate(theme=>document.documentElement.setAttribute('data-theme',theme),theme);
+        assert.equal(await page.locator('#win-detail .panel').evaluate(n=>n.scrollWidth<=n.clientWidth+1),true,`${lang}/${theme}/${width} profile`);
+      }
+      if(process.env.CDC_QA_ARTIFACTS){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'multicd-mobile.png')});}
+      await page.locator('#set-edit').click();
+      for(const width of [1280,360])for(const lang of ['en','ja','zh']) {
+        await page.setViewportSize({width,height:860});await setLanguage(page,lang);
+        assert.equal(await page.locator('#win-cd .panel').evaluate(n=>n.scrollWidth<=n.clientWidth+1),true,`${lang}/${width} form`);
+      }
+    }finally{await f.close();}
+  });
+  await test('legacy sets group on the shelf; disc edits preserve membership extensions and untouched siblings', async () => {
     const membership = {id: 'legacy-box', title: 'Box QA', disc: 1, total: 2, extra: {keep: true}};
     const sibling = {id: 'legacy-two', title: 'Set disc two', addedAt: 2,
       set: {...membership, disc: 2}, cardFields: ['set']};
     const f = await fixture({cds: [{id: 'legacy-one', title: 'Set disc one', addedAt: 1,
       set: membership, cardFields: ['set']}, sibling], settings: {cardFields: ['set']}}), {page, state} = f;
     try {
-      assert.equal((await page.locator('#grid').innerText()).includes('Box QA'), false);
+      assert.equal(await page.locator('#grid .card').count(), 1);
+      assert.equal((await page.locator('#grid').innerText()).includes('Box QA'), true);
       await page.locator('#open-settings').click();
       await page.locator('#cf-toggle').click();
       assert.equal(await page.locator('#cf-set, #cf-workTypes').count(), 0);
       assert.equal((await page.locator('#win-settings').innerText()).includes('Album or box set'), false);
       await page.locator('#close-settings').click();
       await openAdd(page);
-      assert.equal(await page.locator('#set-fields, #set-title, #ff-set, #ff-workTypes').count(), 0);
+      assert.equal(await page.locator('#set-fields, #set-title').count(), 2);
+      assert.equal(await page.locator('#ff-set, #ff-workTypes').count(), 0);
       await page.locator('#title').fill('Standalone CD');
       await page.locator('#more-details').evaluate(n => n.open = true);
       for (const value of ['1899', '1987–1985', '1985,', '1985–']) {
@@ -398,15 +627,17 @@ async function main() {
       const added = state.doc.cds.find(c => c.title === 'Standalone CD');
       assert.equal(added.recordingYear, '1985–1987, 1990'); assert.equal(added.hub, 'full');
       assert.equal(Object.hasOwn(added, 'set'), false);
+      await page.locator('#group-discs').click();
       await openCard(page, 'Set disc one');
-      assert.equal((await page.locator('#win-detail').innerText()).includes('Box QA'), false);
+      assert.equal(await page.locator('#disc-album-open').count(), 1);
       assert.equal(await page.locator('.set-siblings').count(), 0);
       assert.equal(await page.getByRole('button', {name: 'Add another disc to this set', exact: true}).count(), 0);
       await edit(page);
       await page.locator('#title').fill('Edited disc one');
       await page.locator('#more-details').evaluate(n => n.open = true);
       await page.locator('#hub').fill('Partial silver hub'); await save(page);
-      assert.deepEqual(state.doc.cds.find(c => c.id === 'legacy-one').set, membership);
+      assert.deepEqual(state.doc.cds.find(c => c.id === 'legacy-one').set.extra, membership.extra);
+      assert.equal(state.doc.cds.find(c => c.id === 'legacy-one').set.id, membership.id);
       assert.deepEqual(state.doc.cds.find(c => c.id === sibling.id), sibling);
       await page.reload(); await openCard(page, 'Edited disc one');
       assert((await page.locator('#win-detail').innerText()).includes('Partial silver hub'));
@@ -415,7 +646,8 @@ async function main() {
       await search(page); await page.locator('#lookup-use-0').click();
       await page.locator('#lookup-disc-row').waitFor();
       await page.locator('#lookup-disc').selectOption('2'); await save(page);
-      assert.deepEqual(state.doc.cds.find(c => c.id === 'legacy-one').set, membership);
+      assert.deepEqual(state.doc.cds.find(c => c.id === 'legacy-one').set.extra, membership.extra);
+      assert.equal(state.doc.cds.find(c => c.id === 'legacy-one').set.disc, membership.disc);
       assert.deepEqual(state.doc.cds.find(c => c.id === sibling.id), sibling);
     } finally { await f.close(); }
   });
@@ -477,12 +709,12 @@ async function main() {
       await page.locator('#lookup-disc').selectOption('2');
       assert.deepEqual(await page.locator('.t-title').evaluateAll(ns => ns.map(n => n.value)), ['II. Second', 'Finale']);
       assert.deepEqual(await page.locator('.w-type').evaluateAll(ns => ns.map(n => n.value)), ['Symphony', 'Piano concerto']);
-      assert.equal(await page.locator('#set-fields').count(), 0);
+      assert.equal(await page.locator('#set-fields').count(), 1);
       await save(page);
       assert.equal(Object.hasOwn(state.doc.cds[0], 'set'), false);
       assert.deepEqual(state.doc.cds[0].works.flatMap(w => w.tracks.map(t => t.title)), ['II. Second', 'Finale']);
       await openCard(page, multiTitle); await edit(page);
-      assert.equal(await page.locator('#set-fields').count(), 0);
+      assert.equal(await page.locator('#set-fields').count(), 1);
       assert.equal(await page.locator('.w-duration').first().isHidden(), true);
       assert.equal(await page.locator('.t-len').first().inputValue(), '3:21');
       assert.equal(await page.locator('.t-len').first().isVisible(), true);
@@ -521,7 +753,7 @@ async function main() {
       await releaseHeld(page, state, 101);
       assert.equal(await page.locator('#title').inputValue(), 'New Single');
       assert.equal(await page.locator('#lookup-disc-row').isHidden(), true);
-      assert.equal(await page.locator('#set-title').count(), 0);
+      assert.equal(await page.locator('#set-editor').isHidden(), true);
       assert.equal(await page.locator('.w-title').inputValue(), 'New Track');
       assert.equal(await page.locator('.t-title').count(), 0, 'same-name single track stays collapsed after stale details arrive');
     } finally { await f.close(); }

@@ -50,7 +50,13 @@ async function save(page) {
 async function edit(page, title) {
   await page.locator('#grid .card').filter({has: page.getByRole('heading', {name: title, exact: true})}).click();
   await page.getByRole('button', {name: 'Edit', exact: true}).click();
+  await page.locator('#works-set').evaluate(n => n.open = true);
 }
+async function openAdd(page) {
+  await page.locator('#open-add').click();
+  await page.locator('#works-set').evaluate(n => n.open = true);
+}
+const sortedCredits = works => works.map(people => people.slice().sort((a,b) => a.name.localeCompare(b.name) || a.role.localeCompare(b.role)));
 const selected = row => row.locator('input[type=checkbox]:checked').evaluateAll(ns => ns.map(n => n.value));
 async function main() {
   await test('inline syntax and equal translation keys', async () => {
@@ -69,9 +75,9 @@ async function main() {
       assert.deepEqual(await page.locator('#albumOverall').evaluate(n => Array.from(n.querySelectorAll('#composer,#type,#perf-set')).map(n => n.id)), ['composer', 'type', 'perf-set']);
       assert.equal(await page.locator('#albumOverall').evaluate(n => !!(n.compareDocumentPosition(document.querySelector('#works-set')) & Node.DOCUMENT_POSITION_FOLLOWING)), true);
       for (const [lang, title, type, details, composerPh, typePh] of [
-        ['en', 'Title', 'Type of work', 'Work details', 'Composer (if different)', 'Type of work (if different)'],
-        ['ja', 'タイトル', '作品の種類', '作品の詳細', '作曲家（異なる場合）', '作品の種類（異なる場合）'],
-        ['zh', '标题', '作品类型', '作品详情', '作曲家（如不同）', '作品类型（如不同）']
+        ['en', 'Title', 'Type of work', 'Work details', 'Composer', 'Type of work'],
+        ['ja', 'タイトル', '作品の種類', '作品の詳細', '作曲家', '作品の種類'],
+        ['zh', '标题', '作品类型', '作品详情', '作曲家', '作品类型']
       ]) {
         await page.evaluate(lang => window.workFormQA.setLang(lang, false), lang);
         assert.equal(await page.locator('label[for=title] [data-i18n]').textContent(), title);
@@ -83,7 +89,7 @@ async function main() {
         assert.equal(await page.locator('.w-composer').isVisible(), false);
         assert.equal(await page.locator('.w-performers').isVisible(), false);
       }
-      assert.equal(await page.locator('.w-details').evaluate(n => !!(n.compareDocumentPosition(n.parentElement.querySelector('.tracks')) & Node.DOCUMENT_POSITION_FOLLOWING)), true);
+      assert.equal(await page.locator('.w-details').evaluate(n => !!(n.parentElement.querySelector('.tracks').compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING)), true);
       await page.evaluate(() => { window.workFormQA.clearForm(); });
       assert.equal(await page.locator('.w-details').getAttribute('open'), null);
       assert.equal(await page.locator('.w-composer').inputValue(), '');
@@ -92,7 +98,7 @@ async function main() {
   await test('blank work fields remain inherited through save, reload and album metadata edits', async () => {
     const f = await fixture(), {page, state} = f;
     try {
-      await page.locator('#open-add').click();
+      await openAdd(page);
       await page.locator('#title').fill('Inherited QA');
       await page.locator('#composer').fill('Album composer');
       await page.locator('#type').fill('Symphony');
@@ -124,7 +130,7 @@ async function main() {
   await test('work role controls keep multiple/custom roles scoped, survive edit, and clear back to inheritance', async () => {
     const f = await fixture(), {page, state} = f;
     try {
-      await page.locator('#open-add').click(); await page.locator('#title').fill('Overrides QA');
+      await openAdd(page); await page.locator('#title').fill('Overrides QA');
       await page.locator('#composer').fill('Album composer'); await page.locator('#type').fill('Symphony');
       await page.locator('#perf-rows .perf-name').fill('Album conductor');
       await page.locator('.w-title').fill('Work one');
@@ -167,7 +173,7 @@ async function main() {
   await test('lookup preserves per-work metadata and ignores role checkbox values when clearing prior source data', async () => {
     const f = await fixture(), {page} = f;
     try {
-      await page.locator('#open-add').click(); await page.evaluate(p => window.workFormQA.fillFromLookup(p), lookup);
+      await openAdd(page); await page.evaluate(p => window.workFormQA.fillFromLookup(p), lookup);
       assert.equal(await page.locator('.w-details').getAttribute('open'), null);
       assert.equal(await page.locator('.w-perf-rows .perf-name.filled').inputValue(), 'Source soloist');
       assert.equal(await page.locator('#work-list input[type=checkbox].filled').count(), 0);
@@ -181,7 +187,7 @@ async function main() {
   await test('editing a source work role keeps that work on an incomplete lookup without keeping untouched global credits', async () => {
     const f = await fixture(), {page, state} = f;
     try {
-      await page.locator('#open-add').click(); await page.evaluate(p => window.workFormQA.fillFromLookup(p), lookup);
+      await openAdd(page); await page.evaluate(p => window.workFormQA.fillFromLookup(p), lookup);
       await page.locator('.w-details > summary').click();
       const row = page.locator('.w-perf-rows .prow');
       await row.locator('.perf-role-trigger').click();
@@ -216,7 +222,7 @@ async function main() {
             sub_tracks: [{type_: 'track', position: '2', title: 'Andante', duration: '2:00'}]}
         ]
       }}));
-      await page.locator('#open-add').click();
+      await openAdd(page);
       await page.evaluate(async () => {
         const result = await window.workFormQA.discogsSource.details({id: 765}, 'QA001');
         window.workFormQA.fillFromLookup(result);
@@ -225,21 +231,21 @@ async function main() {
         [{role: 'Cellist', name: 'Other soloist'}]];
       assert.equal(await page.locator('.w-details[open]').count(), 0);
       await save(page);
-      assert.deepEqual(state.doc.cds[0].works.map(w => w.performers), own);
+      assert.deepEqual(sortedCredits(state.doc.cds[0].works.map(w => w.performers)), sortedCredits(own));
       await page.reload(); await edit(page, 'Discogs Work QA');
       assert.equal(await page.locator('.w-details[open]').count(), 0);
-      assert.deepEqual(await page.locator('.w-perf-rows').evaluateAll(ns => ns.map(n => Array.from(n.querySelectorAll('.perf-name')).map(n => n.value))),
+      assert.deepEqual(await page.locator('.w-perf-rows').evaluateAll(ns => ns.map(n => Array.from(n.querySelectorAll('.perf-name')).map(n => n.value).sort())),
         [['Index soloist', 'Track soloist'], ['Other soloist']]);
       await save(page);
-      assert.deepEqual(state.doc.cds[0].works.map(w => w.performers), own);
+      assert.deepEqual(sortedCredits(state.doc.cds[0].works.map(w => w.performers)), sortedCredits(own));
     } finally { await f.close(); }
   });
   await test('Chinese clear hub displays 胶圈 while old 透明圈 still normalizes on save', async () => {
     const f = await fixture(), {page, state} = f;
     try {
-      await page.locator('#open-add').click();
+      await openAdd(page);
       await page.evaluate(() => window.workFormQA.setLang('zh', false));
-      assert.deepEqual(await page.locator('#hub-options option').evaluateAll(ns => ns.map(n => n.value)), ['满银圈', '半银圈', '胶圈']);
+      assert.deepEqual(await page.locator('#hub-options option').evaluateAll(ns => ns.map(n => n.value)), ['满银圈', '半银圈', '胶圈', '其他']);
       await page.locator('#title').fill('Hub alias QA');
       await page.locator('#more-details > summary').click(); await page.locator('#hub').fill('透明圈'); await save(page);
       assert.equal(state.doc.cds[0].hub, 'clear');

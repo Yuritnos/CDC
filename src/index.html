@@ -1031,6 +1031,17 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 .favnew .btn { flex: 0 0 auto; max-width: 100%; }
 .fav-create-toggle { align-self: flex-start; padding: 6px 8px; text-align: left; white-space: normal; }
 .profile-actions .favlist { flex: 1 1 100%; }
+.set-numbers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.set-inheritance { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 10px; }
+.set-inheritance label, #lookup-disc-choices label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+#lookup-disc-choices { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px 0; }
+#lookup-disc-choices[hidden], #set-editor[hidden] { display: none; }
+.set-badge { align-self: flex-start; margin-top: 6px; }
+.set-disc { border-top: 1px solid var(--line); padding-top: 12px; min-width: 0; }
+.set-disc > summary { cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+.set-disc-body { display: flex; flex-direction: column; gap: 12px; padding: 12px 0; }
+.set-link-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow: auto; }
+.set-link-list label { display: flex; gap: 8px; align-items: baseline; overflow-wrap: anywhere; }
 .favlist .hint { padding: 6px 8px; }
 .favitem { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: transparent; border: 0; border-radius: 3px; cursor: pointer; text-align: left; font-size: 14px; }
 .favitem:hover { background: var(--accent-soft); }
@@ -1175,6 +1186,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M4 5h16v2.5H4zM4 10.75h16v2.5H4zM4 16.5h16V19H4z"/></svg>
         </button>
       </div>
+      <button type="button" class="btn small quiet" id="group-discs" data-i18n="groupDiscs" aria-pressed="true" hidden>Group album CDs</button>
       <button type="button" class="btn small quiet" id="select-btn" data-i18n="selectBtn" hidden>Select</button>
       <button type="button" class="btn small quiet" id="filter-btn" aria-expanded="false" aria-controls="filters" hidden><span data-i18n="filterBtn">Filter</span><span class="fcount" id="filter-count"></span></button>
       <div class="filters" id="filters" hidden>
@@ -1234,6 +1246,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         <div class="field" id="lookup-disc-row" hidden>
           <label class="lbl" for="lookup-disc" data-i18n="lookupDisc">Disc to import</label>
           <select class="input" id="lookup-disc"></select>
+          <label class="hint"><input type="checkbox" id="lookup-multiple"> <span data-i18n="importMultiple">Import multiple discs</span></label>
+          <div id="lookup-disc-choices" hidden></div>
+          <p class="hint" id="lookup-disc-preview" role="status"></p>
         </div>
         <p class="hint" data-i18n="lookupNote">Details come from Discogs, an online music database. The release you choose replaces the details it has; nothing is saved until you add the CD.</p>
       </section>
@@ -1267,6 +1282,23 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         <input class="input" id="title" name="title" type="text" autocomplete="off" data-autofocus data-i18n-ph="cdTitlePh" placeholder="e.g. Piano Concerto No. 2">
         <p class="err" id="title-err" role="alert"></p>
       </div>
+
+      <fieldset id="set-fields">
+        <legend data-i18n="discSet">Album or box set</legend>
+        <div class="field"><label class="lbl" for="set-choice" data-i18n="setChoose">Album membership</label><select class="input" id="set-choice"></select></div>
+        <div id="set-editor" hidden>
+          <div class="field"><label class="lbl" for="set-title" data-i18n="setTitle">Set name</label><input class="input" id="set-title" maxlength="200"></div>
+          <div class="set-numbers">
+            <div class="field"><label class="lbl" for="set-disc" data-i18n="setDisc">Disc number</label><input class="input" id="set-disc" type="number" min="1" max="999" value="1"></div>
+            <div class="field"><label class="lbl" for="set-total" data-i18n="setTotal">Discs in set</label><input class="input" id="set-total" type="number" min="1" max="999" value="2"></div>
+          </div>
+          <div class="field"><label class="lbl" for="set-subtitle" data-i18n="discSubtitle">Disc subtitle (optional)</label><input class="input" id="set-subtitle" maxlength="200"></div>
+          <label class="hint"><input type="checkbox" id="set-edit-shared"> <span data-i18n="editAlbumDefaults">Edit shared album information</span></label>
+          <p class="hint" data-i18n="setSharedHint">Shared edits update discs that follow the album. Uncheck a field below to keep a disc-specific value.</p>
+          <div id="set-inheritance" class="set-inheritance"></div>
+        </div>
+        <p class="err" id="set-err" role="alert"></p>
+      </fieldset>
 
       <details class="more form-section" id="albumOverall" open>
         <summary><span data-i18n="albumOverall">Album information</span><span class="section-hint"> (<span data-i18n="workInheritHint">Works use these details unless you enter different ones in Work details.</span>)</span></summary>
@@ -2412,6 +2444,15 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     ja: { hub: "銀色ハブ", hubUnknown: "不明", hubFull: "全面銀色ハブ", hubPartial: "一部銀色ハブ", hubOther: "その他", discSet: "アルバムまたはボックスセット", setTitle: "セット名", setTitlePh: "単独のCDは空欄", setDisc: "ディスク番号", setTotal: "セットの枚数", setHint: "同じセット名を選ぶとディスクをまとめられます。詳細、曲目、音声はディスクごとに保存します。", setPosition: "全{total}枚中のディスク{n}", setAdd: "このセットにディスクを追加", setErr: "セット名と1〜999の整数を入力してください。ディスク番号は総枚数以下にしてください。", setDuplicate: "このセットにはディスク{n}が既にあります。", workType: "作品の種類", typeUnknown: "未指定", workDuration: "1トラックの作品の演奏時間", errRec: "1900年以降の年を入力してください。例：1985、1985–1987、1985, 1987。", lookupDisc: "取り込むディスク", singleDurationHint: "1トラックの作品の演奏時間は作品名の横に入力できます。" },
     zh: { hub: "银圈类型", hubUnknown: "未知", hubFull: "满银圈", hubPartial: "半银圈", hubOther: "其他", discSet: "专辑或套装", setTitle: "套装名称", setTitlePh: "单张CD可留空", setDisc: "碟号", setTotal: "套装总碟数", setHint: "选择相同套装名称即可关联多张CD。每张CD分别保存详情、曲目和音频。", setPosition: "第 {n} 碟，共 {total} 碟", setAdd: "添加此套装的另一张CD", setErr: "请输入套装名称及1至999的整数碟号。碟号不能超过总碟数。", setDuplicate: "此套装已包含第 {n} 碟。", workType: "作品类型", typeUnknown: "未注明", workDuration: "单音轨作品的时长", errRec: "请输入1900年以后的年份，如1985、1985–1987或1985, 1987。", lookupDisc: "导入哪一碟", singleDurationHint: "单音轨作品可直接在作品名称旁输入时长。" }
   };
+  var SET_TEXT = {
+    en: { groupDiscs: "Group album CDs", setChoose: "Album membership", standalone: "Standalone CD", newSet: "New album / box set", discSubtitle: "Disc subtitle (optional)", editAlbumDefaults: "Edit shared album information", setSharedHint: "Checked fields follow the album. Uncheck a field to keep a disc-specific value. Shared edits update all following discs.", followAlbum: "Use album defaults", albumCover: "Main cover", albumCount: "{n} CDs", albumProgress: "{n} of {total} CDs catalogued", albumPlay: "Play album", albumEnqueue: "Enqueue album", albumEdit: "Edit album information", albumOpen: "Open album", discOpen: "Open CD profile", discDetach: "Detach CD from album", discDelete: "Delete this CD", albumDelete: "Delete whole album", albumDeleteAsk: "Delete all {n} catalogued CDs in this album?", linkDiscs: "Link existing CDs", linkSelected: "Link selected CDs", noUnlinked: "No standalone CDs available to link.", setDetached: "CD detached from album", setLinked: "CDs linked to album", importMultiple: "Import multiple discs", importAll: "Select all discs", importPreview: "Will save {n} discs: {discs}. Review their works by choosing a disc above. Only the displayed disc receives your work/audio edits.", importNone: "Select at least one disc to import.", sharedModeHint: "You are editing album defaults. Disc-specific overrides will be preserved.", setBusy: "Could not save the album. Your draft is still open.", albumPlaylist: "Add album to playlist", missingDiscs: "Not yet catalogued: {discs}", setTooMany: "An album can contain at most 999 discs." },
+    ja: { groupDiscs: "アルバムのCDをまとめる", setChoose: "所属アルバム", standalone: "単独のCD", newSet: "新しいアルバム／ボックス", discSubtitle: "ディスクの副題（任意）", editAlbumDefaults: "アルバムの共通情報を編集", setSharedHint: "チェックした項目はアルバムに従います。ディスク固有の値を使うには外してください。共通情報の変更は従う全ディスクに反映されます。", followAlbum: "アルバムの既定値を使用", albumCover: "メインカバー", albumCount: "{n}枚のCD", albumProgress: "全{total}枚中{n}枚を登録済み", albumPlay: "アルバムを再生", albumEnqueue: "アルバムをキューに追加", albumEdit: "アルバム情報を編集", albumOpen: "アルバムを開く", discOpen: "CDの詳細を開く", discDetach: "アルバムからCDを外す", discDelete: "このCDを削除", albumDelete: "アルバム全体を削除", albumDeleteAsk: "このアルバムの登録済みCD {n}枚をすべて削除しますか？", linkDiscs: "既存のCDを関連付ける", linkSelected: "選んだCDを関連付ける", noUnlinked: "関連付け可能な単独CDはありません。", setDetached: "アルバムからCDを外しました", setLinked: "CDをアルバムに関連付けました", importMultiple: "複数のディスクを取り込む", importAll: "全ディスクを選択", importPreview: "{n}枚を保存します：{discs}。上の選択欄で各ディスクの曲目を確認できます。曲目と音声の編集は表示中のディスクに適用されます。", importNone: "取り込むディスクを1枚以上選んでください。", sharedModeHint: "アルバムの既定値を編集中です。ディスク固有の値は保持されます。", setBusy: "アルバムを保存できませんでした。編集中の内容は残っています。", albumPlaylist: "アルバムをプレイリストに追加", missingDiscs: "未登録：{discs}", setTooMany: "アルバムには最大999枚のディスクを登録できます。" },
+    zh: { groupDiscs: "合并显示专辑CD", setChoose: "所属专辑", standalone: "独立CD", newSet: "新建专辑／套装", discSubtitle: "本碟副标题（选填）", editAlbumDefaults: "编辑专辑共用信息", setSharedHint: "勾选的字段使用专辑默认值；取消勾选可保留本碟专属值。共用信息的修改会应用于所有跟随默认值的CD。", followAlbum: "使用专辑默认值", albumCover: "主封面", albumCount: "{n} 张CD", albumProgress: "共 {total} 张CD，已登记 {n} 张", albumPlay: "播放整张专辑", albumEnqueue: "整张专辑加入队列", albumEdit: "编辑专辑信息", albumOpen: "打开专辑", discOpen: "打开本碟详情", discDetach: "从专辑移出本碟", discDelete: "删除本碟", albumDelete: "删除整个专辑", albumDeleteAsk: "删除此专辑中已登记的全部 {n} 张CD？", linkDiscs: "关联已有CD", linkSelected: "关联所选CD", noUnlinked: "没有可关联的独立CD。", setDetached: "已从专辑移出CD", setLinked: "已关联CD至专辑", importMultiple: "导入多张CD", importAll: "选择全部CD", importPreview: "将保存 {n} 张CD：{discs}。可在上方逐碟检查曲目。曲目和音频编辑仅应用于当前显示的CD。", importNone: "请至少选择一张要导入的CD。", sharedModeHint: "正在编辑专辑默认值，各碟的专属值将保留。", setBusy: "未能保存专辑，编辑内容仍然保留。", albumPlaylist: "整张专辑加入播放列表", missingDiscs: "尚未登记：{discs}", setTooMany: "一个专辑最多可包含999张CD。" }
+  };
+  SET_TEXT.en.importReview = "Choose one of the selected discs above before saving. Your current draft is unchanged.";
+  SET_TEXT.ja.importReview = "保存する前に、上で取り込み対象のディスクを表示してください。編集中の内容は保持されています。";
+  SET_TEXT.zh.importReview = "保存前请在上方显示一张已勾选的CD，当前编辑内容仍然保留。";
+  Object.keys(SET_TEXT).forEach(function (l) { Object.assign(I18N[l], SET_TEXT[l]); });
   var WORK_TYPE_NAMES = {
     en: ["Symphony", "Concerto", "Piano concerto", "Violin concerto", "Cello concerto", "Sonata", "Chamber music", "Opera", "Ballet", "Choral music", "Overture", "Suite", "Other"],
     ja: ["交響曲", "協奏曲", "ピアノ協奏曲", "ヴァイオリン協奏曲", "チェロ協奏曲", "ソナタ", "室内楽", "オペラ", "バレエ", "合唱曲", "序曲", "組曲", "その他"],
@@ -2758,6 +2799,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   function applyAll() {
     applyI18n();
+    translateSetForm();
     fillComposers();
     refreshRows();
     if (lookupDiscRelease) qsa("#lookup-disc option").forEach(function (o) {
@@ -2920,7 +2962,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
      (makeCropper). photoData is the cover as it will be saved unless the person adjusts the frame;
      then the framed square is saved instead (coverForSaving). A chosen file is cropped from its
      full-size original, so zooming stays sharp. */
-  var coverCrop = makeCropper($("cover-canvas"), $("cover-zoom"), function () {});
+  var coverCrop = makeCropper($("cover-canvas"), $("cover-zoom"), function () {
+    if (coverCrop && coverCrop.changed && formSetId && !$("set-edit-shared").checked) $("set-follow-cover").checked = false;
+  });
   var coverShown = null;
   function showPhoto() {
     var has = !!photoData;
@@ -3645,6 +3689,103 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   /* Optional fields in the form's "Disc details" section, besides label, issuer and the years. */
   var DETAIL_FIELDS = ["catalogNo", "manufacturer", "madeIn", "recordingVenue", "spars", "barcode", "ifpiMastering", "ifpiMould", "hub", "type"];
 
+  /* Physical multi-CD releases use cd.set. meta.albums remains Favorites. Shared values are
+     materialized on each CD so older versions can still read every disc independently. */
+  var SET_SHARED = ["composer", "type", "performers", "label", "issuer", "releaseYear", "catalogNo", "barcode"];
+  var SET_LABELS = { composer: "composer", type: "cdType", performers: "performers", label: "label", issuer: "issuer", releaseYear: "relYear", catalogNo: "catalogNo", barcode: "barcode", cover: "albumCover" };
+  var formSetId = "", formSetOriginal = null, detailDiscOnly = false;
+  var setFolds = {}, setLinkOpen = false;
+  function releaseSet(cd) { return cd && cd.set && cd.set.id && cd.set.title ? cd.set : null; }
+  function discDisplayTitle(cd) {
+    if (!releaseSet(cd)) return cd.title || "";
+    return cd.set.title + " · " + t("setPosition", { n: cd.set.disc, total: cd.set.total }) + (cd.set.subtitle ? " · " + cd.set.subtitle : "");
+  }
+  function setMembers(id) {
+    return cds.filter(function (c) { return releaseSet(c) && c.set.id === id; })
+      .sort(function (a, b) { return (+a.set.disc || 1) - (+b.set.disc || 1) || cmpText(a.id, b.id); });
+  }
+  function setSource(id) {
+    return setMembers(id).slice().sort(function (a, b) {
+      return (+b.set.sharedAt || 0) - (+a.set.sharedAt || 0) || (b.updatedAt || 0) - (a.updatedAt || 0);
+    })[0];
+  }
+  function sharedValues(cd) {
+    var out = {};
+    SET_SHARED.forEach(function (f) { out[f] = clone(cd[f] === undefined ? (f === "performers" ? [] : "") : cd[f]); });
+    return out;
+  }
+  function setDefaults(cd) { return Object.assign(sharedValues(cd), clone(cd.set.shared || {})); }
+  function setTotal(members) {
+    return Math.min(999, Math.max.apply(null, [1].concat(members.map(function (c) { return Math.max(+c.set.total || 1, +c.set.disc || 1); }))));
+  }
+  function nextSetDisc(members) {
+    var n = 1; while (members.some(function (c) { return +c.set.disc === n; })) n++; return n;
+  }
+  function setOverrides(cd, defaults, coverSource) {
+    if (Array.isArray(cd.set && cd.set.overrides)) return cd.set.overrides.slice();
+    var out = SET_SHARED.filter(function (f) { return JSON.stringify(cd[f] || (f === "performers" ? [] : "")) !== JSON.stringify(defaults[f] || (f === "performers" ? [] : "")); });
+    if (coverSource && (cd.photo || cd.photoFile || "") !== (coverSource.photo || coverSource.photoFile || "")) out.push("cover");
+    return out;
+  }
+  function copySetCover(to, from) {
+    var photo = from.photo, file = from.photoFile;
+    delete to.photo; delete to.photoFile;
+    if (photo) to.photo = photo;
+    else if (file) to.photoFile = file;
+  }
+  function groupedShelf() { return meta.settings.groupDiscs !== false; }
+  function shelfGroups(list) {
+    if (!groupedShelf()) return list;
+    var groups = {}, out = [];
+    list.forEach(function (cd) {
+      var s = releaseSet(cd);
+      if (!s) { out.push(cd); return; }
+      if (!groups[s.id]) {
+        var source = setSource(s.id) || cd;
+        var g = Object.assign({}, cd, setDefaults(source), { title: source.set.title, _members: [] });
+        g.set = Object.assign({}, source.set);
+        var coverDisc = setMembers(s.id).filter(function (c) { return setOverrides(c, setDefaults(source)).indexOf("cover") < 0; })[0] || source;
+        copySetCover(g, coverDisc);
+        groups[s.id] = g; out.push(g);
+      }
+      groups[s.id]._members.push(cd);
+    });
+    out.forEach(function (g) {
+      if (!g._members) return;
+      g._members.sort(function (a, b) { return +a.set.disc - +b.set.disc; });
+      g.works = [].concat.apply([], g._members.map(function (c) { return (c.works || []).map(function (w) {
+        return Object.assign({}, w, workMetadata(c, w), { performersMode: "replace" });
+      }); }));
+      g.audio = [].concat.apply([], g._members.map(function (c) { return c.audio || []; }));
+    });
+    return sortList(out);
+  }
+  function shelfList() {
+    var q = query.trim().toLowerCase();
+    return shelfGroups(sortList(baseList().filter(function (c) { return filterMatch(c) && (!q || matches(c, q)); })));
+  }
+  function memberIds(cd) { return (cd._members || [cd]).map(function (c) { return c.id; }); }
+  function shelfSelected(cd) { return memberIds(cd).every(function (id) { return !!selected[id]; }); }
+  function setButton(label, id, action, quiet) {
+    var b = el("button", "btn small" + (quiet ? " quiet" : ""), t(label));
+    b.type = "button"; if (id) b.id = id;
+    b.addEventListener("click", async function () {
+      if (b.disabled) return;
+      b.disabled = true;
+      try { await action(); } catch (e) { toast(t("toastSaveFail")); }
+      finally { b.disabled = false; }
+    });
+    return b;
+  }
+  async function changeDiscs(changes) {
+    if (backend.changeDiscs) return backend.changeDiscs(changes);
+    // Compatibility with the conditional artifact/local backends.
+    for (var i = 0; i < changes.length; i++) {
+      var c = changes[i];
+      if (cdById(c.id)) await backend.update(c.id, c, true); else await backend.add(c, c.id, true);
+    }
+  }
+
   /* ---------- albums: data ---------- */
   function normMeta(raw) {
     var m = { albums: [], playlists: [], order: { all: [], music: [] }, settings: {} };
@@ -4135,6 +4276,16 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         syncInfo.deleted[id] = Date.now();
         setCds(items.slice());
         await persist();
+      },
+      /* One atomic document save for a release edit, linking or multi-disc import. */
+      changeDiscs: async function (changes) {
+        var previous = clone(items), stamp = Date.now(), byId = {};
+        changes.forEach(function (c) { byId[c.id] = Object.assign({}, c, { updatedAt: stamp }); });
+        items = items.map(function (c) { var n = byId[c.id]; if (n) delete byId[c.id]; return n || c; });
+        Object.keys(byId).forEach(function (id) { items.push(byId[id]); });
+        try { await persist(false, true); }
+        catch (e) { items = previous; setCds(items.slice()); throw e; }
+        setCds(items.slice());
       },
       /* Undo a removal: the CD comes back with its own id, as a newer change than the removal. */
       restore: async function (cd) {
@@ -4687,7 +4838,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function card(cd) {
     /* In the Music view a card plays its CD (adding it to the playlist); elsewhere it opens the profile. */
     var music = currentAlbum === "music";
-    var nowCd = music && !!currentEntry() && currentEntry().cdId === cd.id;
+    var nowCd = music && !!currentEntry() && memberIds(cd).indexOf(currentEntry().cdId) >= 0;
     var art = el("article", "card clickable" + (editingId === cd.id ? " editing" : "") + (nowCd ? " nowplaying" : ""));
     art.tabIndex = 0;
     art.setAttribute("role", "button");
@@ -4699,8 +4850,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var act = cardAction(cd, music);
     if (selecting) {
       art.classList.add("selectable");
-      art.classList.toggle("selected", !!selected[cd.id]);
-      art.setAttribute("aria-pressed", selected[cd.id] ? "true" : "false");
+      art.classList.toggle("selected", shelfSelected(cd));
+      art.setAttribute("aria-pressed", shelfSelected(cd) ? "true" : "false");
       art.setAttribute("aria-label", t("selToggle", { title: cd.title }));
     }
     art.addEventListener("click", act);
@@ -4718,7 +4869,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       }
     });
     var cover = el("div", "cover");
-    if (selecting) cover.appendChild(el("span", "selmark", selected[cd.id] ? "✓" : ""));
+    if (selecting) cover.appendChild(el("span", "selmark", shelfSelected(cd) ? "✓" : ""));
     if (music && !selecting) {
       var n = (cd.audio || []).filter(function (a) { return AudioLib.present[a.file]; }).length;
       cover.appendChild(el("span", "chip music-badge", nowCd
@@ -4760,6 +4911,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
     var body = el("div", "card-body");
     body.appendChild(el("h3", null, cd.title));
+    if (cd._members) body.appendChild(el("span", "chip set-badge", t("albumCount", { n: setTotal(setMembers(cd.set.id)) })));
+    else if (releaseSet(cd)) body.appendChild(el("span", "chip set-badge", t("setPosition", { n: cd.set.disc, total: cd.set.total })));
     var picked = {};
     fieldsFor(cd).forEach(function (f) { picked[f] = true; });
     var shownComposer = picked.composer ? cd.composer || "" : "";
@@ -4814,7 +4967,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       }
     });
 
-    var mine = albumsOf(cd.id);
+    var mine = meta.albums.filter(function (a) { return memberIds(cd).some(function (id) { return a.cdIds.indexOf(id) >= 0; }); });
     if (mine.length && !picked[FAV_TAGS_OFF]) {
       var tags = el("div", "tags");
       mine.forEach(function (a) { tags.appendChild(el("span", "chip tag", a.name)); });
@@ -4827,7 +4980,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
 
   function matches(cd, q) {
-    var hay = [cd.title, cd.composer, cd.label, cd.issuer, cd.recordingYear, cd.releaseYear, cd.year, cd.notes]
+    var hay = [cd.title, releaseSet(cd) ? cd.set.title : "", releaseSet(cd) ? cd.set.subtitle : "", cd.composer, cd.label, cd.issuer, cd.recordingYear, cd.releaseYear, cd.year, cd.notes]
       .concat(DETAIL_FIELDS.map(function (f) { return cd[f]; }))
       .concat(cdPerformers(cd).map(function (p) { return p.name + " " + roleText(p.role); }))
       .concat((cd.works || []).map(function (w) {
@@ -5143,8 +5296,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   /* What clicking a card or row does: tick it while selecting, play it in All music, else open it. */
   function cardAction(cd, music) {
     return function () {
-      if (selecting) { toggleSel(cd.id); return; }
-      if (music) playAudio(cd); else openDetail(cd.id);
+      if (selecting) { var on = !shelfSelected(cd); memberIds(cd).forEach(function (id) { if (on) selected[id] = true; else delete selected[id]; }); selAsk = false; renderGrid(); return; }
+      if (music && cd._members) playSet(cd._members, true);
+      else if (music) playAudio(cd); else openDetail(cd.id, !cd._members);
     };
   }
   function toggleSel(id) {
@@ -5167,11 +5321,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (!selecting) return;
     /* Ticks on CDs no longer shown (after a filter or search) are dropped. */
     var shown = {};
-    list.forEach(function (c) { shown[c.id] = true; });
+    list.forEach(function (c) { memberIds(c).forEach(function (id) { shown[id] = true; }); });
     Object.keys(selected).forEach(function (id) { if (!shown[id]) delete selected[id]; });
     var n = Object.keys(selected).length;
     $("sel-count").textContent = tn("selCount", n);
-    $("sel-all").textContent = t(n === list.length && n ? "selNone" : "selAll");
+    $("sel-all").textContent = t(n === Object.keys(shown).length && n ? "selNone" : "selAll");
     var fav = $("sel-fav");
     fav.textContent = "";
     var first = el("option", null, t("selAddFav"));
@@ -5201,7 +5355,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("select-btn").focus({ preventScroll: true });
   });
   $("sel-all").addEventListener("click", function () {
-    var ids = shownIds(true);
+    var ids = [].concat.apply([], shelfList().map(memberIds));
     var all = ids.length && ids.every(function (id) { return selected[id]; });
     selected = {};
     if (!all) ids.forEach(function (id) { selected[id] = true; });
@@ -5249,10 +5403,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   $("view-cards").addEventListener("click", function () { setView("cards"); });
   $("view-list").addEventListener("click", function () { setView("list"); });
+  $("group-discs").addEventListener("click", function () {
+    endSelect(); commitMeta(function (m) { m.settings.groupDiscs = !groupedShelf(); });
+  });
 
   /* One CD as a row of the list view; it does what a card does (open, play, tick, drag). */
   function listRow(cd, music, arranging) {
-    var tr = el("tr", "lrow" + (selecting && selected[cd.id] ? " selected" : ""));
+    var tr = el("tr", "lrow" + (selecting && shelfSelected(cd) ? " selected" : ""));
     tr.id = "row-" + cd.id;
     tr.dataset.id = cd.id;
     tr.tabIndex = 0;
@@ -5260,7 +5417,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var act = cardAction(cd, music);
     tr.setAttribute("role", "button");
     tr.setAttribute("aria-label", t(selecting ? "selToggle" : music ? "musicPlay" : "openProfile", { title: cd.title }));
-    if (selecting) tr.setAttribute("aria-pressed", selected[cd.id] ? "true" : "false");
+    if (selecting) tr.setAttribute("aria-pressed", shelfSelected(cd) ? "true" : "false");
     tr.addEventListener("click", act);
     tr.addEventListener("keydown", function (e) {
       if (e.target !== tr) return;
@@ -5276,11 +5433,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       }
     });
     var c0 = el("td", "lcover");
-    if (selecting) c0.appendChild(el("span", "selmark", selected[cd.id] ? "✓" : ""));
-    else c0.appendChild(thumb(cd, music && isCurrentCd(cd.id) ? (audioEl.paused ? "❚❚" : "▶") : ""));
+    if (selecting) c0.appendChild(el("span", "selmark", shelfSelected(cd) ? "✓" : ""));
+    else c0.appendChild(thumb(cd, music && memberIds(cd).some(isCurrentCd) ? (audioEl.paused ? "❚❚" : "▶") : ""));
     tr.appendChild(c0);
     var c1 = el("td", "ltitle");
     c1.appendChild(el("strong", null, cd.title));
+    if (cd._members) c1.appendChild(el("span", "chip set-badge", t("albumCount", { n: setTotal(setMembers(cd.set.id)) })));
     tr.appendChild(c1);
     tr.appendChild(el("td", null, discComposer(cd)));
     tr.appendChild(el("td", "lperf", groupedPerformers(cd.performers).slice(0, 2).map(function (p) { return p.name; }).join(", ")));
@@ -5312,9 +5470,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 
   /* ---------- arranging cards (Custom order) ---------- */
   function shownIds() {
-    var q = query.trim().toLowerCase();
-    return sortList(baseList().filter(function (c) { return filterMatch(c) && (!q || matches(c, q)); }))
-      .map(function (c) { return c.id; });
+    return shelfList().map(function (c) { return c.id; });
   }
   /* Put a card before or after another one, and keep the view's new order. Ids the view doesn't show
      right now (a favorite's CDs, or music on another computer) keep their places at the end. */
@@ -5324,6 +5480,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var at = ids.indexOf(targetId);
     if (at === -1) return;
     ids.splice(before ? at : at + 1, 0, id);
+    var groups = {};
+    shelfList().forEach(function (c) { groups[c.id] = memberIds(c); });
+    ids = [].concat.apply([], ids.map(function (key) { return groups[key] || [key]; }));
     var view = currentAlbum;
     var keep = function (old) {
       return ids.concat((old || []).filter(function (x) { return ids.indexOf(x) === -1 && (view !== "music" || cdById(x)); }));
@@ -5613,6 +5772,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (!loaded || currentPlaylistId()) setFoldVisibility($("filters"), false);
     $("viewsw").hidden = true;
     $("select-btn").hidden = true;
+    $("group-discs").hidden = true;
     if (!loaded || currentPlaylistId()) setFoldVisibility($("selbar"), false);
     grid.classList.remove("arranging", "as-table");
     renderFab();
@@ -5656,9 +5816,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("view-list").setAttribute("aria-pressed", viewMode === "list" ? "true" : "false");
     $("select-btn").hidden = false;
     renderFilters(base);
-    var list = sortList(base.filter(function (c) { return filterMatch(c) && (!q || matches(c, q)); }));
+    $("group-discs").hidden = !cds.some(releaseSet);
+    $("group-discs").setAttribute("aria-pressed", groupedShelf() ? "true" : "false");
+    var list = shelfList();
     renderSelBar(list);
-    count.textContent = narrowed ? t("countOf", { a: list.length, b: base.length }) : tn("count", base.length);
+    var matchedCount = list.reduce(function (n, c) { return n + memberIds(c).length; }, 0);
+    count.textContent = narrowed ? t("countOf", { a: matchedCount, b: base.length }) : tn("count", base.length);
     /* Cards can be dragged only in the custom order, and not while a search or filter hides some,
        or while selecting. */
     var arranging = sortKey === "custom" && !narrowed && !selecting && list.length > 1;
@@ -6742,6 +6905,164 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function readChecked() { return formFav.ids.filter(function (id) { return !!findAlbum(id); }); }
 
   var cdFormBaseline = null;
+  function translateSetForm() {
+    qsa("#set-choice option").forEach(function (o) {
+      var source = o.value && o.value !== "+new" && setSource(o.value);
+      o.textContent = !o.value ? t("standalone") : o.value === "+new" ? t("newSet") : source ? source.set.title + " · " + t("albumCount", { n: setTotal(setMembers(o.value)) }) : o.textContent;
+    });
+    SET_SHARED.concat("cover").forEach(function (f) {
+      var check = $("set-follow-" + f); if (check) check.parentNode.lastChild.textContent = t(SET_LABELS[f]);
+    });
+    $("set-inheritance").setAttribute("aria-label", t("followAlbum"));
+    if (lookupDiscRelease) qsa("#lookup-disc-choices input").forEach(function (input) {
+      input.parentNode.lastChild.textContent = t("setPosition", { n: input.value, total: lookupDiscRelease.lookupDiscs.length });
+    });
+    if ($("lookup-select-all")) $("lookup-select-all").textContent = t("importAll");
+    renderLookupDiscPreview();
+  }
+  function setupSetForm(cd) {
+    var s = releaseSet(cd), choice = $("set-choice");
+    formSetOriginal = cd && cd.set ? clone(cd.set) : null;
+    formSetId = s ? s.id : "";
+    choice.textContent = "";
+    [["", t("standalone")], ["+new", t("newSet")]].forEach(function (x) {
+      var o = el("option", null, x[1]); o.value = x[0]; choice.appendChild(o);
+    });
+    var seen = {};
+    cds.forEach(function (c) {
+      var set = releaseSet(c); if (!set || seen[set.id]) return;
+      seen[set.id] = true;
+      var source = setSource(set.id) || c;
+      var o = el("option", null, source.set.title + " · " + t("albumCount", { n: setTotal(setMembers(set.id)) }));
+      o.value = set.id; choice.appendChild(o);
+    });
+    choice.value = s ? s.id : "";
+    $("set-title").value = s ? (setSource(s.id) || cd).set.title : "";
+    $("set-disc").value = s ? s.disc : 1;
+    $("set-total").value = s ? setTotal(setMembers(s.id)) : 2;
+    $("set-subtitle").value = s && s.subtitle || "";
+    $("set-edit-shared").checked = false;
+    $("set-err").textContent = "";
+    $("set-editor").hidden = !s;
+    renderSetInheritance(cd);
+  }
+  function renderSetInheritance(cd) {
+    var box = $("set-inheritance"); box.textContent = "";
+    var source = setSource(formSetId), defaults = source && setDefaults(source);
+    var overrides = cd && defaults ? setOverrides(cd, defaults, source) : [];
+    SET_SHARED.concat("cover").forEach(function (f) {
+      var label = el("label");
+      var check = el("input"); check.type = "checkbox"; check.id = "set-follow-" + f;
+      check.checked = overrides.indexOf(f) < 0;
+      check.addEventListener("change", function () {
+        if (check.checked && !$("set-edit-shared").checked) fillSetDefault(f);
+      });
+      label.appendChild(check); label.appendChild(document.createTextNode(t(SET_LABELS[f]))); box.appendChild(label);
+    });
+    box.setAttribute("role", "group"); box.setAttribute("aria-label", t("followAlbum"));
+  }
+  function fillSetDefault(f) {
+    var source = setSource(formSetId); if (!source) return;
+    var defaults = setDefaults(source);
+    if (f === "performers") resetRows(defaults.performers);
+    else if (f === "cover") {
+      var coverDisc = setMembers(formSetId).filter(function (c) { return setOverrides(c, defaults).indexOf("cover") < 0; })[0] || source;
+      photoData = coverDisc.photo || null;
+      editCover = { file: coverDisc.photoFile || null, touched: false }; showPhoto();
+      if (editCover.file && Covers.ready) {
+        var wanted = editCover;
+        Covers.data(wanted.file).then(function (data) {
+          if (editCover === wanted && !wanted.touched) { photoData = data; showPhoto(); }
+        }).catch(function () {});
+      }
+    } else $(f).value = f === "type" && defaults[f] ? workTypeText(defaults[f]) : defaults[f] || "";
+  }
+  $("set-choice").addEventListener("change", function () {
+    var value = this.value;
+    formSetId = value === "+new" ? "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) : value;
+    $("set-editor").hidden = !value;
+    $("set-edit-shared").checked = value === "+new";
+    var members = setMembers(formSetId), source = setSource(formSetId);
+    $("set-title").value = source ? source.set.title : $("title").value;
+    $("set-disc").value = nextSetDisc(members);
+    $("set-total").value = source ? Math.max(setTotal(members), nextSetDisc(members)) : 2;
+    renderSetInheritance(editingId && cdById(editingId));
+    if (source) SET_SHARED.concat("cover").forEach(function (f) {
+      if ($("set-follow-" + f).checked) fillSetDefault(f);
+    });
+  });
+  $("set-edit-shared").addEventListener("change", function () {
+    if (this.checked) SET_SHARED.concat("cover").forEach(fillSetDefault);
+    applyMode();
+  });
+  // Editing a field in disc mode makes the override explicit, even if it currently equals a default.
+  function setFieldEdited(e) {
+    if (!formSetId || $("set-edit-shared").checked || !e.target.closest) return;
+    var f = e.target.id;
+    if (e.target.closest("#perf-rows")) f = "performers";
+    if (e.target.closest(".photo") || f === "photo") f = "cover";
+    if ($("set-follow-" + f)) $("set-follow-" + f).checked = false;
+  }
+  $("cd-form").addEventListener("input", setFieldEdited);
+  $("cd-form").addEventListener("change", setFieldEdited);
+  $("perf-rows").addEventListener("click", function (e) {
+    var button = e.target.closest("button");
+    if (button && (button.id.indexOf("perf-remove-") === 0 || button.classList.contains("perf-custom-add")) && formSetId && !$("set-edit-shared").checked) $("set-follow-performers").checked = false;
+  });
+  ["photo-remove", "photo-replace"].forEach(function (id) { $(id).addEventListener("click", function () {
+    if (formSetId && !$("set-edit-shared").checked) $("set-follow-cover").checked = false;
+  }); });
+  function readSetDraft() {
+    $("set-err").textContent = "";
+    if (!$("set-choice").value) return null;
+    var disc = +$("set-disc").value, total = +$("set-total").value, title = $("set-title").value.trim();
+    var error = !title || !Number.isInteger(disc) || !Number.isInteger(total) || disc < 1 || disc > total || total > 999 ? t("setErr") : "";
+    var members = setMembers(formSetId).filter(function (c) { return c.id !== editingId; });
+    if (!error && members.some(function (c) { return +c.set.disc === disc; })) error = t("setDuplicate", { n: disc });
+    if (!error && members.some(function (c) { return +c.set.disc > total; })) error = t("setErr");
+    if (error) { $("set-err").textContent = error; focusCdError($("set-disc")); return false; }
+    return { id: formSetId, title: title, disc: disc, total: total, subtitle: $("set-subtitle").value.trim(),
+      overrides: SET_SHARED.concat("cover").filter(function (f) { return !$("set-follow-" + f).checked; }) };
+  }
+  function prepareSetChanges(cd, draft) {
+    if (!draft) { delete cd.set; return [cd]; }
+    var source = setSource(draft.id), defaults = source ? setDefaults(source) : sharedValues(cd);
+    var editingShared = $("set-edit-shared").checked || !source;
+    if (editingShared) defaults = sharedValues(cd);
+    var sharedAt = editingShared ? Date.now() : source.set.sharedAt || 0;
+    var coverSource = editingShared ? cd : (setMembers(draft.id).filter(function (c) { return setOverrides(c, defaults).indexOf("cover") < 0; })[0] || source);
+    var changes = setMembers(draft.id).filter(function (c) { return c.id !== cd.id && (editingShared || c.set.title !== draft.title || +c.set.total !== draft.total); }).map(function (c) {
+      var n = clone(c), overrides = setOverrides(c, source ? setDefaults(source) : defaults, source);
+      n.set = Object.assign({}, c.set, { title: draft.title, total: draft.total, shared: clone(defaults), sharedAt: sharedAt, overrides: overrides });
+      if (editingShared) {
+        SET_SHARED.forEach(function (f) { if (overrides.indexOf(f) < 0) n[f] = clone(defaults[f]); });
+        if (overrides.indexOf("cover") < 0) copySetCover(n, coverSource);
+      }
+      return n;
+    });
+    cd.set = Object.assign({}, formSetOriginal && formSetOriginal.id === draft.id ? formSetOriginal : {}, draft,
+      { shared: clone(defaults), sharedAt: sharedAt });
+    SET_SHARED.forEach(function (f) { if (draft.overrides.indexOf(f) < 0) cd[f] = clone(defaults[f]); });
+    if (draft.overrides.indexOf("cover") < 0) copySetCover(cd, coverSource);
+    var original = cdById(cd.id);
+    if (editingShared && original) {
+      SET_SHARED.forEach(function (f) { if (draft.overrides.indexOf(f) >= 0) {
+        if (original[f] === undefined) delete cd[f]; else cd[f] = clone(original[f]);
+      } });
+      if (draft.overrides.indexOf("cover") >= 0) copySetCover(cd, original);
+    }
+    changes.push(cd); return changes;
+  }
+  function addSetDisc(cd) {
+    closeWin("detail"); clearForm();
+    var members = setMembers(cd.set.id), n = nextSetDisc(members);
+    if (n > 999) { toast(t("setTooMany")); return; }
+    $("title").value = cd.set.title;
+    $("set-choice").value = cd.set.id;
+    $("set-choice").dispatchEvent(new Event("change"));
+    $("set-total").value = Math.max(n, setTotal(members));
+    applyMode(); rememberCdForm(); openWin("cd");
+  }
   function cdFormSnapshot() {
     // Keep invalid draft text too, without running validation or encoding a cover.
     // Generated ids, lookup text and disclosure state do not affect the saved CD.
@@ -6766,7 +7087,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var crop = coverCrop.changed ? [coverCrop.zoom, coverCrop.x, coverCrop.y] : null;
     var photo = editCover.file && !editCover.touched && !crop ? { file: editCover.file } : { data: photoData, crop: crop };
     return JSON.stringify({ fields: fields, works: works, performers: people($("perf-rows")), photo: photo,
-      cardFields: formCard.own, favorites: readChecked().sort(), audio: formAudio ? formAudio.list : [] });
+      cardFields: formCard.own, favorites: readChecked().sort(), audio: formAudio ? formAudio.list : [],
+      set: [$("set-choice").value, formSetId, $("set-title").value, $("set-disc").value, $("set-total").value, $("set-subtitle").value, $("set-edit-shared").checked,
+        SET_SHARED.concat("cover").map(function (f) { return !!$("set-follow-" + f) && $("set-follow-" + f).checked; })],
+      importDiscs: $("lookup-multiple").checked ? qsa("#lookup-disc-choices input:checked").map(function (n) { return n.value; }) : null });
   }
   function rememberCdForm() { cdFormBaseline = cdFormSnapshot(); }
   function cdFormDirty() {
@@ -6782,7 +7106,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   function applyMode() {
     var editing = !!editingId;
-    $("add-h").textContent = editing ? t("edit") : t("add");
+    var shared = formSetId && $("set-edit-shared").checked;
+    $("add-h").textContent = shared ? t(editing ? "albumEdit" : "newSet") : editing ? t("edit") : t("add");
     if (!$("submit").disabled) $("submit").textContent = editing ? t("saveChanges") : t("addToCollection");
     $("cancel-edit").hidden = !editing;
     renderFormAudio();
@@ -6807,6 +7132,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     showPhoto();
     resetRows();
     resetWorks();
+    setupSetForm(null);
     formCard = { open: false, own: null };
     renderFormCard();
     renderAlbumChecks([]);
@@ -6854,6 +7180,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
     showPhoto();
     resetRows(cd.performers);
+    setupSetForm(cd);
     formCard = { open: false, own: Array.isArray(cd.cardFields) ? capFields(cd.cardFields) : null };
     renderFormCard();
     renderAlbumChecks(albumsOf(cd.id).map(function (a) { return a.id; }));
@@ -7343,6 +7670,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     put("spars", p.spars || "");
     put("type", p.type ? workTypeText(p.type) : "");
     if (n > before) $("more-details").open = true;
+    if (formSetId && !$("set-edit-shared").checked) {
+      var source = setSource(formSetId);
+      if (source) { var defaults = setDefaults(source); SET_SHARED.forEach(function (f) {
+        var value = f === "performers" ? readPerformers() : f === "type" ? normalizeWorkType($(f).value) : $(f).value;
+        if (JSON.stringify(value) !== JSON.stringify(defaults[f])) $("set-follow-" + f).checked = false;
+      }); }
+    }
     return n;
   }
   $("cd-form").addEventListener("input", function (e) { e.target.classList.remove("filled"); });
@@ -7390,19 +7724,48 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     lookupDiscRelease = p.lookupDiscs && p.lookupDiscs.length > 1 ? p : null;
     $("lookup-disc-row").hidden = !lookupDiscRelease;
     $("lookup-disc").textContent = "";
+    $("lookup-multiple").checked = false;
+    $("lookup-multiple").disabled = !!editingId;
+    $("lookup-disc-choices").textContent = "";
+    $("lookup-disc-choices").hidden = true;
+    $("lookup-disc-preview").textContent = "";
     if (!lookupDiscRelease) return;
     p.lookupDiscs.forEach(function (x) {
       var option = el("option", null, t("setPosition", { n: x.disc, total: p.lookupDiscs.length }));
       option.value = x.disc; $("lookup-disc").appendChild(option);
+      var label = el("label"), check = el("input"); check.type = "checkbox"; check.value = x.disc; check.checked = true;
+      check.addEventListener("change", renderLookupDiscPreview);
+      label.appendChild(check); label.appendChild(document.createTextNode(t("setPosition", { n: x.disc, total: p.lookupDiscs.length })));
+      $("lookup-disc-choices").appendChild(label);
     });
+    $("lookup-disc-choices").appendChild(setButton("importAll", "lookup-select-all", function () {
+      qsa("#lookup-disc-choices input").forEach(function (n) { n.checked = true; }); renderLookupDiscPreview();
+    }, true));
     $("lookup-disc").value = p.lookupDisc;
   }
+  function renderLookupDiscPreview() {
+    var multiple = $("lookup-multiple").checked;
+    $("lookup-disc-choices").hidden = !multiple;
+    var chosen = qsa("#lookup-disc-choices input:checked").map(function (n) { return n.value; });
+    $("lookup-disc-preview").textContent = multiple ? (chosen.length ? t("importPreview", { n: chosen.length, discs: chosen.join(", ") }) : t("importNone")) : "";
+  }
+  $("lookup-multiple").addEventListener("change", function () {
+    if (this.checked && lookupDiscRelease) {
+      if (!$("set-choice").value) { $("set-choice").value = "+new"; $("set-choice").dispatchEvent(new Event("change")); }
+      $("set-disc").value = $("lookup-disc").value;
+      $("set-total").value = Math.max(+$("set-total").value, lookupDiscRelease.lookupDiscs.length);
+    }
+    renderLookupDiscPreview();
+  });
   $("lookup-disc").addEventListener("change", function () {
     if (!lookupDiscRelease) return;
     var release = lookupDiscRelease;
     var disc = release.lookupDiscs.filter(function (x) { return x.disc === +$("lookup-disc").value; })[0];
     if (!disc) return;
-    fillFromLookup(Object.assign({}, release, { works: disc.works }));
+    if ($("lookup-multiple").checked) resetWorks(disc.works);
+    else fillFromLookup(Object.assign({}, release, { works: disc.works }));
+    if ($("lookup-multiple").checked) $("set-disc").value = disc.disc;
+    renderLookupDiscPreview();
   });
   async function useLookup(item, q, btn) {
     var run = ++lookupRun;
@@ -7504,6 +7867,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     stopCamera();
     lookupDiscRelease = null;
     $("lookup-disc-row").hidden = true;
+    $("lookup-multiple").checked = false;
+    $("lookup-disc-choices").textContent = "";
+    $("lookup-disc-preview").textContent = "";
     lookupRun++;
     $("lookup-q").value = "";
     $("lookup-results").textContent = "";
@@ -7906,8 +8272,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var cd = cdById(e.cdId) || {};
     var a = (cd.audio || []).filter(function (x) { return x.file === e.file; })[0] || {};
     var tr = discTracks(cd)[(a.track || 0) - 1];
-    if (tr) return { title: a.track + ". " + (tr.title || tr.work), sub: cd.title || "", cd: cd };
-    return { title: cd.title || "", sub: discComposer(cd) || "", cd: cd };
+    if (tr) return { title: a.track + ". " + (tr.title || tr.work), sub: discDisplayTitle(cd), cd: cd };
+    return { title: discDisplayTitle(cd), sub: discComposer(cd) || "", cd: cd };
   }
   function savePlaylist() {
     try { localStorage.setItem("cdc.playlist", JSON.stringify({ queue: player.queue, index: player.index })); }
@@ -7929,6 +8295,28 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (i === -1) return;
     player.index = i;
     loadTrack(true);
+  }
+  async function playSet(members, autoplay) {
+    try { await AudioLib.rootDir(); } catch (e) { toast(t("audioPlayError")); return; }
+    var items = [].concat.apply([], members.map(discItems));
+    var unknown = items.map(function (x) { return x.file; }).filter(function (f) { return !(f in AudioLib.present); });
+    if (unknown.length) {
+      var have = await AudioLib.call("audio_present", { files: unknown });
+      unknown.forEach(function (f, i) { AudioLib.present[f] = !!have[i]; });
+    }
+    var playable = items.filter(plItemPlayable).map(function (x) {
+      return player.queue.find(function (y) { return x.cdId === y.cdId && x.file === y.file; }) || x;
+    });
+    if (!playable.length) { toast(t("plNothingHere")); return; }
+    var current = currentEntry();
+    player.queue = player.queue.filter(function (x) { return !playable.some(function (y) { return x.cdId === y.cdId && x.file === y.file; }); });
+    var start = player.queue.length;
+    player.queue = player.queue.concat(playable);
+    if (autoplay) { player.index = start; loadTrack(true); }
+    else {
+      player.index = current ? player.queue.findIndex(function (x) { return x.cdId === current.cdId && x.file === current.file; }) : 0;
+      savePlaylist(); renderPlayer();
+    }
   }
   function loadTrack(autoplay) {
     var e = currentEntry();
@@ -8078,7 +8466,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       $("pl-prev").disabled = !hasPrev();
       if ("mediaSession" in navigator && window.MediaMetadata) {
         navigator.mediaSession.metadata = new MediaMetadata({
-          title: info.title, album: cd.title || "", artist: discComposer(cd) || "",
+          title: info.title, album: releaseSet(cd) ? cd.set.title : cd.title || "", artist: discComposer(cd) || "",
           artwork: coverSrc(cd) ? [{ src: coverSrc(cd), sizes: "800x800", type: "image/jpeg" }] : []
         });
       }
@@ -8300,7 +8688,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       go.id = "pl-disc-" + run.start;
       go.appendChild(thumb(cd, inside ? state : ""));
       var txt = el("span", "pl-text");
-      txt.appendChild(el("strong", null, cd.title || ""));
+      txt.appendChild(el("strong", null, discDisplayTitle(cd)));
       var n = tn("plTracks", run.end - run.start);
       txt.appendChild(el("span", null, inside
         ? entryText(player.queue[player.index]).title + " · " + n
@@ -8311,8 +8699,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         if (inside) togglePlay(); else { player.index = run.start; loadTrack(true); }
       });
       li.appendChild(go);
-      li.appendChild(foldButton("pl-fold-" + run.start, key, cd.title || "", renderPlaylist));
-      li.appendChild(removeButton("pl-disc-rm-" + run.start, t("playlistRemove", { title: cd.title || "" }), run.start, run.end));
+      li.appendChild(foldButton("pl-fold-" + run.start, key, discDisplayTitle(cd), renderPlaylist));
+      li.appendChild(removeButton("pl-disc-rm-" + run.start, t("playlistRemove", { title: discDisplayTitle(cd) }), run.start, run.end));
       ul.appendChild(li);
       if (openRuns[key]) for (var i = run.start; i < run.end; i++) trackRow(i, run);
     });
@@ -8432,6 +8820,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   function renderCardPlMenu() {
     var cd = cdById(cardPl.cdId);
+    var group = shelfList().filter(function (c) { return c.id === cardPl.cdId; })[0];
     if (!cd || currentAlbum !== "music") { closeCardPlMenu(); return; }
     var menu = $("cardpl-menu");
     if (!menu) {
@@ -8444,7 +8833,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     menu.setAttribute("aria-label", t("plAddDisc", { title: cd.title }));
     menu.textContent = "";
     menu.appendChild(el("p", "cardpl-head", t("plMenuHead")));
-    var items = discItems(cd);
+    var items = group && group._members ? [].concat.apply([], group._members.map(discItems)) : discItems(cd);
     meta.playlists.forEach(function (p, k) {
       var all = items.length > 0 && items.every(function (x) { return inPlaylist(p, x); });
       var b = el("button", "favitem");
@@ -8532,11 +8921,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var li = el("li", "am-disc");
       li.appendChild(thumb(cd, ""));
       var txt = el("span", "pl-text");
-      txt.appendChild(el("strong", null, cd.title));
+      txt.appendChild(el("strong", null, discDisplayTitle(cd)));
       txt.appendChild(el("span", null, [discComposer(cd), tn("plTracks", items.length)].filter(Boolean).join(" · ")));
       li.appendChild(txt);
-      li.appendChild(foldButton("am-fold-" + n, key, cd.title, renderAddMusic));
-      li.appendChild(addButton("am-add-" + n, items, cd.title));
+      li.appendChild(foldButton("am-fold-" + n, key, discDisplayTitle(cd), renderAddMusic));
+      li.appendChild(addButton("am-add-" + n, items, discDisplayTitle(cd)));
       ul.appendChild(li);
       if (openRuns[key]) files.forEach(function (a, j) {
         var row = el("li", "am-track");
@@ -8685,12 +9074,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var li = el("li", "disc-row" + (curAt !== -1 ? " playing" : "") + (firstOk === -1 ? " gone" : ""));
       rowBlock(li, run.start, run.end, run, false);
       li.appendChild(el("span", "plv-no", String(k + 1)));
-      li.appendChild(playButton("plv-dplay-" + run.start, t("audioPlay", { title: cd.title || "" }), firstOk !== -1, curAt !== -1,
+      li.appendChild(playButton("plv-dplay-" + run.start, t("audioPlay", { title: discDisplayTitle(cd) }), firstOk !== -1, curAt !== -1,
         function () { if (curAt !== -1) togglePlay(); else playPlaylist(pl, firstOk); }));
       var main = el("span", "plv-disc");
       main.appendChild(thumb(cd, ""));
       var txt = el("span", "plv-text");
-      txt.appendChild(el("strong", null, cd.title || ""));
+      txt.appendChild(el("strong", null, discDisplayTitle(cd)));
       var n = tn("plTracks", items.length);
       txt.appendChild(el("span", null, curAt !== -1
         ? entryText(pl.items[curAt]).title + " · " + n
@@ -8703,9 +9092,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       items.forEach(function (x) { var tr = itemTrack(x); if (tr && DURATION.test(tr.duration)) secs += toSeconds(tr.duration); });
       li.appendChild(el("span", "plv-len", secs ? fmtSeconds(secs) : ""));
       var tools = el("span", "plv-tools");
-      tools.appendChild(foldButton("plv-fold-" + run.start, key, cd.title || "", renderGrid));
-      unitMoves(tools, k, "plv-dup-", "plv-ddown-", cd.title || "");
-      tool(tools, "plv-drm-" + run.start, t("plRemoveTrack", { title: cd.title || "", name: pl.name }), "×", "rm", false,
+      tools.appendChild(foldButton("plv-fold-" + run.start, key, discDisplayTitle(cd), renderGrid));
+      unitMoves(tools, k, "plv-dup-", "plv-ddown-", discDisplayTitle(cd));
+      tool(tools, "plv-drm-" + run.start, t("plRemoveTrack", { title: discDisplayTitle(cd), name: pl.name }), "×", "rm", false,
         function () { removeItems(run.start, items.length); });
       li.appendChild(tools);
       ul.appendChild(li);
@@ -8826,11 +9215,149 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     b.addEventListener("click", function () { showFiltered(kind, value, role); });
     return b;
   }
+  function setDiscProgram(cd) {
+    var section = el("section", "psect"), no = 0;
+    (cd.works || []).forEach(function (w) {
+      var row = el("div", "pwork"), heading = el("div", "pwork-heading");
+      heading.appendChild(workTitleRow(cd, w, "pwork-title"));
+      if (!(w.tracks || []).length && w.duration) heading.appendChild(el("span", "pwork-duration", w.duration));
+      row.appendChild(heading);
+      var tracks = el("ol", "ptracks");
+      (w.tracks || []).forEach(function (tr) {
+        var li = el("li"); li.appendChild(el("span", "no", String(++no)));
+        li.appendChild(el("span", "nm", tr.title || "—")); li.appendChild(el("span", "len", tr.duration || "")); tracks.appendChild(li);
+      });
+      row.appendChild(tracks); section.appendChild(row);
+    });
+    var total = totalSeconds(cd);
+    if (total) section.appendChild(el("p", "ptotal", t("totalTime", { x: fmtSeconds(total) })));
+    return section;
+  }
+  async function detachSetDisc(cd) {
+    var before = clone(cd.set), next = clone(cd); delete next.set;
+    var sibling = setMembers(cd.set.id).filter(function (c) { return c.id !== cd.id; })[0];
+    if (detailId === cd.id && sibling) detailId = sibling.id;
+    await changeDiscs([next]);
+    toast(t("setDetached"), { label: t("undo"), run: async function () {
+      var current = cdById(cd.id); if (current) await changeDiscs([Object.assign({}, current, { set: before })]);
+    } });
+  }
+  function confirmSetRemoval(host, list, whole) {
+    host.textContent = "";
+    host.appendChild(el("p", "hint ask", whole ? t("albumDeleteAsk", { n: list.length }) : t("removeAsk")));
+    host.appendChild(setButton("remove", "set-remove-confirm", async function () { await removeCds(list); if (whole) closeWin("detail"); }, false));
+    host.appendChild(setButton("keep", "set-remove-cancel", renderDetail, true));
+  }
+  function renderSetDetail(cd, box) {
+    var source = setSource(cd.set.id) || cd, members = setMembers(cd.set.id), defaults = setDefaults(source);
+    var keep = box.contains(document.activeElement) ? document.activeElement.id : "";
+    box.textContent = "";
+    var cover = el("div", "profile-cover"), coverDisc = members.filter(function (c) { return setOverrides(c, defaults).indexOf("cover") < 0; })[0] || source;
+    if (coverSrc(coverDisc)) { var img = el("img"); img.src = coverSrc(coverDisc); img.alt = source.set.title; cover.appendChild(img); }
+    else { var glyph = el("div", "disc"); glyph.style.setProperty("--s", "120px"); cover.appendChild(glyph); }
+    var main = el("div", "profile-main"), heading = el("h2", null, source.set.title); heading.id = "detail-h"; main.appendChild(heading);
+    var total = setTotal(members);
+    main.appendChild(el("p", "hint", t("albumProgress", { n: members.length, total: total })));
+    var missing = []; for (var n = 1; n <= total; n++) if (!members.some(function (c) { return +c.set.disc === n; })) missing.push(n);
+    if (missing.length) main.appendChild(el("p", "hint", t("missingDiscs", { discs: missing.join(", ") })));
+    if (defaults.composer) main.appendChild(nameLink("composer", defaults.composer));
+    var facts = el("dl", "facts");
+    SET_SHARED.filter(function (f) { return f !== "composer"; }).forEach(function (f) {
+      var value = f === "performers" ? groupedPerformers(defaults.performers).map(function (p) { return p.name + " (" + p.roles.map(roleText).join(" / ") + ")"; }).join(", ") : f === "type" && defaults[f] ? workTypeText(defaults[f]) : defaults[f];
+      if (value) { facts.appendChild(el("dt", null, t(SET_LABELS[f]))); facts.appendChild(el("dd", null, String(value))); }
+    });
+    main.appendChild(facts);
+    var actions = el("div", "profile-actions");
+    actions.appendChild(setButton("albumEdit", "set-edit", function () {
+      closeWin("detail"); startEdit(source); $("set-edit-shared").checked = true;
+      SET_SHARED.concat("cover").forEach(fillSetDefault); applyMode(); rememberCdForm();
+    }));
+    actions.appendChild(setButton("setAdd", "set-add", function () { addSetDisc(source); }, true));
+    actions.appendChild(setButton("linkDiscs", "set-link", function () { setLinkOpen = !setLinkOpen; renderDetail(); }, true));
+    if (AudioLib.ready) {
+      actions.appendChild(setButton("albumPlay", "set-play", function () { return playSet(members, true); }));
+      actions.appendChild(setButton("albumEnqueue", "set-enqueue", function () { return playSet(members, false); }, true));
+      var playlist = el("select", "input"); playlist.id = "set-playlist"; playlist.setAttribute("aria-label", t("albumPlaylist"));
+      var initial = el("option", null, t("albumPlaylist")); initial.value = ""; playlist.appendChild(initial);
+      meta.playlists.forEach(function (p) { var o = el("option", null, p.name); o.value = p.id; playlist.appendChild(o); });
+      var create = el("option", null, t("plNew")); create.value = "+new"; playlist.appendChild(create);
+      playlist.addEventListener("change", function () {
+        var items = [].concat.apply([], members.map(discItems));
+        if (playlist.value === "+new") openAlbumDlg("new", null, "playlist", items);
+        else if (playlist.value) changePlaylist(playlist.value, function (p) { items.forEach(function (x) { if (!inPlaylist(p, x)) p.items.push(x); }); });
+      }); actions.appendChild(playlist);
+    }
+    var ids = members.map(function (c) { return c.id; });
+    var pk = favPicker(detailFav, "set-fav", function (id) { var a = findAlbum(id); return !!a && ids.every(function (id) { return a.cdIds.indexOf(id) >= 0; }); },
+      function (a, on) { commitMeta(function (m) { m.albums.forEach(function (x) {
+        if (x.id !== a.id) return; x.cdIds = x.cdIds.filter(function (id) { return ids.indexOf(id) < 0; }); if (on) x.cdIds = x.cdIds.concat(ids);
+      }); }); },
+      function (name) { detailFav.open = true; commitMeta(function (m) { m.albums.push({ id: newFavoriteId(), name: name, cdIds: ids }); }); });
+    actions.appendChild(pk.btn); pk.chips.forEach(function (c) { actions.appendChild(c); }); actions.appendChild(pk.list);
+    main.appendChild(actions);
+    if (setLinkOpen) {
+      var links = el("section", "psect"), list = el("div", "set-link-list");
+      links.appendChild(el("h3", null, t("linkDiscs")));
+      var unlinked = cds.filter(function (c) { return !releaseSet(c); });
+      if (!unlinked.length) links.appendChild(el("p", "hint", t("noUnlinked")));
+      unlinked.forEach(function (c) {
+        var label = el("label"), input = el("input"); input.type = "checkbox"; input.value = c.id;
+        label.appendChild(input); label.appendChild(document.createTextNode(c.title)); list.appendChild(label);
+      }); links.appendChild(list);
+      var link = setButton("linkSelected", "set-link-save", async function () {
+        var chosen = qsa("input:checked", list).map(function (n) { return cdById(n.value); }).filter(Boolean);
+        if (!chosen.length) return;
+        var occupied = members.slice(), additions = [];
+        chosen.forEach(function (c) {
+          var next = clone(c), number = nextSetDisc(occupied);
+          if (number > 999) throw new Error("too many discs");
+          next.set = { id: source.set.id, title: source.set.title, disc: number, total: total, shared: clone(defaults), sharedAt: source.set.sharedAt || 0,
+            overrides: setOverrides(c, defaults, coverDisc) };
+          occupied.push(next); additions.push(next);
+        });
+        var nextTotal = setTotal(occupied);
+        var changes = occupied.map(function (c) { var next = clone(c); next.set.total = nextTotal; return next; });
+        await changeDiscs(changes); setLinkOpen = false; renderDetail(); toast(t("setLinked"));
+      });
+      link.disabled = !unlinked.length; links.appendChild(link); main.appendChild(links);
+    }
+    members.forEach(function (disc) {
+      var fold = el("details", "set-disc"), key = source.set.id + "/" + disc.id;
+      fold.open = !!setFolds[key];
+      fold.addEventListener("toggle", function () { if (fold.isConnected && !fold._closing) setFolds[key] = fold.open; });
+      var summary = el("summary", null, t("setPosition", { n: disc.set.disc, total: total }) + (disc.set.subtitle ? " · " + disc.set.subtitle : "") + (disc.title !== source.set.title ? " · " + disc.title : ""));
+      fold.appendChild(summary);
+      var body = el("div", "set-disc-body"); body.appendChild(setDiscProgram(disc));
+      summary.addEventListener("click", function (e) {
+        e.preventDefault(); clearTimeout(fold._closeTimer);
+        var opening = !setFolds[key]; setFolds[key] = opening;
+        if (opening) { fold._closing = false; fold.open = true; body.hidden = true; setFoldVisibility(body, true); }
+        else {
+          fold._closing = true; setFoldVisibility(body, false);
+          var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          fold._closeTimer = setTimeout(function () { fold.open = false; fold._closing = false; }, reduced ? 0 : FOLD_ANIM_MS);
+        }
+      });
+      var audio = audioSection(disc);
+      if (audio) { qsa("[id]", audio).forEach(function (node) { node.id += "-" + disc.id; }); body.appendChild(audio); }
+      var buttons = el("div", "profile-actions");
+      buttons.appendChild(setButton("discOpen", "set-open-" + disc.id, function () { openDetail(disc.id, true); }, true));
+      buttons.appendChild(setButton("editBtn", "set-edit-" + disc.id, function () { closeWin("detail"); startEdit(disc); }, true));
+      buttons.appendChild(setButton("discDetach", "set-detach-" + disc.id, function () { return detachSetDisc(disc); }, true));
+      buttons.appendChild(setButton("discDelete", "set-delete-" + disc.id, function () { confirmSetRemoval(buttons, [disc], false); }, true));
+      body.appendChild(buttons); fold.appendChild(body); main.appendChild(fold);
+    });
+    var removal = el("div", "profile-actions");
+    removal.appendChild(setButton("albumDelete", "set-delete-all", function () { confirmSetRemoval(removal, members, true); }, true)); main.appendChild(removal);
+    box.appendChild(cover); box.appendChild(main);
+    if (keep && $(keep)) $(keep).focus({ preventScroll: true });
+  }
   function renderDetail() {
     var cd = null;
     for (var i = 0; i < cds.length; i++) if (cds[i].id === detailId) cd = cds[i];
     if (!cd) { if (!$("win-detail").hidden) closeWin("detail"); return; }
     var box = $("detail-body");
+    if (releaseSet(cd) && !detailDiscOnly) { renderSetDetail(cd, box); return; }
     var keepFocus = box.contains(document.activeElement) ? document.activeElement.id : "";
     box.textContent = "";
 
@@ -8850,6 +9377,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var h = el("h2", null, cd.title);
     h.id = "detail-h";
     main.appendChild(h);
+    if (releaseSet(cd)) main.appendChild(setButton("albumOpen", "disc-album-open", function () { openDetail(cd.id); }, true));
     /* Composer, performer and label names show every CD with that name when clicked. */
     var comps = cd.composer ? [cd.composer] : [];
     if (comps.length) {
@@ -8996,8 +9524,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     box.appendChild(main);
     if (keepFocus && $(keepFocus)) $(keepFocus).focus({ preventScroll: true });
   }
-  function openDetail(id) {
+  function openDetail(id, discOnly) {
     detailId = id;
+    detailDiscOnly = !!discOnly;
+    setLinkOpen = false;
     detailConfirm = false;
     detailFav.open = false;
     plPick = null;
@@ -9019,6 +9549,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var b = bar(cd.barcode), c = cat(cd.catalogNo);
     if (b.length < 8 && c.length < 3) return null;
     return cds.filter(function (x) {
+      if (formSetId && releaseSet(x) && x.set.id === formSetId && +x.set.disc !== +$("set-disc").value) return false;
       return (b.length >= 8 && bar(x.barcode) === b) || (c.length >= 3 && cat(x.catalogNo) === c);
     })[0] || null;
   }
@@ -9058,8 +9589,28 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       return;
     }
     if (!backend || !loaded) { toast(t("toastLoading")); return; }
+    var setDraft = readSetDraft();
+    if (setDraft === false) return;
+    var multipleImport = !editingId && lookupDiscRelease && $("lookup-multiple").checked;
+    var importNumbers = multipleImport ? qsa("#lookup-disc-choices input:checked").map(function (n) { return +n.value; }) : [];
+    if (multipleImport && (!importNumbers.length || !setDraft)) {
+      $("set-err").textContent = t(!importNumbers.length ? "importNone" : "setErr"); return;
+    }
+    if (multipleImport && importNumbers.indexOf(+$("lookup-disc").value) < 0) {
+      $("set-err").textContent = t("importReview"); focusCdError($("lookup-disc"));
+      return;
+    }
+    if (multipleImport) {
+      var conflicting = setMembers(setDraft.id).filter(function (c) { return importNumbers.indexOf(+c.set.disc) >= 0; })[0];
+      if (conflicting) { $("set-err").textContent = t("setDuplicate", { n: conflicting.set.disc }); return; }
+      if (Math.max.apply(null, importNumbers) > setDraft.total) { $("set-err").textContent = t("setErr"); return; }
+    }
 
-    var cd = {
+    var before = editingId && cdById(editingId);
+    var cd = Object.assign({}, before || {});
+    ["works", "notes", "cardFields", "photo", "photoFile"].concat(DETAIL_FIELDS).forEach(function (f) { delete cd[f]; });
+    if (before && releaseYear !== String(before.releaseYear || before.year || "")) delete cd.year;
+    Object.assign(cd, {
       title: title,
       composer: $("composer").value.trim(),
       performers: readPerformers(),
@@ -9068,7 +9619,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       recordingYear: recordingYear,
       releaseYear: releaseYear,
       addedAt: editingId ? editingAddedAt : Date.now()
-    };
+    });
     if (works.length) cd.works = works;
     DETAIL_FIELDS.forEach(function (f) { var v = $(f).value.trim(); if (v) cd[f] = v; });
     if (cd.type) cd.type = normalizeWorkType(cd.type);
@@ -9089,28 +9640,44 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
     if (Array.isArray(formCard.own)) cd.cardFields = formCard.own.slice();
     var audioDraft = AudioLib.ready ? formAudio : null;
-    var before = editingId && cdById(editingId);
-    if (before && Object.prototype.hasOwnProperty.call(before, "set")) cd.set = before.set;
     if (audioDraft) cd.audio = clone(audioDraft.list);
     else if (before && before.audio) cd.audio = clone(before.audio);
     var cover = coverForSaving();
     /* An untouched cover that is already a file stays that file (no need to write it again). */
-    if (editingId && editCover.file && !editCover.touched && (!cover || !coverCrop.changed)) cd.photoFile = editCover.file;
+    if (editCover.file && !editCover.touched && (!cover || !coverCrop.changed)) cd.photoFile = editCover.file;
     else if (cover) cd.photo = cover;
     var chosenAlbums = readChecked();
 
     var wasEditing = !!editingId;
-    var targetId = editingId;
+    var targetId = editingId || (audioDraft && audioDraft.id) || "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    cd.id = targetId;
+    var changes = prepareSetChanges(cd, setDraft);
+    var importedIds = [];
+    if (!setDraft && before && before.set && !releaseSet(before)) cd.set = clone(before.set);
+    if (multipleImport) {
+      lookupDiscRelease.lookupDiscs.forEach(function (disc) {
+        if (importNumbers.indexOf(disc.disc) < 0 || disc.disc === +$("lookup-disc").value) return;
+        var extra = Object.assign({}, lookupDiscRelease, { id: "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10),
+          title: cd.set.title, works: clone(disc.works), addedAt: Date.now() });
+        delete extra.lookupDiscs; delete extra.lookupDisc; delete extra.audio;
+        extra.set = Object.assign({}, cd.set, { disc: disc.disc, subtitle: "", overrides: [] });
+        SET_SHARED.forEach(function (f) { extra[f] = clone(cd.set.shared[f]); });
+        copySetCover(extra, cd); changes.push(extra);
+        importedIds.push(extra.id);
+      });
+    }
     var btn = $("submit");
     btn.disabled = true;
     btn.textContent = t("saving");
     if (audioDraft) { audioDraft.saving = true; renderFormAudio(); }
     try {
-      if (wasEditing) await backend.update(targetId, cd, !!audioDraft);
-      else targetId = await backend.add(cd, audioDraft && audioDraft.id, !!audioDraft);
+      if (setDraft || (before && releaseSet(before))) await changeDiscs(changes);
+      else if (wasEditing) await backend.update(targetId, cd, !!audioDraft);
+      else targetId = await backend.add(cd, targetId, !!audioDraft);
       await commitFormAudio(audioDraft);
       if (audioDraft) audioDraft.saving = false;
       setMembership(targetId, chosenAlbums);
+      importedIds.forEach(function (id) { setMembership(id, chosenAlbums); });
       clearForm();
       closeWin("cd");
       renderAll();
@@ -9142,6 +9709,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   /* ---------- start ---------- */
   resetRows();
   resetWorks();
+  setupSetForm(null);
   renderAlbumChecks([]);
   applyAll();
   init();

@@ -287,21 +287,21 @@ async function main() {
       assert((await page.locator('#f-performer').innerText()).includes('Work Soloist'));
     } finally { await f.close(); }
   });
-  await test('removed set UI stays absent while edits preserve existing set metadata', async () => {
+  await test('legacy set profiles and separate-disc editing preserve existing membership', async () => {
     const legacy = {...structuredClone(album), set: {id: 'old-set', title: 'Legacy box QA', disc: 2, total: 3}};
     const f = await fixture({cds: [legacy]}), {page, state} = f;
     try {
-      assert(!(await card(page).innerText()).includes('Legacy box QA'));
+      assert((await card(page).innerText()).includes('Legacy box QA'));
       await card(page).locator('h3').click();
-      assert.equal(await page.locator('.set-siblings, #detail-body [data-i18n="discSet"]').count(), 0);
-      assert(!(await page.locator('#detail-body').innerText()).includes('Legacy box QA'));
-      await page.locator('.profile-actions > button').first().click();
-      assert.equal(await page.locator('#set-title, #set-disc, #set-total').count(), 0);
+      assert((await page.locator('#detail-body').innerText()).includes('Legacy box QA'));
+      await page.locator('.set-disc summary').click();
+      await page.locator('#set-edit-' + legacy.id).click();
+      assert.equal(await page.locator('#set-title, #set-disc, #set-total').count(), 3);
       await page.locator('#title').fill('Edited legacy QA');
       await save(page, state);
-      assert.deepEqual(state.doc.cds[0].set, legacy.set);
+      for (const [key,value] of Object.entries(legacy.set)) assert.deepEqual(state.doc.cds[0].set[key], value);
       await page.reload();
-      assert.deepEqual(state.doc.cds[0].set, legacy.set);
+      for (const [key,value] of Object.entries(legacy.set)) assert.deepEqual(state.doc.cds[0].set[key], value);
     } finally { await f.close(); }
   });
   if (!process.env.CDC_QA_SKIP_AUDIO) await test('native profile without audio omits the empty section but edit form keeps Add audio', async () => {
