@@ -3693,7 +3693,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
      materialized on each CD so older versions can still read every disc independently. */
   var SET_SHARED = ["composer", "type", "performers", "label", "issuer", "releaseYear", "catalogNo", "barcode"];
   var SET_LABELS = { composer: "composer", type: "cdType", performers: "performers", label: "label", issuer: "issuer", releaseYear: "relYear", catalogNo: "catalogNo", barcode: "barcode", cover: "albumCover" };
-  var formSetId = "", formSetOriginal = null, detailDiscOnly = false;
+  var formSetId = "", formSetOriginal = null, formSetDiscDraft = null, detailDiscOnly = false;
   var setFolds = {}, setLinkOpen = false;
   function releaseSet(cd) { return cd && cd.set && cd.set.id && cd.set.title ? cd.set : null; }
   function discDisplayTitle(cd) {
@@ -3733,6 +3733,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (photo) to.photo = photo;
     else if (file) to.photoFile = file;
   }
+  function setCoverSource(source) {
+    if (source.set.cover && typeof source.set.cover === "object") return source.set.cover;
+    return setMembers(source.set.id).filter(function (c) { return setOverrides(c, setDefaults(source)).indexOf("cover") < 0; })[0] || source;
+  }
+  function coverValue(source) { var out = {}; copySetCover(out, source); return out; }
   function groupedShelf() { return meta.settings.groupDiscs !== false; }
   function shelfGroups(list) {
     if (!groupedShelf()) return list;
@@ -3744,8 +3749,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         var source = setSource(s.id) || cd;
         var g = Object.assign({}, cd, setDefaults(source), { title: source.set.title, _members: [] });
         g.set = Object.assign({}, source.set);
-        var coverDisc = setMembers(s.id).filter(function (c) { return setOverrides(c, setDefaults(source)).indexOf("cover") < 0; })[0] || source;
-        copySetCover(g, coverDisc);
+        copySetCover(g, setCoverSource(source));
         groups[s.id] = g; out.push(g);
       }
       groups[s.id]._members.push(cd);
@@ -4180,10 +4184,17 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   /* A copy of the CD with its cover as a picture (for sync and exports). */
   async function withCoverData(cd) {
-    if (!cd || !cd.photoFile || !Covers.ready) return cd;
-    var c = Object.assign({}, cd);
-    try { c.photo = await Covers.data(c.photoFile); } catch (e) { /* the file is missing: no cover */ }
-    delete c.photoFile;
+    if (!cd || !Covers.ready) return cd;
+    async function embed(value) {
+      var out = Object.assign({}, value);
+      if (out.photoFile) {
+        try { out.photo = await Covers.data(out.photoFile); } catch (e) { /* missing cover */ }
+        delete out.photoFile;
+      }
+      return out;
+    }
+    var c = await embed(cd);
+    if (c.set && c.set.cover && typeof c.set.cover === "object") c.set = Object.assign({}, c.set, { cover: await embed(c.set.cover) });
     return c;
   }
 
@@ -4194,13 +4205,20 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     /* Write covers that are still pictures to files (the CD's updatedAt stays as it is). */
     async function storeCovers() {
       if (!Covers.ready) return;
+      var written = Object.create(null);
       for (var i = 0; i < items.length; i++) {
         var c = items[i];
-        if (c.photo && /^data:image\//.test(c.photo)) {
-          try {
-            c.photoFile = await Covers.save(c.photo);
-            delete c.photo;
-          } catch (e) { /* keep the picture inside the collection */ }
+        var containers = [c];
+        if (c.set && c.set.cover && typeof c.set.cover === "object") containers.push(c.set.cover);
+        for (var j = 0; j < containers.length; j++) {
+          var value = containers[j];
+          if (value.photo && /^data:image\//.test(value.photo)) {
+            try {
+              var data = value.photo;
+              value.photoFile = written[data] || (written[data] = await Covers.save(data));
+              delete value.photo;
+            } catch (e) { /* keep the picture inside the collection */ }
+          }
         }
       }
     }
@@ -4240,7 +4258,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           if (Covers.ready) {
             /* Collections saved before covers became files: move the pictures out once. Then cover
                files that neither the collection nor a backup uses any more are deleted. */
-            if (items.some(function (c) { return c.photo && /^data:image\//.test(c.photo); })) await persist(true);
+            if (items.some(function (c) { return (c.photo && /^data:image\//.test(c.photo)) || (c.set && c.set.cover && c.set.cover.photo); })) await persist(true);
             Covers.call("tidy_covers").catch(function () { /* tidied next time */ });
           }
         }).catch(function () {
@@ -4592,7 +4610,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         });
         /* The account gets the cover pictures themselves, not this computer's file names. */
         for (var pi = 0; pi < push.length; pi++) {
-          if (push[pi].data && push[pi].data.photoFile) push[pi].data = await withCoverData(push[pi].data);
+          if (push[pi].data && (push[pi].data.photoFile || (push[pi].data.set && push[pi].data.set.cover && push[pi].data.set.cover.photoFile))) push[pi].data = await withCoverData(push[pi].data);
         }
         await upsert("cds", "user_id,id", push);
         var got = (pull.length ? await fetchCds(pull) : []).filter(function (r) { return !r.deleted && r.data; })
@@ -6923,6 +6941,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function setupSetForm(cd) {
     var s = releaseSet(cd), choice = $("set-choice");
     formSetOriginal = cd && cd.set ? clone(cd.set) : null;
+    formSetDiscDraft = null;
     formSetId = s ? s.id : "";
     choice.textContent = "";
     [["", t("standalone")], ["+new", t("newSet")]].forEach(function (x) {
@@ -6949,11 +6968,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function renderSetInheritance(cd) {
     var box = $("set-inheritance"); box.textContent = "";
     var source = setSource(formSetId), defaults = source && setDefaults(source);
-    var overrides = cd && defaults ? setOverrides(cd, defaults, source) : [];
+    var overrides = cd && defaults ? setOverrides(cd, defaults, setCoverSource(source)) : [];
     SET_SHARED.concat("cover").forEach(function (f) {
       var label = el("label");
       var check = el("input"); check.type = "checkbox"; check.id = "set-follow-" + f;
       check.checked = overrides.indexOf(f) < 0;
+      check.disabled = $("set-edit-shared").checked;
       check.addEventListener("change", function () {
         if (check.checked && !$("set-edit-shared").checked) fillSetDefault(f);
       });
@@ -6966,7 +6986,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var defaults = setDefaults(source);
     if (f === "performers") resetRows(defaults.performers);
     else if (f === "cover") {
-      var coverDisc = setMembers(formSetId).filter(function (c) { return setOverrides(c, defaults).indexOf("cover") < 0; })[0] || source;
+      var coverDisc = setCoverSource(source);
       photoData = coverDisc.photo || null;
       editCover = { file: coverDisc.photoFile || null, touched: false }; showPhoto();
       if (editCover.file && Covers.ready) {
@@ -6979,6 +6999,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   $("set-choice").addEventListener("change", function () {
     var value = this.value;
+    formSetDiscDraft = null;
     formSetId = value === "+new" ? "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) : value;
     $("set-editor").hidden = !value;
     $("set-edit-shared").checked = value === "+new";
@@ -6990,9 +7011,26 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (source) SET_SHARED.concat("cover").forEach(function (f) {
       if ($("set-follow-" + f).checked) fillSetDefault(f);
     });
+    applyMode();
   });
   $("set-edit-shared").addEventListener("change", function () {
-    if (this.checked) SET_SHARED.concat("cover").forEach(fillSetDefault);
+    if (this.checked) {
+      var fields = {};
+      SET_SHARED.filter(function (f) { return f !== "performers"; }).forEach(function (f) { fields[f] = $(f).value; });
+      formSetDiscDraft = { fields: fields, people: Array.from($("perf-rows").children), photo: photoData, editCover: editCover,
+        coverShown: coverShown, crop: { img: coverCrop.img, x: coverCrop.x, y: coverCrop.y, zoom: coverCrop.zoom, changed: coverCrop.changed },
+        follow: SET_SHARED.concat("cover").map(function (f) { return $("set-follow-" + f).checked; }) };
+      SET_SHARED.concat("cover").forEach(fillSetDefault);
+    } else if (formSetDiscDraft) {
+      var draft = formSetDiscDraft;
+      Object.keys(draft.fields).forEach(function (f) { $(f).value = draft.fields[f]; });
+      $("perf-rows").textContent = ""; draft.people.forEach(function (row) { $("perf-rows").appendChild(row); }); refreshRows();
+      photoData = draft.photo; editCover = draft.editCover; coverShown = draft.coverShown;
+      Object.assign(coverCrop, draft.crop); showPhoto(); coverCrop.render();
+      SET_SHARED.concat("cover").forEach(function (f, i) { $("set-follow-" + f).checked = draft.follow[i]; });
+      formSetDiscDraft = null;
+    }
+    SET_SHARED.concat("cover").forEach(function (f) { $("set-follow-" + f).disabled = $("set-edit-shared").checked; });
     applyMode();
   });
   // Editing a field in disc mode makes the override explicit, even if it currently equals a default.
@@ -7030,10 +7068,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var editingShared = $("set-edit-shared").checked || !source;
     if (editingShared) defaults = sharedValues(cd);
     var sharedAt = editingShared ? Date.now() : source.set.sharedAt || 0;
-    var coverSource = editingShared ? cd : (setMembers(draft.id).filter(function (c) { return setOverrides(c, defaults).indexOf("cover") < 0; })[0] || source);
+    var coverSource = coverValue(editingShared ? cd : setCoverSource(source));
     var changes = setMembers(draft.id).filter(function (c) { return c.id !== cd.id && (editingShared || c.set.title !== draft.title || +c.set.total !== draft.total); }).map(function (c) {
-      var n = clone(c), overrides = setOverrides(c, source ? setDefaults(source) : defaults, source);
-      n.set = Object.assign({}, c.set, { title: draft.title, total: draft.total, shared: clone(defaults), sharedAt: sharedAt, overrides: overrides });
+      var n = clone(c), overrides = setOverrides(c, source ? setDefaults(source) : defaults, source ? setCoverSource(source) : coverSource);
+      n.set = Object.assign({}, c.set, { title: draft.title, total: draft.total, shared: clone(defaults), sharedAt: sharedAt, overrides: overrides, cover: clone(coverSource) });
       if (editingShared) {
         SET_SHARED.forEach(function (f) { if (overrides.indexOf(f) < 0) n[f] = clone(defaults[f]); });
         if (overrides.indexOf("cover") < 0) copySetCover(n, coverSource);
@@ -7041,7 +7079,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       return n;
     });
     cd.set = Object.assign({}, formSetOriginal && formSetOriginal.id === draft.id ? formSetOriginal : {}, draft,
-      { shared: clone(defaults), sharedAt: sharedAt });
+      { shared: clone(defaults), sharedAt: sharedAt, cover: clone(coverSource) });
     SET_SHARED.forEach(function (f) { if (draft.overrides.indexOf(f) < 0) cd[f] = clone(defaults[f]); });
     if (draft.overrides.indexOf("cover") < 0) copySetCover(cd, coverSource);
     var original = cdById(cd.id);
@@ -9245,14 +9283,14 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function confirmSetRemoval(host, list, whole) {
     host.textContent = "";
     host.appendChild(el("p", "hint ask", whole ? t("albumDeleteAsk", { n: list.length }) : t("removeAsk")));
-    host.appendChild(setButton("remove", "set-remove-confirm", async function () { await removeCds(list); if (whole) closeWin("detail"); }, false));
-    host.appendChild(setButton("keep", "set-remove-cancel", renderDetail, true));
+    host.appendChild(setButton("remove", "set-remove-confirm" + (whole ? "" : "-" + list[0].id), async function () { await removeCds(list); if (whole) closeWin("detail"); }, false));
+    host.appendChild(setButton("keep", "set-remove-cancel" + (whole ? "" : "-" + list[0].id), renderDetail, true));
   }
   function renderSetDetail(cd, box) {
     var source = setSource(cd.set.id) || cd, members = setMembers(cd.set.id), defaults = setDefaults(source);
     var keep = box.contains(document.activeElement) ? document.activeElement.id : "";
     box.textContent = "";
-    var cover = el("div", "profile-cover"), coverDisc = members.filter(function (c) { return setOverrides(c, defaults).indexOf("cover") < 0; })[0] || source;
+    var cover = el("div", "profile-cover"), coverDisc = setCoverSource(source);
     if (coverSrc(coverDisc)) { var img = el("img"); img.src = coverSrc(coverDisc); img.alt = source.set.title; cover.appendChild(img); }
     else { var glyph = el("div", "disc"); glyph.style.setProperty("--s", "120px"); cover.appendChild(glyph); }
     var main = el("div", "profile-main"), heading = el("h2", null, source.set.title); heading.id = "detail-h"; main.appendChild(heading);
@@ -9270,7 +9308,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var actions = el("div", "profile-actions");
     actions.appendChild(setButton("albumEdit", "set-edit", function () {
       closeWin("detail"); startEdit(source); $("set-edit-shared").checked = true;
-      SET_SHARED.concat("cover").forEach(fillSetDefault); applyMode(); rememberCdForm();
+      $("set-edit-shared").dispatchEvent(new Event("change")); rememberCdForm();
     }));
     actions.appendChild(setButton("setAdd", "set-add", function () { addSetDisc(source); }, true));
     actions.appendChild(setButton("linkDiscs", "set-link", function () { setLinkOpen = !setLinkOpen; renderDetail(); }, true));
@@ -9312,7 +9350,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           var next = clone(c), number = nextSetDisc(occupied);
           if (number > 999) throw new Error("too many discs");
           next.set = { id: source.set.id, title: source.set.title, disc: number, total: total, shared: clone(defaults), sharedAt: source.set.sharedAt || 0,
-            overrides: setOverrides(c, defaults, coverDisc) };
+            overrides: setOverrides(c, defaults, coverDisc), cover: coverValue(coverDisc) };
           occupied.push(next); additions.push(next);
         });
         var nextTotal = setTotal(occupied);

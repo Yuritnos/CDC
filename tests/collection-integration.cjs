@@ -555,6 +555,54 @@ async function main() {
       assert.equal(state.doc.cds.find(c=>c.id==='cover-2').photoFile,'shared.png');
     }finally{await f.close();}
   });
+  await test('main album cover survives when every disc uses its own cover and exports embedded image data',async()=>{
+    const shared={composer:'',type:'',performers:[],label:'',issuer:'',releaseYear:'',catalogNo:'',barcode:''};
+    const discs=[1,2].map(n=>({id:'main-cover-'+n,title:'Own cover '+n,addedAt:n,photoFile:'own-'+n+'.png',
+      set:{id:'main-cover-set',title:'Main cover album',disc:n,total:2,shared,cover:{photoFile:'album-main.png'},overrides:['cover']}}));
+    const f=await fixture({cds:discs,nativeAudio:true}),{page,state}=f;
+    try {
+      await openCard(page,'Main cover album');
+      assert((await page.locator('.profile-cover img').getAttribute('src')).includes('album-main.png'));
+      await page.locator('#set-edit').click();
+      const image=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=c.height=4;c.getContext('2d').fillRect(0,0,4,4);return c.toDataURL('image/png');});
+      await page.locator('#photo').setInputFiles({name:'new-main.png',mimeType:'image/png',buffer:Buffer.from(image.split(',')[1],'base64')});
+      await save(page);
+      assert(state.doc.cds.every(c=>c.set.cover.photoFile==='saved-cover.png' && !c.set.cover.photo));
+      assert.equal(state.doc.cds.find(c=>c.id==='main-cover-1').photoFile,'own-1.png');
+      assert.equal(state.doc.cds.find(c=>c.id==='main-cover-2').photoFile,'own-2.png');
+      assert.equal(state.commands.filter(c=>c.command==='save_cover').length,1,'shared content is written once');
+      await openCard(page,'Main cover album');
+      assert((await page.locator('.profile-cover img').getAttribute('src')).includes('saved-cover.png'));
+      await page.locator('#close-detail').click();await page.locator('#open-settings').click();
+      const downloading=page.waitForEvent('download');await page.locator('#export-json').click();const download=await downloading;
+      const stream=await download.createReadStream(), chunks=[];for await(const chunk of stream)chunks.push(chunk);
+      const exported=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      assert(exported.cds.every(c=>c.set.cover.photo.startsWith('data:image/') && !c.set.cover.photoFile));
+      assert(state.doc.cds.every(c=>c.set.cover.photoFile==='saved-cover.png'),'export does not mutate local file references');
+    }finally{await f.close();}
+  });
+  await test('switching shared edit scope preserves unsaved disc overrides, performer rows and role choices',async()=>{
+    const shared={composer:'Composer',type:'',performers:[],label:'Default label',issuer:'',releaseYear:'',catalogNo:'',barcode:''};
+    const discs=[1,2].map(n=>({id:'scope-'+n,title:'Scope '+n,addedAt:n,...shared,label:n===1?'Default label':'Own label',
+      set:{id:'scope-set',title:'Scope album',disc:n,total:2,shared,overrides:n===1?[]:['label']}}));
+    const f=await fixture({cds:discs}),{page,state}=f;
+    try {
+      await openCard(page,'Scope album');await page.locator('.set-disc').nth(1).locator('summary').click();
+      await page.locator('#set-edit-scope-2').click();await page.locator('#more-details').evaluate(n=>n.open=true);
+      await page.locator('#label').fill('Unsaved own label');await page.locator('#perf-rows .perf-name').fill('Unsaved person');
+      await page.locator('#set-edit-shared').check();
+      assert.equal(await page.locator('#label').inputValue(),'Default label');
+      assert.equal(await page.locator('#set-follow-label').isDisabled(),true);
+      await page.locator('#set-edit-shared').uncheck();
+      assert.equal(await page.locator('#label').inputValue(),'Unsaved own label');
+      assert.equal(await page.locator('#perf-rows .perf-name').inputValue(),'Unsaved person');
+      assert.equal(await page.locator('#set-follow-label').isChecked(),false);
+      await save(page);
+      assert.equal(state.doc.cds.find(c=>c.id==='scope-2').label,'Unsaved own label');
+      assert.equal(state.doc.cds.find(c=>c.id==='scope-2').performers[0].name,'Unsaved person');
+      assert.equal(state.doc.cds.find(c=>c.id==='scope-1').label,'Default label');
+    }finally{await f.close();}
+  });
   await test('album custom reordering moves every member together, and incomplete disc numbers are validated',async()=>{
     const discs=[{id:'order-a',title:'A',addedAt:3},{id:'order-b1',title:'B1',addedAt:2,set:{id:'order-b',title:'B album',disc:1,total:3}},
       {id:'order-b2',title:'B2',addedAt:1,set:{id:'order-b',title:'B album',disc:2,total:3}}];
