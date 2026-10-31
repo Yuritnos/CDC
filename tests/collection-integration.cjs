@@ -80,6 +80,7 @@ async function fixture({cds = [], settings = {}, nativeAudio = false, albums = [
       }
       case 'cover_data': return state.coverData || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jFo0AAAAASUVORK5CYII=';
       case 'save_cover': return 'saved-cover.png';
+      case 'fetch_cover': if(state.coverHold)await state.coverHold; if(!state.coverBytes)throw new Error('No fixture cover'); return state.coverBytes;
       default: throw new Error('Unexpected native command in isolated QA: ' + command);
     }
   });
@@ -87,7 +88,7 @@ async function fixture({cds = [], settings = {}, nativeAudio = false, albums = [
     window.CDC_DESKTOP = true;
     localStorage.setItem('cdc.lang', 'en');
     if (nativeAudio) window.__TAURI__ = {core: {
-      invoke: (command, args) => window.__cdcNativeInvoke(command, args),
+      invoke: async (command, args) => {const value=await window.__cdcNativeInvoke(command,args);return command==='fetch_cover'?Uint8Array.from(value).buffer:value;},
       convertFileSrc: file => location.origin + '/qa-audio/' + encodeURIComponent(file)
     }};
   }, {nativeAudio});
@@ -560,23 +561,29 @@ async function main() {
       assert.equal(state.doc.cds.find(c=>c.id==='link-one').set.id,'link-set');
     } finally { await f.close(); }
   });
-  await test('group selection includes every shown member; ungrouped Favorites can choose individual CDs', async () => {
+  await test('albums always group despite old settings; counts and statistics include standalone albums and saved discs', async () => {
     const discs = [1,2].map(n=>({id:'select-'+n,title:'Disc '+n,addedAt:n,set:{id:'selection',title:'Selection album',disc:n,total:2}}));
-    const f = await fixture({cds:discs}), {page,state} = f;
+    const f = await fixture({cds:discs.concat({id:'single-selection',title:'Single album',addedAt:3}),settings:{groupDiscs:false}}), {page,state} = f;
     try {
-      state.doc.meta.albums = [];
-      await page.locator('#select-btn').click(); await page.locator('#grid .card').click();
-      assert((await page.locator('#sel-count').innerText()).includes('2'));
-      await page.locator('#sel-done').click(); await page.locator('#group-discs').click();
+      assert.equal(await page.locator('#group-discs').count(),0);
       assert.equal(await page.locator('#grid .card').count(),2);
-      await page.locator('#select-btn').click(); await page.locator('#card-select-1').click();
-      assert((await page.locator('#sel-count').innerText()).includes('1'));
+      assert.equal(await page.locator('#count').textContent(),'2 albums / 3 discs');
+      await page.locator('#open-stats').click();
+      assert.deepEqual(await page.locator('.stat-tile').allTextContents(),['2Albums','3CDs','0Works','—Total playing time']);
+      if(process.env.CDC_QA_ARTIFACTS){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'album-statistics.png')});}
+      await page.locator('#close-stats').click();
+      await page.locator('#select-btn').click(); await page.locator('#grid .card').filter({hasText:'Selection album'}).click();
+      assert((await page.locator('#sel-count').innerText()).includes('2'));
       await page.locator('#sel-done').click();
       await page.locator('#search').fill('Selection album');
-      assert.equal(await page.locator('#grid .card').count(),2,'album title is searchable in separate-disc view');
-      await page.locator('#group-discs').click();
       assert.equal(await page.locator('#grid .card').count(),1);
-      assert.equal(state.doc.meta.settings.groupDiscs,true);
+      assert.equal(await page.locator('#count').textContent(),'1 album / 2 discs');
+      await page.locator('#search').fill('Disc 2');
+      assert.equal(await page.locator('#grid .card').count(),1);
+      assert.equal(await page.locator('#count').textContent(),'1 album / 1 disc');
+      await page.locator('#search').fill('Missing');assert.equal(await page.locator('#count').textContent(),'0 albums / 0 discs');
+      await page.reload();assert.equal(await page.locator('#grid .card').count(),2);
+      assert.equal(state.doc.meta.settings.groupDiscs,false,'obsolete preference is harmless and need not rewrite saved settings');
     } finally { await f.close(); }
   });
   await test('whole-album playback and playlists follow disc/track order; enqueue preserves the playing entry', async () => {
@@ -649,7 +656,7 @@ async function main() {
       assert.equal(state.commands.filter(c=>c.command==='save_cover').length,0);
     }finally{await f.close();}
   });
-  await test('main album cover survives when every disc uses its own cover and exports embedded image data',async()=>{
+  await test('one set cover edits across disc tabs, preserves legacy artwork and exports embedded album image data',async()=>{
     const shared={composer:'',type:'',performers:[],label:'',issuer:'',releaseYear:'',catalogNo:'',barcode:''};
     const discs=[1,2].map(n=>({id:'main-cover-'+n,title:'Own cover '+n,addedAt:n,photoFile:'own-'+n+'.png',
       set:{id:'main-cover-set',title:'Main cover album',disc:n,total:2,shared,cover:{photoFile:'album-main.png'},overrides:['cover']}}));
@@ -660,20 +667,78 @@ async function main() {
       await page.locator('#set-edit').click();
       const image=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=c.height=4;c.getContext('2d').fillRect(0,0,4,4);return c.toDataURL('image/png');});
       await page.locator('#photo').setInputFiles({name:'new-main.png',mimeType:'image/png',buffer:Buffer.from(image.split(',')[1],'base64')});
+      await page.waitForFunction(()=>!document.querySelector('#cover-canvas').hidden);
+      const preview=await page.locator('#cover-canvas').evaluate(c=>c.toDataURL());
+      await page.locator('#form-disc-tabs button').last().click();
+      assert.equal(await page.locator('#cover-canvas').evaluate(c=>c.toDataURL()),preview);
+      assert.equal(await page.locator('#photo-title').innerText(),'Album / set cover');
       await save(page);
-      assert(state.doc.cds.every(c=>c.set.cover.photoFile==='album-main.png' && !c.set.cover.photo));
-      assert.equal(state.doc.cds.find(c=>c.id==='main-cover-1').photoFile,'saved-cover.png');
+      assert(state.doc.cds.every(c=>c.set.cover.photoFile==='saved-cover.png' && !c.set.cover.photo));
+      assert.equal(state.doc.cds.find(c=>c.id==='main-cover-1').photoFile,'own-1.png');
       assert.equal(state.doc.cds.find(c=>c.id==='main-cover-2').photoFile,'own-2.png');
       assert.equal(state.commands.filter(c=>c.command==='save_cover').length,1,'shared content is written once');
       await openCard(page,'Main cover album');
-      assert((await page.locator('.profile-cover img').getAttribute('src')).includes('album-main.png'));
+      assert((await page.locator('.profile-cover img').getAttribute('src')).includes('saved-cover.png'));
       await page.locator('#close-detail').click();await page.locator('#open-settings').click();
       const downloading=page.waitForEvent('download');await page.locator('#export-json').click();const download=await downloading;
       const stream=await download.createReadStream(), chunks=[];for await(const chunk of stream)chunks.push(chunk);
       const exported=JSON.parse(Buffer.concat(chunks).toString('utf8'));
       assert(exported.cds.every(c=>c.set.cover.photo.startsWith('data:image/') && !c.set.cover.photoFile));
-      assert(state.doc.cds.every(c=>c.set.cover.photoFile==='album-main.png'),'export does not mutate local file references');
+      assert(state.doc.cds.every(c=>c.set.cover.photoFile==='saved-cover.png'),'export does not mutate local file references');
     }finally{await f.close();}
+  });
+  await test('new set artwork and cropping belong to the album; removal is shared, atomic and never creates disc artwork',async()=>{
+    const f=await fixture({nativeAudio:true}),{page,state}=f;
+    try{
+      assert.equal(await page.locator('#count').textContent(),'0 albums / 0 discs');
+      await openAdd(page);await page.locator('#title').fill('Shared cover');await page.locator('#set-choice').selectOption('+new');
+      assert.equal(await page.locator('#set-choice-label').textContent(),'Standalone or set');
+      assert.equal(await page.locator('label[for="set-choice"]').count(),0);
+      await page.locator('#form-add-disc').click();
+      assert.equal(await page.locator('#form-remove-disc').textContent(),'Delete this disc');
+      assert.equal(await page.locator('#form-add-disc').getAttribute('class'),await page.locator('#form-remove-disc').getAttribute('class'));
+      const image=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=16;c.height=8;const x=c.getContext('2d');x.fillStyle='red';x.fillRect(0,0,8,8);x.fillStyle='blue';x.fillRect(8,0,8,8);return c.toDataURL();});
+      await page.locator('#photo').setInputFiles({name:'album.png',mimeType:'image/png',buffer:Buffer.from(image.split(',')[1],'base64')});
+      await page.waitForFunction(()=>!document.querySelector('#cover-canvas').hidden);
+      await page.locator('#cover-zoom').fill('1.4');await page.locator('#cover-zoom').dispatchEvent('input');
+      const crop=await page.locator('#cover-canvas').evaluate(c=>c.toDataURL());
+      await page.locator('#form-disc-tabs button').first().click();
+      assert.equal(await page.locator('#cover-zoom').inputValue(),'1.4');assert.equal(await page.locator('#cover-canvas').evaluate(c=>c.toDataURL()),crop);
+      if(process.env.CDC_QA_ARTIFACTS){
+        fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.setViewportSize({width:360,height:860});
+        await page.locator('#set-choice-label').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'album-editor-mobile.png')});
+        assert.equal(await page.locator('#win-cd .panel').evaluate(n=>n.scrollWidth<=n.clientWidth+1),true);
+      }
+      await save(page);
+      assert.equal(state.doc.cds.length,2);assert(state.doc.cds.every(c=>c.set.cover.photoFile==='saved-cover.png'&&!c.photo&&!c.photoFile));
+      assert.equal(state.commands.filter(c=>c.command==='save_cover').length,1);
+      await openCard(page,'Shared cover');await page.locator('#set-edit').click();await page.locator('#photo-actions').waitFor();
+      const before=structuredClone(state.doc.cds);await page.locator('#photo-remove').click();await page.locator('#form-disc-tabs button').last().click();
+      assert.equal(await page.locator('#cover-canvas').isHidden(),true);
+      state.saveFail=true;await page.locator('#submit').click();await page.locator('#submit:not(:disabled)').waitFor();assert.deepEqual(state.doc.cds,before);
+      state.saveFail=false;await save(page);assert(state.doc.cds.every(c=>Object.keys(c.set.cover).length===0&&!c.photo&&!c.photoFile));
+      await openCard(page,'Shared cover');assert.equal(await page.locator('.profile-cover img').count(),0);
+    }finally{await f.close();}
+  });
+  await test('late lookup artwork follows the whole set after switching disc tabs and respects manual removal',async()=>{
+    for(const remove of [false,true]){
+      const f=await fixture({nativeAudio:true}),{page,state}=f;
+      try{
+        const image=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=c.height=8;c.getContext('2d').fillRect(0,0,8,8);return c.toDataURL();});
+        state.coverBytes=Array.from(Buffer.from(image.split(',')[1],'base64'));state.releases[101].images=[{type:'primary',uri:'https://fixture-cover.test/album.png'}];
+        const held=deferred();state.coverHold=held.promise;
+        await openAdd(page);await search(page);await page.locator('#lookup-use-0').click();await until(()=>state.commands.some(c=>c.command==='fetch_cover'));
+        await page.locator('#form-disc-tabs button').last().click();if(remove){
+          await page.locator('#photo').setInputFiles({name:'manual.png',mimeType:'image/png',buffer:Buffer.from(image.split(',')[1],'base64')});
+          await page.locator('#photo-actions').waitFor();await page.locator('#photo-remove').click();
+        }
+        held.resolve();await page.waitForFunction(()=>!document.querySelector('#lookup-status').textContent.includes('Looking for a cover'));
+        if(!remove){await page.waitForFunction(()=>!document.querySelector('#cover-canvas').hidden);await page.locator('#form-disc-tabs button').first().click();}
+        else assert.equal(await page.locator('#cover-canvas').isHidden(),true);
+        await save(page);assert(state.doc.cds.every(c=>!c.photo&&!c.photoFile));
+        assert(state.doc.cds.every(c=>remove?Object.keys(c.set.cover).length===0:c.set.cover.photoFile==='saved-cover.png'));
+      }finally{await f.close();}
+    }
   });
   await test('disc removal is staged in the editor, rolls back on failure and restores memberships with Undo',async()=>{
     const cds=[1,2].map(n=>({id:'remove-'+n,title:'Remove '+n,addedAt:n,set:{id:'remove-set',title:'Remove album',disc:n,total:2},
@@ -702,7 +767,7 @@ async function main() {
         await page.setViewportSize({width,height:860});await setLanguage(page,lang);await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
         const icon=page.locator('#disc-info-preview-2');await icon.scrollIntoViewIfNeeded();await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
         await page.mouse.move(0,0);await icon.hover();await page.locator('#disc-info-popup').waitFor();
-        const content=await page.locator('#disc-info-popup').innerText();assert(content.includes('Composer 2')&&content.includes('Pressing 2')&&content.includes('Work 2'));
+        const content=await page.locator('#disc-info-popup').innerText();assert(content.includes('Composer 2')&&content.includes('Pressing 2')&&!content.includes('Work 2'));
         assert.equal(await page.locator('.set-disc[open]').count(),0);
         assert.equal(await page.locator('#disc-info-popup').evaluate(n=>{const r=n.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth+1&&r.top>=0&&r.bottom<=innerHeight+1&&n.scrollWidth<=n.clientWidth+1;}),true);
         if(process.env.CDC_QA_ARTIFACTS&&width===360&&lang==='zh'&&theme==='dark'){
@@ -794,9 +859,7 @@ async function main() {
       const added = state.doc.cds.find(c => c.title === 'Standalone CD');
       assert.equal(added.recordingYear, '1985–1987, 1990'); assert.equal(added.hub, 'full');
       assert.equal(Object.hasOwn(added, 'set'), false);
-      await page.locator('#group-discs').click();
-      await openCard(page, 'Set disc one');
-      assert.equal(await page.locator('#disc-album-open').count(), 1);
+      await openCard(page, 'Box QA');
       assert.equal(await page.locator('.set-siblings').count(), 0);
       assert.equal(await page.getByRole('button', {name: 'Add another disc to this set', exact: true}).count(), 0);
       await edit(page);
@@ -806,8 +869,10 @@ async function main() {
       assert.deepEqual(state.doc.cds.find(c => c.id === 'legacy-one').set.extra, membership.extra);
       assert.equal(state.doc.cds.find(c => c.id === 'legacy-one').set.id, membership.id);
       assert.deepEqual(state.doc.cds.find(c => c.id === sibling.id), sibling);
-      await page.reload(); await openCard(page, 'Edited disc one');
-      assert((await page.locator('#win-detail').innerText()).includes('Partial silver hub'));
+      await page.reload(); await openCard(page, 'Box QA');
+      await page.locator('#disc-info-legacy-one').press('Enter');
+      assert((await page.locator('#disc-info-popup').innerText()).includes('Partial silver hub'));
+      await page.locator('#disc-info-legacy-one').press('Escape');
       await edit(page);
       // Online replacement during an edit must preserve the old membership too.
       await search(page); await page.locator('#lookup-use-0').click();

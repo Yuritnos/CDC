@@ -1197,7 +1197,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M4 5h16v2.5H4zM4 10.75h16v2.5H4zM4 16.5h16V19H4z"/></svg>
         </button>
       </div>
-      <button type="button" class="btn small quiet" id="group-discs" data-i18n="groupDiscs" aria-pressed="true" hidden>Group album CDs</button>
       <button type="button" class="btn small quiet" id="select-btn" data-i18n="selectBtn" hidden>Select</button>
       <button type="button" class="btn small quiet" id="filter-btn" aria-expanded="false" aria-controls="filters" hidden><span data-i18n="filterBtn">Filter</span><span class="fcount" id="filter-count"></span></button>
       <div class="filters" id="filters" hidden>
@@ -1295,8 +1294,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       </div>
 
       <fieldset id="set-fields">
-        <legend data-i18n="discSet">Album or box set</legend>
-        <div class="field"><label class="lbl" for="set-choice" data-i18n="setChoose">Album membership</label><select class="input" id="set-choice"></select></div>
+        <legend id="set-choice-label" data-i18n="discSet">Standalone or set</legend>
+        <div class="field"><select class="input" id="set-choice" aria-labelledby="set-choice-label"></select></div>
         <div id="set-editor" hidden>
           <div class="field"><label class="lbl" for="set-title" data-i18n="setTitle">Set name</label><input class="input" id="set-title" maxlength="200"></div>
           <div class="field"><label class="lbl" for="set-total" data-i18n="setTotal">Discs in set</label><input class="input" id="set-total" type="number" min="1" max="999" value="2"></div>
@@ -1307,7 +1306,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       <div class="disc-editor-tools" id="form-disc-tools" hidden>
         <div id="form-disc-tabs" class="disc-editor-tabs" role="group" data-i18n-aria="discEditors" aria-label="Discs"></div>
         <div class="favrow">
-          <button type="button" class="btn small quiet" id="form-add-disc" data-i18n="addDisc">Add a disc</button>
+          <button type="button" class="linkbtn" id="form-add-disc" data-i18n="addDisc">Add a disc</button>
           <button type="button" class="linkbtn" id="form-remove-disc" data-i18n="removeDraftDisc" hidden>Remove this added disc</button>
         </div>
         <p class="hint" data-i18n="discDraftHint">Each disc keeps its own information, works, details and audio.</p>
@@ -2486,6 +2485,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   I18N.zh.discImportBusy = "请等待音频导入完成后再填入查询结果。";
   I18N.en.albumMembershipSet = "Album / box set"; I18N.ja.albumMembershipSet = "アルバム／ボックスセット"; I18N.zh.albumMembershipSet = "专辑／套装";
   I18N.en.deleteBtn = "Delete"; I18N.ja.deleteBtn = "削除"; I18N.zh.deleteBtn = "删除";
+  Object.assign(I18N.en, { discSet: "Standalone or set", discDelete: "Delete this disc", statsAlbums: "Albums", "albumTally.one": "1 album", "albumTally.other": "{n} albums", shelfCount: "{albums} / {discs}", setCover: "Album / set cover", setCoverHint: "This cover belongs to the whole album or set. Drag to crop, or use the zoom slider." });
+  Object.assign(I18N.ja, { discSet: "単独またはセット", discDelete: "このディスクを削除", statsAlbums: "アルバム", "albumTally.one": "{n}アルバム", "albumTally.other": "{n}アルバム", shelfCount: "{albums} / {discs}", setCover: "アルバム／セットのカバー", setCoverHint: "このカバーはアルバムまたはセット全体に使われます。ドラッグして位置を調整し、スライダーで拡大・縮小できます。" });
+  Object.assign(I18N.zh, { discSet: "独立或套装", discDelete: "删除本碟", statsAlbums: "专辑", "albumTally.one": "{n} 张专辑", "albumTally.other": "{n} 张专辑", shelfCount: "{albums} / {discs}", setCover: "专辑／套装封面", setCoverHint: "此封面用于整张专辑或套装。可拖动调整位置，或使用滑块缩放。" });
   Object.assign(I18N.en, { albumOverall: "Disc information", workInheritHint: "Works use this disc’s details unless you enter different ones in Work details.", addDisc: "Add a disc", discEditors: "Discs", discEditor: "Disc {n}", removeDraftDisc: "Remove this added disc", discDraftHint: "Each disc keeps its own information, works, details and audio.", importPreview: "{n} discs selected: {discs}. Use the disc buttons below to review and edit each disc before saving.", importDiscConflict: "Disc {n} is already in this album. Choose a matching disc to update, or import into a new album." });
   Object.assign(I18N.ja, { albumOverall: "ディスク情報", workInheritHint: "各作品にはこのディスクの情報が使われます。異なる場合は「作品の詳細」で入力してください。", addDisc: "ディスクを追加", discEditors: "ディスク", discEditor: "ディスク {n}", removeDraftDisc: "追加したこのディスクを取り消す", discDraftHint: "情報、作品、詳細、音声はディスクごとに編集できます。", importPreview: "{n}枚を選択中：{discs}。下のディスクボタンで各ディスクを確認・編集してから保存できます。", importDiscConflict: "このアルバムにはディスク{n}が既にあります。該当ディスクを編集するか、新しいアルバムに取り込んでください。" });
   Object.assign(I18N.zh, { albumOverall: "本碟信息", workInheritHint: "各作品默认使用本碟的信息；如有不同，请在「作品详情」中填写。", addDisc: "添加一张CD", discEditors: "CD列表", discEditor: "第 {n} 碟", removeDraftDisc: "移除此张新增CD", discDraftHint: "每张CD均可分别编辑本碟信息、作品、碟片详情和音频。", importPreview: "已选择 {n} 张CD：{discs}。可使用下方碟片按钮逐碟检查并编辑后再保存。", importDiscConflict: "此专辑已包含第 {n} 碟，请编辑对应CD，或导入至新专辑。" });
@@ -3000,8 +3002,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("drop-glyph").hidden = has;
     $("cover-zoom-row").hidden = !has;
     $("photo-actions").hidden = !has;
-    $("photo-title").textContent = has ? t("coverAdded") : t("cover");
-    $("photo-hint").textContent = has ? t("coverHintAdded") : t("coverHint");
+    $("photo-title").textContent = formSetId ? t("setCover") : has ? t("coverAdded") : t("cover");
+    $("photo-hint").textContent = formSetId ? t("setCoverHint") : has ? t("coverHintAdded") : t("coverHint");
   }
   async function handleFile(file) {
     if (!file) return;
@@ -3771,9 +3773,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     return setMembers(source.set.id).filter(function (c) { return setOverrides(c, setDefaults(source)).indexOf("cover") < 0; })[0] || source;
   }
   function coverValue(source) { var out = {}; copySetCover(out, source); return out; }
-  function groupedShelf() { return meta.settings.groupDiscs !== false; }
+  function albumCountFor(list) {
+    return new Set(list.map(function (cd) { return releaseSet(cd) ? "set:" + cd.set.id : "cd:" + cd.id; })).size;
+  }
+  function shelfCount(list) { return t("shelfCount", { albums: tn("albumTally", albumCountFor(list)), discs: tn("count", list.length) }); }
   function shelfGroups(list) {
-    if (!groupedShelf()) return list;
     var groups = {}, out = [];
     list.forEach(function (cd) {
       var s = releaseSet(cd);
@@ -5283,6 +5287,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       d.appendChild(el("span", null, label));
       tiles.appendChild(d);
     }
+    tile(albumCountFor(cds), t("statsAlbums"));
     tile(cds.length, t("statsCds"));
     tile(works, t("statsWorks"));
     var mins = Math.max(1, Math.round(secs / 60));
@@ -5461,9 +5466,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   $("view-cards").addEventListener("click", function () { setView("cards"); });
   $("view-list").addEventListener("click", function () { setView("list"); });
-  $("group-discs").addEventListener("click", function () {
-    endSelect(); commitMeta(function (m) { m.settings.groupDiscs = !groupedShelf(); });
-  });
 
   /* One CD as a row of the list view; it does what a card does (open, play, tick, drag). */
   function listRow(cd, music, arranging) {
@@ -5830,7 +5832,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (!loaded || currentPlaylistId()) setFoldVisibility($("filters"), false);
     $("viewsw").hidden = true;
     $("select-btn").hidden = true;
-    $("group-discs").hidden = true;
     if (!loaded || currentPlaylistId()) setFoldVisibility($("selbar"), false);
     grid.classList.remove("arranging", "as-table");
     renderFab();
@@ -5856,7 +5857,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
     if (!cds.length) {
       resetShelfTools();
-      count.textContent = tn("count", 0);
+      count.textContent = shelfCount([]);
       search.hidden = true;
       sortWrap.hidden = true;
       grid.appendChild(sampleCard());
@@ -5874,12 +5875,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("view-list").setAttribute("aria-pressed", viewMode === "list" ? "true" : "false");
     $("select-btn").hidden = false;
     renderFilters(base);
-    $("group-discs").hidden = !cds.some(releaseSet);
-    $("group-discs").setAttribute("aria-pressed", groupedShelf() ? "true" : "false");
     var list = shelfList();
     renderSelBar(list);
-    var matchedCount = list.reduce(function (n, c) { return n + memberIds(c).length; }, 0);
-    count.textContent = narrowed ? t("countOf", { a: matchedCount, b: base.length }) : tn("count", base.length);
+    count.textContent = shelfCount([].concat.apply([], list.map(function (cd) { return cd._members || [cd]; })));
     /* Cards can be dragged only in the custom order, and not while a search or filter hides some,
        or while selecting. */
     var arranging = sortKey === "custom" && !narrowed && !selecting && list.length > 1;
@@ -6997,6 +6995,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (discEditorBusy() || !discSession || discSession.active === id) return;
     var entry = discSession.entries.find(function (d) { return d.id === id; }); if (!entry) return;
     captureDiscEntry();
+    // The visible cover belongs to the whole set and stays in place across disc tabs.
+    var setCover = formSetId ? activeDiscEntry().snapshot : null;
     qsa(".perf-roles.is-open").forEach(function (menu) { setPerformerRolesOpen(menu, false); });
     discSession.active = id; formDiscNumber = entry.number;
     var s = entry.snapshot;
@@ -7009,8 +7009,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       $("perf-rows").textContent = ""; s.people.forEach(function (row) { $("perf-rows").appendChild(row); });
       $("work-list").textContent = ""; s.works.forEach(function (work) { $("work-list").appendChild(work); });
       ["albumOverall", "works-set", "more-details", "form-audio-set"].forEach(function (field, i) { $(field).open = s.folds[i]; });
-      photoData = s.photo; editCover = s.editCover; coverShown = s.coverShown; Object.assign(coverCrop, s.crop);
-      showPhoto(); coverCrop.render(); $("drop").classList.toggle("filled", s.coverFilled);
+      var coverState = setCover || s;
+      photoData = coverState.photo; editCover = coverState.editCover; coverShown = coverState.coverShown; Object.assign(coverCrop, coverState.crop);
+      showPhoto(); coverCrop.render(); $("drop").classList.toggle("filled", coverState.coverFilled);
       if (editCover.file && !photoData && Covers.ready) {
         var wantedCover = editCover;
         Covers.data(wantedCover.file).then(function (data) {
@@ -7020,6 +7021,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       formAudio = s.audio; formCard = s.card; formFav.ids = s.favorites.slice();
       formSetOriginal = s.setOriginal;
       refreshRows(); renderFormCard(); renderAlbumChecks();
+    }
+    if (!s && setCover) {
+      photoData = setCover.photo; editCover = setCover.editCover; coverShown = setCover.coverShown; Object.assign(coverCrop, setCover.crop);
+      showPhoto(); coverCrop.render(); $("drop").classList.toggle("filled", setCover.coverFilled);
     }
     ["title", "recordingYear", "releaseYear", "works"].forEach(function (f) { setErr(f, ""); });
     $("set-err").textContent = ""; $("dup-warn").hidden = true; dupWarned = "";
@@ -7047,7 +7052,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     qsa("#lookup-disc-choices input, #lookup-select-all").forEach(function (node) { node.disabled = discEditorBusy(); });
     var current = activeDiscEntry();
     $("form-remove-disc").hidden = !current || entries.length < 2;
-    $("form-remove-disc").textContent = t(current && current.existing ? "discDelete" : "removeDraftDisc");
+    $("form-remove-disc").textContent = t("discDelete");
     $("form-remove-disc").disabled = discEditorBusy();
   }
   function addEditorDisc() {
@@ -7057,7 +7062,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var number = 1; while (used.indexOf(number) >= 0) number++;
     if (number > 999) { toast(t("setTooMany")); return; }
     var data = { id: newDiscDraftId(), title: $("set-title").value || $("title").value, performers: [], works: [] };
-    copySetCover(data, { photo: coverForSaving(), photoFile: !editCover.touched && editCover.file || undefined });
     var source = setSource(formSetId);
     data.set = { id: formSetId, title: $("set-title").value, disc: number, total: Math.max(number, +$("set-total").value),
       overrides: source ? setOverrides(data, setDefaults(source), setCoverSource(source)) : SET_SHARED.slice() };
@@ -7137,13 +7141,15 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (!draft) { delete cd.set; return [cd]; }
     var original = formSetOriginal && formSetOriginal.id === draft.id ? formSetOriginal : {};
     var source = setSource(draft.id);
-    cd.set = Object.assign({}, original, draft, { overrides: SET_SHARED.concat("cover") });
+    var cover = coverValue(cd), before = cdById(cd.id);
+    // Preserve legacy disc artwork without editing or duplicating it. New artwork belongs to set.cover.
+    copySetCover(cd, before || {});
+    cd.set = Object.assign({}, original, draft, { overrides: SET_SHARED.slice(), cover: cover });
     if (!cd.set.shared) cd.set.shared = source ? clone(source.set.shared || sharedValues(source)) : sharedValues(cd);
-    if (!cd.set.cover) cd.set.cover = coverValue(source ? setCoverSource(source) : cd);
     var changes = setMembers(draft.id).filter(function (c) {
       return c.id !== cd.id && !discSession.entries.some(function (entry) { return entry.id === c.id && entry.remove; }) &&
-        (c.set.title !== draft.title || +c.set.total !== draft.total);
-    }).map(function (c) { var next = clone(c); next.set.title = draft.title; next.set.total = draft.total; return next; });
+        (c.set.title !== draft.title || +c.set.total !== draft.total || JSON.stringify(coverValue(setCoverSource(source || c))) !== JSON.stringify(cover));
+    }).map(function (c) { var next = clone(c); next.set.title = draft.title; next.set.total = draft.total; next.set.cover = clone(cover); return next; });
     changes.push(cd); return changes;
   }
   function singleDiscSnapshot() {
@@ -7202,6 +7208,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("cancel-edit").hidden = !editing;
     renderFormAudio();
     renderDiscButtons();
+    showPhoto();
   }
   function clearForm() {
     discardFormAudio();
@@ -7267,10 +7274,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("notes").value = cd.notes || "";
     $("albumOverall").open = true; $("works-set").open = false; $("form-audio-set").open = false;
     resetWorks(cd.works);
-    photoData = cd.photo || null;
+    var coverSource = releaseSet(cd) ? setCoverSource(setSource(cd.set.id) || cd) : cd;
+    photoData = coverSource.photo || null;
     /* A cover kept as a file is read back for the cropper; until then (or if the person leaves the
        cover alone) saving keeps the file as it is. */
-    editCover = { file: !cd.photo && cd.photoFile ? cd.photoFile : null, touched: false };
+    editCover = { file: !coverSource.photo && coverSource.photoFile ? coverSource.photoFile : null, touched: false };
     if (editCover.file && Covers.ready) {
       var wanted = editCover;
       Covers.data(wanted.file).then(function (d) {
@@ -7946,19 +7954,22 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     /* A cover the user chose stays; one from an earlier lookup is replaced. */
     var ownCover = photoData && !$("drop").classList.contains("filled") || editCover.file && !editCover.touched;
     if (ownCover) { lookupStatus(done); return; }
-    if (photoData) { editCover.touched = true; photoData = null; $("drop").classList.remove("filled"); showPhoto(); }
+    if (photoData) { editCover = { file: null, touched: false }; photoData = null; $("drop").classList.remove("filled"); showPhoto(); }
     lookupStatus(done + " " + t("coverSearching"));
     var cover = await findCover(p);
     if (run !== lookupRun) return;
     if (cover && coverTarget && discSession && discSession.entries.indexOf(coverTarget) >= 0) {
-      if (activeDiscEntry() === coverTarget && !photoData) {
+      var applied = false;
+      if ((formSetId || activeDiscEntry() === coverTarget) && !photoData && !editCover.file && !editCover.touched) {
         editCover.touched = true; photoData = cover.data; showPhoto(); $("drop").classList.add("filled"); captureDiscEntry();
-      } else if (activeDiscEntry() !== coverTarget && coverTarget.snapshot && !coverTarget.snapshot.photo && !coverTarget.snapshot.editCover.file) {
+        applied = true;
+      } else if (!formSetId && activeDiscEntry() !== coverTarget && coverTarget.snapshot && !coverTarget.snapshot.photo && !coverTarget.snapshot.editCover.file) {
         var s = coverTarget.snapshot; s.photo = cover.data; s.editCover = { file: null, touched: true }; s.coverShown = null;
         s.crop = { img: null, zoom: 1, x: 0, y: 0, changed: false }; s.coverFilled = true;
         coverTarget.fingerprint = JSON.stringify({ previous: coverTarget.fingerprint, cover: cover.data });
+        applied = true;
       }
-      lookupStatus(done + " " + t(cover.exact ? "coverFoundExact" : "coverFound"));
+      lookupStatus(done + (applied ? " " + t(cover.exact ? "coverFoundExact" : "coverFound") : ""));
     } else {
       lookupStatus(done + " " + t("coverNone"));
     }
@@ -9414,7 +9425,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var popup = el("div", "disc-info-popup"); popup.id = "disc-info-popup";
     popup.setAttribute("role", "dialog"); popup.setAttribute("aria-modal", "false"); popup.setAttribute("aria-labelledby", "disc-info-heading");
     var head = el("div", "disc-info-head");
-    if (coverSrc(cd)) { var img = el("img"); img.src = coverSrc(cd); img.alt = ""; head.appendChild(img); }
     var heading = el("h3", null, cd.title); heading.id = "disc-info-heading"; head.appendChild(heading);
     var close = el("button", "iconbtn", "×"); close.type = "button"; close.setAttribute("aria-label", t("close"));
     close.addEventListener("click", function () { closeDiscTip(true); }); head.appendChild(close); popup.appendChild(head);
@@ -9428,10 +9438,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       ["spars",cd.spars],["barcode",cd.barcode],["ifpiMastering",cd.ifpiMastering],["ifpiMould",cd.ifpiMould],["hub",hubText(cd.hub)],["notes",cd.notes]]
       .forEach(function (pair) { fact(t(pair[0]), pair[1]); });
     popup.appendChild(facts);
-    if ((cd.works || []).length) {
-      var program = setDiscProgram(cd); qsa(".work-info", program).forEach(function (button) { button.remove(); });
-      program.insertBefore(el("h3", null, t("works")), program.firstChild); popup.appendChild(program);
-    }
     if ((cd.audio || []).length) {
       var audio = el("section", "psect"); audio.appendChild(el("h3", null, t("audioHead")));
       audioSorted(cd).forEach(function (a) { audio.appendChild(el("p", "hint", AudioLib.present[a.file] === false ? t("audioMissing", { name:a.name }) : audioTitle(cd,a))); });
