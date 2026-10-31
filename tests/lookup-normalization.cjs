@@ -12,7 +12,7 @@ function section(start, end) {
 let release;
 const context = vm.createContext({URLSearchParams, fetch: async () => ({ok: true, status: 200, json: async () => structuredClone(release)})});
 vm.runInContext(section('  var DURATION = ', '  function toSeconds(') +
-  section('  function inferWorkType(', '  function validRecordingYears(') +
+  section('  function inferWorkType(', '  Object.assign(I18N.en, { cdUnsavedHead:') +
   section('  function dgClean(', '  var LOOKUP_SOURCES = ') +
   '\nvar lookup = discogsSource.details;', context);
 const metadata = vm.runInNewContext(section('  function workMetadata(', '  function workDisclosure(') + '\n({workMetadata, workOverrides});');
@@ -159,6 +159,46 @@ async function main() {
       tracklist: [track('Sonata No. 1', '1-1'), track('Sonata No. 2', '2-1')]});
     assert.equal(uniform.type, 'Sonata'); assert.equal(uniform.composer, 'A');
     assert(uniform.lookupDiscs.every(d => d.works.every(w => !w.type && !w.composer)));
+  });
+  await test('028944443028 public fixture keeps all 17 works on their own orchestras across all 11 discs', async () => {
+    const source = require('./fixtures/discogs-4600502.json');
+    const out = await lookup(source, '028944443028');
+    const lpo='London Philharmonic Orchestra', cgo='Concertgebouworkest';
+    const expected=[[lpo,lpo],[lpo,lpo],[lpo],[cgo,lpo],[cgo,cgo],[lpo],[cgo],[cgo],[cgo],[cgo,cgo],[lpo,cgo]];
+    const local={
+      '9:1':[{name:'Marius Rintzler',role:'Singer'},{name:'Concertgebouw Chorus',role:'Ensemble'}],
+      '10:2':[{name:'Ortrun Wenkel',role:'Singer'}],
+      '11:2':[{name:'Ortrun Wenkel',role:'Singer'},{name:'Elisabeth Söderström',role:'Singer'},{name:'Ryszard Karczykowski',role:'Singer'}]
+    };
+    assert.equal(out.lookupDiscs.length,11);assert.equal(out.barcode,'028944443028');assert.equal(out.spars,'ADD/DDD');
+    assert.deepEqual(out.performers.filter(p=>p.role==='Orchestra'),[]);
+    out.lookupDiscs.forEach((disc,i)=>{
+      assert.equal(disc.works.length,expected[i].length,'disc '+(i+1));
+      disc.works.forEach((work,j)=>{
+        const people=plain(metadata.workMetadata(out,work).performers);
+        assert.deepEqual(people.filter(p=>p.role==='Orchestra'),[{name:expected[i][j],role:'Orchestra'}],`disc ${i+1}, work ${j+1}`);
+        assert(people.some(p=>p.name==='Bernard Haitink'&&p.role==='Conductor'));
+        assert(!people.some(p=>p.name==='John Alldis'&&p.role==='Ensemble'),'a chorus master is a person, not a choir');
+        const pair=p=>p.role+':'+p.name;
+        const full=[{name:'Bernard Haitink',role:'Conductor'},{name:'John Alldis',role:'Chorus master'},
+          {name:expected[i][j],role:'Orchestra'}].concat(local[`${i+1}:${j+1}`]||[]);
+        assert.deepEqual(people.map(pair).sort(),full.map(pair).sort(),`all performer roles on disc ${i+1}, work ${j+1}`);
+      });
+    });
+  });
+  await test('headline artists never bypass their explicit work or release track scopes; uncredited artists still infer roles', async () => {
+    const out=await lookup({artists:[{name:'First Orchestra'},{name:'Second Orchestra'},{name:'Headline Conductor'}],
+      extraartists:[credit('First Orchestra','Orchestra','1'),credit('Second Orchestra','Orchestra','2')],
+      tracklist:[track('First','1'),track('Second','2')]});
+    assert.deepEqual(out.performers,[{name:'Headline Conductor',role:'Conductor'}]);
+    assert.deepEqual(out.works.map(w=>w.performers),[[{name:'First Orchestra',role:'Orchestra'}],[{name:'Second Orchestra',role:'Orchestra'}]]);
+    const indexed=await lookup({artists:[{name:'Only first'},{name:'Only second'}],tracklist:[
+      {type_:'index',title:'First',extraartists:[credit('Only first','Piano')],sub_tracks:[track('First','1')]},
+      {type_:'index',title:'Second',extraartists:[credit('Only second','Piano')],sub_tracks:[track('Second','2')]}
+    ]});
+    assert.deepEqual(indexed.performers,[]);assert.deepEqual(indexed.works.map(w=>w.performers),[[pianist('Only first')],[pianist('Only second')]]);
+    const oldYear=await lookup({year:1971,identifiers:[{type:'SPARS Code',value:'Analogue / DDD'}],tracklist:[]});
+    assert.equal(oldYear.releaseYear,'1971');assert.equal(oldYear.spars,'Analogue / DDD');
   });
   await test('name casing, release artist role inference, and mixed-source performers remain scoped', async () => {
     const out = await lookup({artists: [{name: 'Example Orchestra'}, {name: 'Conductor Person'}],

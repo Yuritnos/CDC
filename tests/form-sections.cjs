@@ -208,8 +208,8 @@ async function main() {
       }
     } finally { await f.close(); }
   });
-  await test('submit expands closed works/disc sections and focuses real invalid duration/year fields', async () => {
-    const f = await fixture(), {page} = f;
+  await test('submit expands invalid duration fields while free-text recording/release years and technique save unchanged', async () => {
+    const f = await fixture(), {page,state} = f;
     try {
       await openEdit(page);
       await page.locator('.t-len').evaluate(n => n.value = '2:99');
@@ -217,10 +217,14 @@ async function main() {
       assert.equal(await page.locator('#works-set').evaluate(n => n.open), true);
       assert.equal(await page.locator('.t-len').evaluate(n => document.activeElement === n), true);
       await page.locator('.t-len').fill('2:00');
-      await page.locator('#recordingYear').evaluate(n => n.value = '1800');
-      await page.locator('#submit').click();
-      assert.equal(await page.locator('#more-details').evaluate(n => n.open), true);
-      assert.equal(await page.locator('#recordingYear').evaluate(n => document.activeElement === n), true);
+      const values={recordingYear:'Before 1900; 1977–1984 / dates unknown / 未詳',releaseYear:'1995 (reissue 2007), circa',spars:'ADD/DDD – mixed analogue and digital'};
+      await page.locator('#more-details').evaluate(n=>n.open=true);
+      for(const [id,value] of Object.entries(values))await page.locator('#'+id).fill(value);
+      await save(page);
+      for(const [id,value] of Object.entries(values))assert.equal(state.doc.cds[0][id],value);
+      await openEdit(page,state.doc.cds[0]);
+      for(const [id,value] of Object.entries(values))assert.equal(await page.locator('#'+id).inputValue(),value);
+      await save(page);
     } finally { await f.close(); }
   });
   await test('submit focus also expands nested work/performer details if a validator reports a custom-role field', async () => {

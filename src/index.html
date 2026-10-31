@@ -1235,7 +1235,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       <h2 id="add-h">Add a CD</h2>
       <button type="button" class="iconbtn" id="close-cd" data-i18n-aria="close" aria-label="Close">×</button>
     </div>
-    <form id="cd-form" novalidate>
+    <form id="cd-form" autocomplete="off" novalidate>
       <section class="lookup" id="lookup">
         <label class="lbl" for="lookup-q" data-i18n="lookupHead">Find this CD online</label>
         <div class="lookup-row">
@@ -1297,7 +1297,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         <legend id="set-choice-label" data-i18n="discSet">Standalone or set</legend>
         <div class="field"><select class="input" id="set-choice" aria-labelledby="set-choice-label"></select></div>
         <div id="set-editor" hidden>
-          <div class="field"><label class="lbl" for="set-title" data-i18n="setTitle">Set name</label><input class="input" id="set-title" maxlength="200"></div>
+          <div class="field"><label class="lbl" for="set-title" data-i18n="setTitle">Set name</label><input class="input" id="set-title" autocomplete="off" maxlength="200"></div>
           <div class="field"><label class="lbl" for="set-total" data-i18n="setTotal">Discs in set</label><input class="input" id="set-total" type="number" min="1" max="999" value="2"></div>
         </div>
         <p class="err" id="set-err" role="alert"></p>
@@ -1357,12 +1357,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           <div class="two">
             <div class="field">
               <label class="lbl" for="recordingYear" data-i18n="recYear">Recording year</label>
-              <input class="input" id="recordingYear" name="recordingYear" type="text" maxlength="40" autocomplete="off" placeholder="1985–1987">
+              <input class="input" id="recordingYear" name="recordingYear" type="text" autocomplete="off" placeholder="1985–1987">
               <p class="err" id="recordingYear-err" role="alert"></p>
             </div>
             <div class="field">
               <label class="lbl" for="releaseYear" data-i18n="relYear">CD release year</label>
-              <input class="input" id="releaseYear" name="releaseYear" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="1998">
+              <input class="input" id="releaseYear" name="releaseYear" type="text" autocomplete="off" placeholder="1998">
               <p class="err" id="releaseYear-err" role="alert"></p>
             </div>
           </div>
@@ -1387,12 +1387,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           <div class="two">
             <div class="field">
               <label class="lbl" for="spars" data-i18n="spars">Production technique</label>
-              <select class="input" id="spars">
-                <option value="" data-i18n="sparsNone">Not stated</option>
+              <input class="input" id="spars" type="text" list="spars-options" autocomplete="off" data-i18n-ph="sparsNone" placeholder="Not stated">
+              <datalist id="spars-options">
                 <option value="DDD">DDD</option>
                 <option value="ADD">ADD</option>
                 <option value="AAD">AAD</option>
-              </select>
+              </datalist>
             </div>
             <div class="field">
               <label class="lbl" for="barcode" data-i18n="barcode">Barcode</label>
@@ -2522,13 +2522,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var patterns = [["Symphony", /symphon|sinfon|交響曲|交响曲/i], ["Sonata", /sonat|ソナタ|奏鸣曲|奏鳴曲/i], ["Overture", /overture|ouverture|序曲/i], ["Suite", /\bsuite\b|組曲|组曲/i], ["Opera", /\bopera\b|opéra|歌劇|歌剧/i], ["Ballet", /ballet|バレエ|芭蕾/i], ["Choral", /choral|choir|requiem|\bmass\b|合唱|レクイエム/i], ["Chamber", /quartet|quintet|sextet|\btrio\b|室内楽|室内乐|四重奏|五重奏/i]];
     for (var i = 0; i < patterns.length; i++) if (patterns[i][1].test(s)) return patterns[i][0];
     return "";
-  }
-  function validRecordingYears(value) {
-    if (!String(value || "").trim()) return true;
-    return String(value).split(/[,，;；]/).every(function (part) {
-      var m = part.trim().match(/^(\d{4})(?:\s*[-–—]\s*(\d{4}))?$/);
-      return !!m && +m[1] >= 1900 && (!m[2] || (+m[2] >= +m[1] && +m[2] <= 9999));
-    });
   }
   Object.assign(I18N.en, { cdUnsavedHead: "Save your changes?", cdUnsavedHint: "This CD has unsaved changes.", cdUnsavedSave: "Save", cdUnsavedDiscard: "Discard", cdUnsavedKeep: "Keep editing" });
   Object.assign(I18N.ja, { cdUnsavedHead: "変更を保存しますか？", cdUnsavedHint: "このCDには未保存の変更があります。", cdUnsavedSave: "保存", cdUnsavedDiscard: "変更を破棄", cdUnsavedKeep: "編集を続ける" });
@@ -7359,6 +7352,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var r = null;
       if (/^(conductor|conducted by|conducting)$/.test(p)) r = "Conductor";
       else if (/^orchestra$/.test(p)) r = "Orchestra";
+      else if (/^(chorus|choir) (master|director|conductor)$/.test(p) || /^choirmaster$/.test(p)) r = "Chorus master";
       else if (/^(ensemble|choir|chorus|band|quartet|trio|chamber)/.test(p)) r = "Ensemble";
       else if (/(vocals|voice|soprano|mezzo|alto|tenor|baritone|countertenor|treble)/.test(p)) r = "Singer";
       else if (/^(piano|fortepiano)/.test(p)) r = "Pianist";
@@ -7597,7 +7591,15 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         var key = dgClean(a.name), name = dgCreditName(a);
         if (!names[key] || name !== key) names[key] = name;
       });
-      var context = { credits: d.extraartists || [], artists: d.artists || [], names: names, positions: positions };
+      /* The cover's artist list describes the whole release. If an artist has explicit performing
+         credits anywhere, only those credits establish their scope; never infer them on other works.
+         Infer the remaining headline artists in their original order so a conductor after an
+         orchestra still receives the right role. Track/index artists remain local in dgWorks. */
+      var explicit = credits.filter(function (a) { return dgRoles(a.role).length || dgComposers([a]).length; });
+      var inferred = dgPerformers(credits, d.artists || [], composers, names).filter(function (p) {
+        return !explicit.some(function (a) { return (names[dgClean(a.name)] || dgCreditName(a)) === p.name; });
+      });
+      var context = { credits: (d.extraartists || []).concat(inferred), artists: [], names: names, positions: positions };
       var discLists = dgDiscLists(d.tracklist);
       var discKeys = Object.keys(discLists).map(Number).sort(function (a, b) { return a - b; });
       var formatCount = (d.formats || []).reduce(function (n, f) { return /^CD$/i.test(f.name || "") ? n + (parseInt(f.qty, 10) || 1) : n; }, 0);
@@ -7627,7 +7629,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var pic = (d.images || []).filter(function (im) { return im.type === "primary"; })[0] || (d.images || [])[0];
       if (pic && pic.uri) out.coverUrl = pic.uri;
       out.artistLine = (d.artists || []).map(function (a) { return names[dgClean(a.name)]; }).filter(Boolean)[0] || "";
-      if (d.year && d.year >= 1980) out.releaseYear = String(d.year);
+      if (d.year) out.releaseYear = String(d.year);
       if (d.country) out.madeIn = d.country;
       (d.companies || []).forEach(function (c) {
         var type = c.entity_type_name || "";
@@ -7638,7 +7640,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         var type = i.type || "", v = String(i.value || "").trim();
         if (!v) return;
         if (!out.barcode && type === "Barcode" && /^[\d\s]{12,17}$/.test(v)) out.barcode = v.replace(/\s/g, "");
-        if (!out.spars && type === "SPARS Code" && /^(DDD|ADD|AAD)$/i.test(v)) out.spars = v.toUpperCase();
+        if (!out.spars && type === "SPARS Code") out.spars = /^(DDD|ADD|AAD)$/i.test(v) ? v.toUpperCase() : v;
         if (!out.ifpiMastering && type === "Mastering SID Code") out.ifpiMastering = v;
         if (!out.ifpiMould && type === "Mould SID Code") out.ifpiMould = v;
       });
@@ -7769,8 +7771,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
     var before = n;
     ["label", "issuer", "catalogNo", "manufacturer", "madeIn", "recordingVenue", "barcode", "ifpiMastering", "ifpiMould"].forEach(function (f) { put(f, p[f]); });
-    put("recordingYear", p.recordingYear && validRecordingYears(p.recordingYear) ? p.recordingYear : "");
-    put("releaseYear", p.releaseYear && /^(19[89]\d|20\d{2})$/.test(p.releaseYear) ? p.releaseYear : "");
+    put("recordingYear", p.recordingYear || "");
+    put("releaseYear", p.releaseYear || "");
     put("spars", p.spars || "");
     put("type", p.type ? workTypeText(p.type) : "");
     if (n > before) $("more-details").open = true;
@@ -9807,14 +9809,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (works.bad) {
       setErr("works", t("errDuration"));
       firstBad = firstBad || works.bad;
-    }
-    if (!validRecordingYears(recordingYear)) {
-      setErr("recordingYear", t("errRec"));
-      firstBad = firstBad || $("recordingYear");
-    }
-    if (releaseYear && !/^(19[89]\d|20\d{2})$/.test(releaseYear)) {
-      setErr("releaseYear", t("errRel"));
-      firstBad = firstBad || $("releaseYear");
     }
     if (firstBad) {
       focusCdError(firstBad);

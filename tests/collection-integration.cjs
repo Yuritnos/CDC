@@ -108,7 +108,8 @@ async function fixture({cds = [], settings = {}, nativeAudio = false, albums = [
     }
     if (url.hostname === 'api.discogs.com') {
       if (url.pathname === '/database/search') return route.fulfill({json: {results:
-        Object.values(state.releases).map(r => ({id: r.id, title: r.title, catno: 'QA001', format: ['CD']}))}});
+        Object.values(state.releases).map(r => ({id: r.id, title: r.title, catno: 'QA001', format: ['CD'],
+          barcode:(r.identifiers||[]).filter(i=>i.type==='Barcode').map(i=>i.value)}))}});
       const id = Number(url.pathname.split('/').pop());
       state.requested.push(id);
       if (state.holds[id]) await state.holds[id].promise;
@@ -850,10 +851,6 @@ async function main() {
       assert.equal(await page.locator('#ff-set, #ff-workTypes').count(), 0);
       await page.locator('#title').fill('Standalone CD');
       await page.locator('#more-details').evaluate(n => n.open = true);
-      for (const value of ['1899', '1987–1985', '1985,', '1985–']) {
-        await page.locator('#recordingYear').fill(value); await page.locator('#submit').click();
-        assert((await page.locator('#recordingYear-err').textContent()).length, value);
-      }
       await page.locator('#recordingYear').fill('1985–1987, 1990');
       await page.locator('#hub').fill('Full silver hub'); await save(page);
       const added = state.doc.cds.find(c => c.title === 'Standalone CD');
@@ -882,6 +879,53 @@ async function main() {
       assert.equal(state.doc.cds.find(c => c.id === 'legacy-one').set.disc, membership.disc);
       assert.deepEqual(state.doc.cds.find(c => c.id === sibling.id), sibling);
     } finally { await f.close(); }
+  });
+  await test('028944443028 imports all 11 disc defaults and 17 work credits precisely and retains them through save/reload/edit',async()=>{
+    const f=await fixture(),{page,state}=f;
+    const lpo='London Philharmonic Orchestra',cgo='Concertgebouworkest';
+    const expected=[[lpo,lpo],[lpo,lpo],[lpo],[cgo,lpo],[cgo,cgo],[lpo],[cgo],[cgo],[cgo],[cgo,cgo],[lpo,cgo]];
+    const fixtureRelease=require('./fixtures/discogs-4600502.json');state.releases[101]={...fixtureRelease,id:101};
+    async function checkEditors(){
+      for(let i=0;i<11;i++){
+        await page.locator('#form-disc-tabs button').nth(i).click();
+        const common=expected[i].every(name=>name===expected[i][0])?[expected[i][0]]:[];
+        const global=await page.locator('#perf-rows .prow').evaluateAll(rows=>rows.filter(r=>Array.from(r.querySelectorAll('.perf-role-option input:checked')).some(b=>b.value==='Orchestra')).map(r=>r.querySelector('.perf-name').value));
+        assert.deepEqual(global,common,'disc '+(i+1)+' defaults');
+        const workPeople=await page.locator('#work-list .work').evaluateAll(works=>works.map(w=>Array.from(w.querySelectorAll('.w-perf-rows .perf-name')).map(n=>n.value).filter(Boolean)));
+        assert.equal(workPeople.length,expected[i].length);
+        workPeople.forEach((names,j)=>{
+          for(const orchestra of [lpo,cgo])assert.equal(names.includes(orchestra),!common.length&&orchestra===expected[i][j],`disc ${i+1}, work ${j+1}`);
+        });
+      }
+    }
+    try{
+      await openAdd(page);assert.equal(await page.locator('#set-title').getAttribute('autocomplete'),'off');
+      assert.equal(await page.locator('#cd-form').getAttribute('autocomplete'),'off');
+      await page.locator('#lookup-q').fill('028944443028');await page.locator('#lookup-go').click();await page.locator('#lookup-use-0').click();
+      await page.waitForFunction(()=>document.querySelectorAll('#form-disc-tabs button').length===11);
+      await checkEditors();assert.equal(state.doc.cds.length,0,'lookup never saves without confirmation');await save(page);
+      assert.equal(state.doc.cds.length,11);
+      state.doc.cds.forEach(cd=>{
+        const i=cd.set.disc-1,global=cd.performers.filter(p=>p.role==='Orchestra');
+        const common=expected[i].every(name=>name===expected[i][0])?[{name:expected[i][0],role:'Orchestra'}]:[];
+        assert.deepEqual(global,common);
+        assert.equal(cd.spars,'ADD/DDD');assert(!cd.performers.some(p=>p.name==='John Alldis'&&p.role==='Ensemble'));
+        cd.works.forEach((work,j)=>{
+          const people=global.concat(work.performers||[]).filter(p=>p.role==='Orchestra');
+          assert.deepEqual(people,[{name:expected[i][j],role:'Orchestra'}]);
+        });
+      });
+      await page.reload();await openCard(page,'The Symphonies');await page.locator('#set-edit').click();await checkEditors();
+      if(process.env.CDC_QA_ARTIFACTS){
+        fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});
+        fs.writeFileSync(path.join(process.env.CDC_QA_ARTIFACTS,'028944443028-credit-audit.json'),JSON.stringify(state.doc.cds.map(cd=>({disc:cd.set.disc,performers:cd.performers,works:cd.works.map(w=>({title:w.title,performers:w.performers||[],mode:w.performersMode||'inherit'}))})),null,2));
+        await page.locator('#form-disc-tabs button').nth(3).click();await page.locator('#works-set').evaluate(n=>n.open=true);
+        await page.locator('#work-list .w-details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));
+        await page.locator('#work-list .work').first().evaluate(n=>n.scrollIntoView({block:'start'}));
+        await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'disc-4-work-credits.png')});
+      }
+      await save(page);assert.equal(state.doc.cds.length,11);
+    }finally{await f.close();}
   });
   await test('legacy set data roundtrips JSON export and both import modes', async () => {
     const legacy = {id: 'legacy-import', title: 'Stored set disc', addedAt: 1,
