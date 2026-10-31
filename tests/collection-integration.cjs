@@ -391,7 +391,7 @@ async function main() {
   await test('disc editor adds automatically numbered independent drafts and validates inactive discs before atomic save',async()=>{
     const f=await fixture(),{page,state}=f;
     try{
-      await openAdd(page);await page.locator('#title').fill('Draft album');await page.locator('#composer').fill('Composer one');
+      await openAdd(page);await page.locator('#title').fill('Draft album');await page.locator('#set-choice').selectOption('+new');await page.locator('#composer').fill('Composer one');
       await page.locator('.w-title').fill('Work one');await page.locator('.t-title').fill('Movement one');await page.locator('.t-len').fill('1:11');
       await page.locator('#more-details').evaluate(n=>n.open=true);await page.locator('#notes').fill('Notes one');
       await page.locator('#form-add-disc').click();
@@ -496,48 +496,24 @@ async function main() {
       assert.deepEqual(state.doc.cds,cds);
     }finally{if(releaseAudio)releaseAudio();await f.close();}
   });
-  await test('manual album creation, incomplete counts, shared edits and explicit disc overrides', async () => {
-    const f = await fixture(), {page, state} = f;
-    try {
-      await openAdd(page); await page.locator('#title').fill('Disc one');
-      await page.locator('#composer').fill('Shared composer');
-      await page.locator('#set-choice').selectOption('+new');
-      await page.locator('#set-title').fill('Two-disc album');
-      await page.locator('#set-total').fill('3');
-      await page.locator('#more-details').evaluate(n => n.open = true);
-      await page.locator('#label').fill('Original label');
-      await page.locator('#barcode').fill('1234567890123');
-      for(const field of ['composer','label','barcode'])await page.locator('#set-follow-'+field).check();
-      await save(page);
-      assert.equal(state.doc.cds.length, 1);
-      assert.equal(state.doc.cds[0].set.shared.composer,'Shared composer');
-      assert.equal(state.doc.cds[0].set.overrides.includes('composer'),false);
-      await openCard(page, 'Two-disc album');
-      assert((await page.locator('#detail-body').innerText()).includes('1 of 3 CDs catalogued'));
-      await page.locator('#set-add').click(); await prepareEditor(page);
-      await page.locator('#more-details').evaluate(n => n.open = true);
-      assert.equal(await page.locator('#form-disc-tabs button[aria-pressed="true"]').innerText(), 'Disc 2');
-      assert.equal(await page.locator('#set-disc, #set-subtitle').count(),0);
-      assert.equal(await page.locator('#label').inputValue(), 'Original label');
-      await page.locator('#label').fill('Disc-only label');
-      assert.equal(await page.locator('#set-follow-label').isChecked(), false);
-      await save(page);
-      assert.equal(state.doc.cds.length, 2, 'shared barcode does not trigger a duplicate warning');
-      assert.equal(await page.locator('#grid .card').count(), 1);
-      await openCard(page, 'Two-disc album'); await page.locator('#set-edit').click();
-      await page.locator('#set-title').fill('Renamed album'); await page.locator('#label').fill('New shared label');
-      await page.locator('#composer').fill('New composer'); await save(page);
-      assert.deepEqual(state.doc.cds.slice().sort((a,b)=>a.set.disc-b.set.disc).map(c=>[c.set.title,c.composer]),
-        [['Renamed album','New composer'],['Renamed album','New composer']]);
-      assert.equal(state.doc.cds.find(c => c.set.disc === 1).label, 'New shared label');
-      assert.equal(state.doc.cds.find(c => c.set.disc === 2).label, 'Disc-only label');
-      await openCard(page, 'Renamed album');
-      const second = state.doc.cds.find(c => c.set.disc === 2);
-      await page.locator('.set-disc').nth(1).locator('summary').click();
-      await page.locator('#set-edit-' + second.id).click();
-      await page.locator('#set-follow-label').check(); await save(page);
-      assert.equal(state.doc.cds.find(c => c.id === second.id).label, 'New shared label');
-    } finally { await f.close(); }
+  await test('membership always has two choices; standalone hides disc controls and never gains set data',async()=>{
+    const f=await fixture(),{page,state}=f;
+    try{
+      await openAdd(page);assert.equal(await page.locator('#set-choice option').count(),2);
+      assert.equal(await page.locator('#form-disc-tools').isHidden(),true);
+      await page.locator('#title').fill('Standalone');await save(page);assert.equal(state.doc.cds[0].set,undefined);
+      await openAdd(page);await page.locator('#title').fill('Independent album');await page.locator('#set-choice').selectOption('+new');
+      assert.equal(await page.locator('#form-disc-tools').isVisible(),true);
+      assert.equal(await page.locator('#set-edit-shared, #set-inheritance, [id^="set-follow-"]').count(),0);
+      await page.locator('#composer').fill('First composer');await page.locator('#form-add-disc').click();
+      await page.locator('#composer').fill('Second composer');await save(page);
+      assert.equal(state.doc.cds.filter(c=>c.set).length,2);
+      await openCard(page,'Independent album');await page.locator('#set-edit').click();
+      assert.equal(await page.locator('#set-choice option').count(),2);assert.equal(await page.locator('#set-choice').inputValue(),'+new');
+      await page.locator('#composer').fill('Changed first');await save(page);
+      assert.deepEqual(state.doc.cds.filter(c=>c.set).sort((a,b)=>a.set.disc-b.set.disc).map(c=>c.composer),['Changed first','Second composer']);
+      await openAdd(page);assert.equal(await page.locator('#set-choice option').count(),2);assert.equal(await page.locator('#form-disc-tools').isHidden(),true);
+    }finally{await f.close();}
   });
   await test('multi-disc lookup imports all or selected discs atomically and retains per-disc works', async () => {
     const f = await fixture(), {page, state} = f;
@@ -564,7 +540,7 @@ async function main() {
       assert.equal(await page.locator('#grid .card').count(), 2, 'same album title does not merge distinct editions');
     } finally { await f.close(); }
   });
-  await test('link existing discs preserves their metadata; detach supports Undo', async () => {
+  await test('link existing discs preserves metadata; standalone mode detaches only the selected saved disc', async () => {
     const member = {id:'link-one', title:'First', addedAt:1, label:'Shared', set:{id:'link-set',title:'Linked album',disc:1,total:2},
       works:[{title:'Link work',duration:'0:01',tracks:[]}],audio:[{file:'link-one/a.wav',name:'a.wav',track:1}]};
     const standalone = {id:'link-two',title:'Existing standalone',addedAt:2,label:'Own label',manufacturer:'Own pressing',extra:{keep:true}};
@@ -578,12 +554,10 @@ async function main() {
       assert.equal(linked.set.disc,2); assert.equal(linked.label,'Own label'); assert.equal(linked.manufacturer,'Own pressing');
       assert.deepEqual(linked.extra,{keep:true}); assert(linked.set.overrides.includes('label'));
       await page.locator('.set-disc').nth(1).locator('summary').click();
-      await page.locator('#set-detach-link-two').click();
-      await page.waitForFunction(() => document.querySelectorAll('.set-disc').length === 1);
+      await page.locator('#set-edit').click();await page.locator('#form-disc-tabs button').last().click();await page.locator('#set-choice').selectOption('');await save(page);
+      await until(()=>!state.doc.cds.find(c=>c.id==='link-two').set);
       assert.equal(state.doc.cds.find(c=>c.id==='link-two').set,undefined);
-      await page.getByRole('button',{name:'Undo',exact:true}).click();
-      await page.waitForFunction(() => document.querySelectorAll('.set-disc').length === 2);
-      assert.equal(state.doc.cds.find(c=>c.id==='link-two').set.id,'link-set');
+      assert.equal(state.doc.cds.find(c=>c.id==='link-one').set.id,'link-set');
     } finally { await f.close(); }
   });
   await test('group selection includes every shown member; ungrouped Favorites can choose individual CDs', async () => {
@@ -660,31 +634,19 @@ async function main() {
       assert.deepEqual(state.doc.meta.order.all,['delete-2','delete-1']);
     } finally {await f.close();}
   });
-  await test('shared album edits preserve physical fields, custom covers, empty overrides and unknown extensions', async () => {
-    const shared={composer:'Shared composer',type:'',performers:[],label:'Shared label',issuer:'',releaseYear:'2000',catalogNo:'CAT',barcode:''};
-    const discs=[1,2].map(n=>({id:'cover-'+n,title:'Cover '+n,addedAt:n,...shared,manufacturer:'Pressing '+n,recordingYear:'199'+n,
-      photoFile:n===1?'shared.png':'own.png',extra:{n},
-      set:{id:'cover-set',title:'Cover album',disc:n,total:2,shared,overrides:n===1?[]:['cover','label'],extra:{preserve:n}}}));
-    discs[1].label='';
-    const f=await fixture({cds:discs,nativeAudio:true}),{page,state}=f;
-    try {
-      await openCard(page,'Cover album'); await page.locator('#set-edit').click();
-      await page.locator('#composer').fill('Changed composer'); await page.locator('#label').fill('Changed label');
-      state.saveFail=true;await page.locator('#submit').click();await page.locator('#submit:not(:disabled)').waitFor();
-      assert(state.doc.cds.every(c=>c.composer==='Shared composer'));
-      state.saveFail=false;await save(page);
-      for(const n of [1,2]) {
-        const c=state.doc.cds.find(c=>c.id==='cover-'+n);
-        assert.equal(c.composer,'Changed composer');assert.equal(c.manufacturer,'Pressing '+n);assert.equal(c.recordingYear,'199'+n);
-        assert.deepEqual(c.extra,{n});assert.deepEqual(c.set.extra,{preserve:n});
-      }
-      assert.equal(state.doc.cds.find(c=>c.id==='cover-1').photoFile,'shared.png');
-      assert.equal(state.doc.cds.find(c=>c.id==='cover-2').photoFile,'own.png');
-      assert.equal(state.doc.cds.find(c=>c.id==='cover-2').label,'');
-      assert.equal(state.commands.filter(c=>c.command==='save_cover').length,0,'untouched cover files stay untouched');
-      await openCard(page,'Cover album');await page.locator('.set-disc').nth(1).locator('summary').click();
-      await page.locator('#set-edit-cover-2').click();await page.locator('#set-follow-cover').check();await save(page);
-      assert.equal(state.doc.cds.find(c=>c.id==='cover-2').photoFile,'shared.png');
+  await test('disc edits preserve sibling values, empty fields, physical details and custom covers',async()=>{
+    const shared={composer:'Legacy composer',type:'',performers:[],label:'Legacy label',issuer:'',releaseYear:'2000',catalogNo:'CAT',barcode:''};
+    const cds=[1,2].map(n=>({id:'cover-'+n,title:'Cover '+n,addedAt:n,...shared,label:n===1?'Legacy label':'',manufacturer:'Pressing '+n,
+      photoFile:n===1?'shared.png':'own.png',extra:{n},set:{id:'cover-set',title:'Cover album',disc:n,total:2,shared,overrides:[],extra:{preserve:n}}}));
+    const f=await fixture({cds,nativeAudio:true}),{page,state}=f;
+    try{
+      await openCard(page,'Cover album');await page.locator('#set-edit').click();await page.locator('#composer').fill('Changed one');
+      await page.locator('#label').fill('Changed label');state.saveFail=true;await page.locator('#submit').click();await page.locator('#submit:not(:disabled)').waitFor();
+      assert.deepEqual(state.doc.cds,cds);state.saveFail=false;await save(page);
+      const first=state.doc.cds.find(c=>c.id==='cover-1'),second=state.doc.cds.find(c=>c.id==='cover-2');
+      assert.equal(first.composer,'Changed one');assert.equal(first.label,'Changed label');assert.deepEqual(second,cds[1]);
+      assert.equal(first.manufacturer,'Pressing 1');assert.equal(first.photoFile,'shared.png');assert.deepEqual(first.set.extra,{preserve:1});
+      assert.equal(state.commands.filter(c=>c.command==='save_cover').length,0);
     }finally{await f.close();}
   });
   await test('main album cover survives when every disc uses its own cover and exports embedded image data',async()=>{
@@ -699,40 +661,58 @@ async function main() {
       const image=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=c.height=4;c.getContext('2d').fillRect(0,0,4,4);return c.toDataURL('image/png');});
       await page.locator('#photo').setInputFiles({name:'new-main.png',mimeType:'image/png',buffer:Buffer.from(image.split(',')[1],'base64')});
       await save(page);
-      assert(state.doc.cds.every(c=>c.set.cover.photoFile==='saved-cover.png' && !c.set.cover.photo));
-      assert.equal(state.doc.cds.find(c=>c.id==='main-cover-1').photoFile,'own-1.png');
+      assert(state.doc.cds.every(c=>c.set.cover.photoFile==='album-main.png' && !c.set.cover.photo));
+      assert.equal(state.doc.cds.find(c=>c.id==='main-cover-1').photoFile,'saved-cover.png');
       assert.equal(state.doc.cds.find(c=>c.id==='main-cover-2').photoFile,'own-2.png');
       assert.equal(state.commands.filter(c=>c.command==='save_cover').length,1,'shared content is written once');
       await openCard(page,'Main cover album');
-      assert((await page.locator('.profile-cover img').getAttribute('src')).includes('saved-cover.png'));
+      assert((await page.locator('.profile-cover img').getAttribute('src')).includes('album-main.png'));
       await page.locator('#close-detail').click();await page.locator('#open-settings').click();
       const downloading=page.waitForEvent('download');await page.locator('#export-json').click();const download=await downloading;
       const stream=await download.createReadStream(), chunks=[];for await(const chunk of stream)chunks.push(chunk);
       const exported=JSON.parse(Buffer.concat(chunks).toString('utf8'));
       assert(exported.cds.every(c=>c.set.cover.photo.startsWith('data:image/') && !c.set.cover.photoFile));
-      assert(state.doc.cds.every(c=>c.set.cover.photoFile==='saved-cover.png'),'export does not mutate local file references');
+      assert(state.doc.cds.every(c=>c.set.cover.photoFile==='album-main.png'),'export does not mutate local file references');
     }finally{await f.close();}
   });
-  await test('switching shared edit scope preserves unsaved disc overrides, performer rows and role choices',async()=>{
-    const shared={composer:'Composer',type:'',performers:[],label:'Default label',issuer:'',releaseYear:'',catalogNo:'',barcode:''};
-    const discs=[1,2].map(n=>({id:'scope-'+n,title:'Scope '+n,addedAt:n,...shared,label:n===1?'Default label':'Own label',
-      set:{id:'scope-set',title:'Scope album',disc:n,total:2,shared,overrides:n===1?[]:['label']}}));
-    const f=await fixture({cds:discs}),{page,state}=f;
-    try {
-      await openCard(page,'Scope album');await page.locator('.set-disc').nth(1).locator('summary').click();
-      await page.locator('#set-edit-scope-2').click();await page.locator('#more-details').evaluate(n=>n.open=true);
-      await page.locator('#label').fill('Unsaved own label');await page.locator('#perf-rows .perf-name').fill('Unsaved person');
-      await page.locator('#set-edit-shared').check();
-      assert.equal(await page.locator('#label').inputValue(),'Default label');
-      assert.equal(await page.locator('#set-follow-label').isDisabled(),true);
-      await page.locator('#set-edit-shared').uncheck();
-      assert.equal(await page.locator('#label').inputValue(),'Unsaved own label');
-      assert.equal(await page.locator('#perf-rows .perf-name').inputValue(),'Unsaved person');
-      assert.equal(await page.locator('#set-follow-label').isChecked(),false);
-      await save(page);
-      assert.equal(state.doc.cds.find(c=>c.id==='scope-2').label,'Unsaved own label');
-      assert.equal(state.doc.cds.find(c=>c.id==='scope-2').performers[0].name,'Unsaved person');
-      assert.equal(state.doc.cds.find(c=>c.id==='scope-1').label,'Default label');
+  await test('disc removal is staged in the editor, rolls back on failure and restores memberships with Undo',async()=>{
+    const cds=[1,2].map(n=>({id:'remove-'+n,title:'Remove '+n,addedAt:n,set:{id:'remove-set',title:'Remove album',disc:n,total:2},
+      audio:[{file:'remove-'+n+'/original.wav',name:'original.wav',track:1}],works:[{title:'Work',duration:'1:00',tracks:[]}]}));
+    const f=await fixture({cds,nativeAudio:true,albums:[{id:'remove-fav',name:'Favorite',cdIds:cds.map(c=>c.id)}],
+      playlists:[{id:'remove-pl',name:'Playlist',items:[{cdId:'remove-2',file:'remove-2/original.wav'}]}]}),{page,state}=f;
+    try{
+      await openCard(page,'Remove album');await page.locator('#set-edit').click();await page.locator('#form-disc-tabs button').last().click();
+      await page.locator('#form-remove-disc').click();assert.deepEqual(state.doc.cds,cds);
+      state.saveFail=true;await page.locator('#submit').click();await page.locator('#submit:not(:disabled)').waitFor();assert.deepEqual(state.doc.cds,cds);
+      assert(!state.doc.sync||!state.doc.sync.deleted||!state.doc.sync.deleted['remove-2']);state.saveFail=false;await save(page);
+      await page.locator('#toast-action').waitFor();assert.equal(state.doc.cds.length,1);assert(state.doc.sync.deleted['remove-2']);
+      assert.equal(state.commands.filter(c=>c.command==='remove_cd_audio').length,0);
+      await page.locator('#toast-action').click();await until(()=>state.doc.cds.length===2&&state.doc.meta.albums[0].cdIds.length===2&&state.doc.meta.playlists[0].items.length===1);
+      assert.deepEqual(state.doc.cds.find(c=>c.id==='remove-2').audio,cds[1].audio);
+    }finally{await f.close();}
+  });
+  await test('disc details icon opens a bounded hover and keyboard preview without unfolding the disc',async()=>{
+    const cds=[1,2].map(n=>({id:'preview-'+n,title:'Preview '+n,addedAt:n,composer:'Composer '+n,label:'Label '+n,manufacturer:'Pressing '+n,
+      notes:'Notes '+n+' '+('Long detail '.repeat(25)),set:{id:'preview-set',title:'Preview album',disc:n,total:2},works:[{title:'Work '+n,duration:'1:23',tracks:[]}]}));
+    const f=await fixture({cds}),{page}=f;
+    try{
+      await openCard(page,'Preview album');assert.equal(await page.locator('#set-add, [id^="set-edit-preview"], [id^="set-detach-"], [id^="set-delete-preview"], [id^="set-open-"]').count(),0);
+      assert.deepEqual(await page.locator('#detail-body .profile-main > .profile-actions > button').allTextContents(),['Edit','Add to favorites','Delete']);
+      for(const width of [1280,360])for(const lang of ['en','ja','zh'])for(const theme of ['light','dark']){
+        await page.setViewportSize({width,height:860});await setLanguage(page,lang);await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
+        const icon=page.locator('#disc-info-preview-2');await icon.scrollIntoViewIfNeeded();await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+        await page.mouse.move(0,0);await icon.hover();await page.locator('#disc-info-popup').waitFor();
+        const content=await page.locator('#disc-info-popup').innerText();assert(content.includes('Composer 2')&&content.includes('Pressing 2')&&content.includes('Work 2'));
+        assert.equal(await page.locator('.set-disc[open]').count(),0);
+        assert.equal(await page.locator('#disc-info-popup').evaluate(n=>{const r=n.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth+1&&r.top>=0&&r.bottom<=innerHeight+1&&n.scrollWidth<=n.clientWidth+1;}),true);
+        if(process.env.CDC_QA_ARTIFACTS&&width===360&&lang==='zh'&&theme==='dark'){
+          fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'disc-preview-mobile.png')});
+        }
+        await icon.press('Escape');assert.equal(await page.locator('#disc-info-popup').count(),0);assert.equal(await page.locator('#win-detail').isVisible(),true);
+      }
+      await page.locator('#disc-info-preview-1').press('Enter');await page.locator('#disc-info-popup').waitFor();
+      assert.equal(await page.locator('.set-disc[open]').count(),0);await page.locator('#disc-info-popup button').press('Escape');
+      assert.equal(await page.locator('#disc-info-popup').count(),0);
     }finally{await f.close();}
   });
   await test('album custom reordering moves every member together, and incomplete disc numbers are validated',async()=>{
@@ -742,7 +722,7 @@ async function main() {
     try {
       await page.locator('#card-order-b1').focus();await page.keyboard.press('Alt+ArrowLeft');
       assert.deepEqual(state.doc.meta.order.all,['order-b1','order-b2','order-a']);
-      await openCard(page,'B album');await page.locator('#set-add').click();
+      await openCard(page,'B album');await page.locator('#set-edit').click();await page.locator('#form-add-disc').click();
       assert.equal(await page.locator('#set-disc, #set-subtitle').count(),0);
       assert.equal(await page.locator('#form-disc-tabs button[aria-pressed="true"]').innerText(),'Disc 3');
       await page.locator('#set-total').fill('2');await page.locator('#submit').click();
@@ -762,7 +742,7 @@ async function main() {
       assert.deepEqual(await page.locator('#detail-body .profile-main').evaluate(main=>{
         const footer=main.lastElementChild;
         return Array.from(footer.children).filter(n=>n.tagName==='BUTTON').map(n=>n.id);
-      }),['set-edit','set-add','set-fav-toggle','set-delete-all'],'album actions share the final footer row');
+      }),['set-edit','set-fav-toggle','set-delete-all'],'album actions share the final footer row');
       await page.locator('.set-disc').first().locator('summary').click();
       assert.equal(await page.locator('.set-disc').first().getAttribute('open'),'');
       await setLanguage(page,'ja');

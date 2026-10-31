@@ -295,7 +295,7 @@ async function main() {
       await card(page).locator('h3').click();
       assert((await page.locator('#detail-body').innerText()).includes('Legacy box QA'));
       await page.locator('.set-disc summary').click();
-      await page.locator('#set-edit-' + legacy.id).click();
+      await page.locator('#set-edit').click();
       assert.equal(await page.locator('#set-title, #set-total').count(), 2);
       assert.equal(await page.locator('#set-disc, #set-subtitle').count(), 0);
       await page.locator('#title').fill('Edited legacy QA');
