@@ -108,9 +108,9 @@ async function main() {
     try {
       await openEdit(page); await page.setViewportSize({width: 375, height: 740});
       for (const [lang, album, composer, type, performers, spars, hub, other] of [
-        ['en', 'Album information', 'Composer', 'Type of work', 'Performers', 'Production technique', 'Inner ring manufacturing', 'Other'],
-        ['ja', 'アルバム情報', '作曲家', '作品の種類', '演奏者', '制作技術', '内周部の製造方式', 'その他'],
-        ['zh', '专辑信息', '作曲家', '作品类型', '演奏者', '制作技术', '内圈制作工艺', '其他']
+        ['en', 'Disc information', 'Composer', 'Type of work', 'Performers', 'Production technique', 'Inner ring manufacturing', 'Other'],
+        ['ja', 'ディスク情報', '作曲家', '作品の種類', '演奏者', '制作技術', '内周部の製造方式', 'その他'],
+        ['zh', '本碟信息', '作曲家', '作品类型', '演奏者', '制作技术', '内圈制作工艺', '其他']
       ]) {
         await page.evaluate(lang => window.sectionQA.setLang(lang, false), lang);
         assert.equal(await page.locator('#albumOverall > summary [data-i18n=albumOverall]').textContent(), album);

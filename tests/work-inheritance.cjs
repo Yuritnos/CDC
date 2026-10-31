@@ -296,7 +296,8 @@ async function main() {
       assert((await page.locator('#detail-body').innerText()).includes('Legacy box QA'));
       await page.locator('.set-disc summary').click();
       await page.locator('#set-edit-' + legacy.id).click();
-      assert.equal(await page.locator('#set-title, #set-disc, #set-total').count(), 3);
+      assert.equal(await page.locator('#set-title, #set-total').count(), 2);
+      assert.equal(await page.locator('#set-disc, #set-subtitle').count(), 0);
       await page.locator('#title').fill('Edited legacy QA');
       await save(page, state);
       for (const [key,value] of Object.entries(legacy.set)) assert.deepEqual(state.doc.cds[0].set[key], value);

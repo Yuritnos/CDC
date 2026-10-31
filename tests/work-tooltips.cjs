@@ -58,7 +58,13 @@ async function fixture(cds = [album]) {
 const card = page => page.locator('#card-tips');
 const tip = page => page.getByRole('tooltip');
 async function assertPosition(page, button, context) {
-  await button.hover(); await tip(page).waitFor();
+  await button.scrollIntoViewIfNeeded();
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  // Escape leaves the pointer over its old target; enter again for each geometry check.
+  await page.mouse.move(0, 0);
+  await button.hover();
+  try { await tip(page).waitFor(); }
+  catch (error) { error.message = context + ': ' + error.message; throw error; }
   const geometry = await button.evaluate(button => {
     const bounds = (button.closest('.card') || button.closest('.panel')).getBoundingClientRect();
     const title = button.parentElement.querySelector('p').getBoundingClientRect();

@@ -1031,7 +1031,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 .favnew .btn { flex: 0 0 auto; max-width: 100%; }
 .fav-create-toggle { align-self: flex-start; padding: 6px 8px; text-align: left; white-space: normal; }
 .profile-actions .favlist { flex: 1 1 100%; }
-.set-numbers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .set-inheritance { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 10px; }
 .set-inheritance label, #lookup-disc-choices label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
 #lookup-disc-choices { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px 0; }
@@ -1042,6 +1041,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 .set-disc-body { display: flex; flex-direction: column; gap: 12px; padding: 12px 0; }
 .set-link-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow: auto; }
 .set-link-list label { display: flex; gap: 8px; align-items: baseline; overflow-wrap: anywhere; }
+.disc-editor-tools { display: flex; flex-direction: column; gap: 10px; }
+.disc-editor-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.disc-editor-tabs button { white-space: normal; overflow-wrap: anywhere; }
+.disc-editor-tabs button[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
 .favlist .hint { padding: 6px 8px; }
 .favitem { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: transparent; border: 0; border-radius: 3px; cursor: pointer; text-align: left; font-size: 14px; }
 .favitem:hover { background: var(--accent-soft); }
@@ -1288,11 +1291,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         <div class="field"><label class="lbl" for="set-choice" data-i18n="setChoose">Album membership</label><select class="input" id="set-choice"></select></div>
         <div id="set-editor" hidden>
           <div class="field"><label class="lbl" for="set-title" data-i18n="setTitle">Set name</label><input class="input" id="set-title" maxlength="200"></div>
-          <div class="set-numbers">
-            <div class="field"><label class="lbl" for="set-disc" data-i18n="setDisc">Disc number</label><input class="input" id="set-disc" type="number" min="1" max="999" value="1"></div>
-            <div class="field"><label class="lbl" for="set-total" data-i18n="setTotal">Discs in set</label><input class="input" id="set-total" type="number" min="1" max="999" value="2"></div>
-          </div>
-          <div class="field"><label class="lbl" for="set-subtitle" data-i18n="discSubtitle">Disc subtitle (optional)</label><input class="input" id="set-subtitle" maxlength="200"></div>
+          <div class="field"><label class="lbl" for="set-total" data-i18n="setTotal">Discs in set</label><input class="input" id="set-total" type="number" min="1" max="999" value="2"></div>
           <label class="hint"><input type="checkbox" id="set-edit-shared"> <span data-i18n="editAlbumDefaults">Edit shared album information</span></label>
           <p class="hint" data-i18n="setSharedHint">Shared edits update discs that follow the album. Uncheck a field below to keep a disc-specific value.</p>
           <div id="set-inheritance" class="set-inheritance"></div>
@@ -1300,8 +1299,17 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         <p class="err" id="set-err" role="alert"></p>
       </fieldset>
 
+      <div class="disc-editor-tools">
+        <div id="form-disc-tabs" class="disc-editor-tabs" role="group" data-i18n-aria="discEditors" aria-label="Discs"></div>
+        <div class="favrow">
+          <button type="button" class="btn small quiet" id="form-add-disc" data-i18n="addDisc">Add a disc</button>
+          <button type="button" class="linkbtn" id="form-remove-disc" data-i18n="removeDraftDisc" hidden>Remove this added disc</button>
+        </div>
+        <p class="hint" data-i18n="discDraftHint">Each disc keeps its own information, works, details and audio.</p>
+      </div>
+
       <details class="more form-section" id="albumOverall" open>
-        <summary><span data-i18n="albumOverall">Album information</span><span class="section-hint"> (<span data-i18n="workInheritHint">Works use these details unless you enter different ones in Work details.</span>)</span></summary>
+        <summary><span data-i18n="albumOverall">Disc information</span><span class="section-hint"> (<span data-i18n="workInheritHint">Works use this disc’s details unless you enter different ones in Work details.</span>)</span></summary>
         <div class="more-body">
         <div class="field">
           <label class="lbl" for="composer" data-i18n="composer">Composer</label>
@@ -2467,6 +2475,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   Object.assign(I18N.ja, { cdType: "作品の種類", cdTypePh: "作品の種類（任意）", workTypePh: "作品の種類", albumOverall: "アルバム情報", workDetails: "作品の詳細", workPerformers: "演奏者", workInheritHint: "各作品にはここで入力した情報が使われます。異なる場合は「作品の詳細」で入力してください。", hub: "内周部の製造方式", hubPh: "内周部の製造方式の詳細（任意）", hubClear: "ハブをクリア", hubClearType: "透明ハブ", workDuration: "作品の演奏時間" });
   Object.assign(I18N.zh, { cdType: "作品类型", cdTypePh: "作品类型（选填）", workTypePh: "作品类型", albumOverall: "专辑信息", workDetails: "作品详情", workPerformers: "演奏者", workInheritHint: "各作品默认使用这里的信息；如有不同，请在「作品详情」中填写。", hub: "内圈制作工艺", hubPh: "内圈制作工艺详情（选填）", hubClear: "清空银圈", hubClearType: "胶圈", workDuration: "作品时长" });
   I18N.en.hubClearType = "Clear hub";
+  I18N.en.saveDiscs = "Save all discs"; I18N.ja.saveDiscs = "すべてのディスクを保存"; I18N.zh.saveDiscs = "保存所有CD";
+  I18N.en.discImportBusy = "Finish importing audio before applying lookup details.";
+  I18N.ja.discImportBusy = "音声の取り込みが完了してから検索結果を適用してください。";
+  I18N.zh.discImportBusy = "请等待音频导入完成后再填入查询结果。";
+  Object.assign(I18N.en, { albumOverall: "Disc information", workInheritHint: "Works use this disc’s details unless you enter different ones in Work details.", addDisc: "Add a disc", discEditors: "Discs", discEditor: "Disc {n}", removeDraftDisc: "Remove this added disc", discDraftHint: "Each disc keeps its own information, works, details and audio.", importPreview: "{n} discs selected: {discs}. Use the disc buttons below to review and edit each disc before saving.", importDiscConflict: "Disc {n} is already in this album. Choose a matching disc to update, or import into a new album." });
+  Object.assign(I18N.ja, { albumOverall: "ディスク情報", workInheritHint: "各作品にはこのディスクの情報が使われます。異なる場合は「作品の詳細」で入力してください。", addDisc: "ディスクを追加", discEditors: "ディスク", discEditor: "ディスク {n}", removeDraftDisc: "追加したこのディスクを取り消す", discDraftHint: "情報、作品、詳細、音声はディスクごとに編集できます。", importPreview: "{n}枚を選択中：{discs}。下のディスクボタンで各ディスクを確認・編集してから保存できます。", importDiscConflict: "このアルバムにはディスク{n}が既にあります。該当ディスクを編集するか、新しいアルバムに取り込んでください。" });
+  Object.assign(I18N.zh, { albumOverall: "本碟信息", workInheritHint: "各作品默认使用本碟的信息；如有不同，请在「作品详情」中填写。", addDisc: "添加一张CD", discEditors: "CD列表", discEditor: "第 {n} 碟", removeDraftDisc: "移除此张新增CD", discDraftHint: "每张CD均可分别编辑本碟信息、作品、碟片详情和音频。", importPreview: "已选择 {n} 张CD：{discs}。可使用下方碟片按钮逐碟检查并编辑后再保存。", importDiscConflict: "此专辑已包含第 {n} 碟，请编辑对应CD，或导入至新专辑。" });
   function normalizeWorkType(value) {
     value = String(value || "").trim();
     for (var i = 0; i < WORK_TYPES.length; i++) {
@@ -2844,7 +2859,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function closeWin(id, force) {
     var ov = $("win-" + id);
     if (ov.hidden || ov.classList.contains("is-closing")) return;
-    if (id === "cd" && formAudio && formAudio.saving) return;
+    if (id === "cd" && ((discSession && discSession.saving) || (formAudio && formAudio.saving))) return;
     if (id === "cd" && !force && cdFormDirty()) { openWin("cd-unsaved"); return; }
     if (id === "cd") stopCamera();
     if (id === "firstsync" && firstSync.resolve) { var ask = firstSync.resolve; firstSync.resolve = null; setTimeout(function () { ask("signout"); }, 0); }
@@ -3693,7 +3708,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
      materialized on each CD so older versions can still read every disc independently. */
   var SET_SHARED = ["composer", "type", "performers", "label", "issuer", "releaseYear", "catalogNo", "barcode"];
   var SET_LABELS = { composer: "composer", type: "cdType", performers: "performers", label: "label", issuer: "issuer", releaseYear: "relYear", catalogNo: "catalogNo", barcode: "barcode", cover: "albumCover" };
-  var formSetId = "", formSetOriginal = null, formSetDiscDraft = null, detailDiscOnly = false;
+  var formSetId = "", formSetOriginal = null, formSetDiscDraft = null, formDiscNumber = 1, discSession = null, detailDiscOnly = false;
   var setFolds = {}, setLinkOpen = false;
   function releaseSet(cd) { return cd && cd.set && cd.set.id && cd.set.title ? cd.set : null; }
   function discDisplayTitle(cd) {
@@ -6923,6 +6938,123 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function readChecked() { return formFav.ids.filter(function (id) { return !!findAlbum(id); }); }
 
   var cdFormBaseline = null;
+  var DISC_INPUTS = ["title", "composer", "label", "issuer", "recordingYear", "releaseYear", "notes"].concat(DETAIL_FIELDS);
+  function activeDiscEntry() {
+    return discSession && discSession.entries.find(function (entry) { return entry.id === discSession.active; });
+  }
+  function discEditorBusy() {
+    return !!(discSession && discSession.saving) || !!(formAudio && (formAudio.busy || formAudio.saving));
+  }
+  function captureDiscEntry() {
+    var entry = activeDiscEntry(); if (!entry) return;
+    var fields = {};
+    DISC_INPUTS.forEach(function (id) { fields[id] = { value: $(id).value, filled: $(id).classList.contains("filled") }; });
+    entry.snapshot = { fields: fields, people: Array.from($("perf-rows").children), works: Array.from($("work-list").children),
+      folds: ["albumOverall", "works-set", "more-details", "form-audio-set"].map(function (id) { return $(id).open; }),
+      photo: photoData, editCover: editCover, coverShown: coverShown, coverFilled: $("drop").classList.contains("filled"),
+      crop: { img: coverCrop.img, zoom: coverCrop.zoom, x: coverCrop.x, y: coverCrop.y, changed: coverCrop.changed },
+      audio: formAudio, card: formCard, favorites: formFav.ids.slice(), setOriginal: formSetOriginal, sharedDraft: formSetDiscDraft,
+      shared: $("set-edit-shared").checked, follow: SET_SHARED.concat("cover").map(function (f) { return $("set-follow-" + f).checked; }) };
+    entry.fingerprint = singleDiscSnapshot();
+    if (entry.initialFingerprint === undefined) entry.initialFingerprint = entry.fingerprint;
+  }
+  function initDiscSession(cd, all) {
+    var members = cd && releaseSet(cd) && all ? setMembers(cd.set.id) : [];
+    var id = cd && cd.id || (formAudio && formAudio.id) || newDiscDraftId();
+    if (!members.length) members = [cd || { id: id, title: $("title").value }];
+    discSession = { active: id, entries: members.map(function (c) {
+      return { id: c.id, number: releaseSet(c) ? +c.set.disc : formDiscNumber, data: clone(c), existing: !!cdById(c.id), include: true };
+    }) };
+    captureDiscEntry(); renderDiscButtons();
+  }
+  function newDiscDraftId() { return "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+  function ensureDiscSession() { if (!discSession) initDiscSession(editingId && cdById(editingId), false); }
+  function activateDiscEntry(id, focus) {
+    if (discEditorBusy() || !discSession || discSession.active === id) return;
+    var entry = discSession.entries.find(function (d) { return d.id === id; }); if (!entry) return;
+    captureDiscEntry();
+    qsa(".perf-roles.is-open").forEach(function (menu) { setPerformerRolesOpen(menu, false); });
+    discSession.active = id; formDiscNumber = entry.number;
+    var s = entry.snapshot;
+    if (!s) {
+      loadDiscEditor(entry.data, !entry.existing, false);
+      formDiscNumber = entry.number;
+    } else {
+      editingId = entry.existing ? entry.id : null; editingAddedAt = entry.data.addedAt || null;
+      DISC_INPUTS.forEach(function (field) { $(field).value = s.fields[field].value; $(field).classList.toggle("filled", s.fields[field].filled); });
+      $("perf-rows").textContent = ""; s.people.forEach(function (row) { $("perf-rows").appendChild(row); });
+      $("work-list").textContent = ""; s.works.forEach(function (work) { $("work-list").appendChild(work); });
+      ["albumOverall", "works-set", "more-details", "form-audio-set"].forEach(function (field, i) { $(field).open = s.folds[i]; });
+      photoData = s.photo; editCover = s.editCover; coverShown = s.coverShown; Object.assign(coverCrop, s.crop);
+      showPhoto(); coverCrop.render(); $("drop").classList.toggle("filled", s.coverFilled);
+      if (editCover.file && !photoData && Covers.ready) {
+        var wantedCover = editCover;
+        Covers.data(wantedCover.file).then(function (data) {
+          if (editCover === wantedCover && !wantedCover.touched && !photoData) { photoData = data; showPhoto(); }
+        }).catch(function () {});
+      }
+      formAudio = s.audio; formCard = s.card; formFav.ids = s.favorites.slice();
+      formSetOriginal = s.setOriginal; formSetDiscDraft = s.sharedDraft; $("set-edit-shared").checked = s.shared;
+      renderSetInheritance(entry.data);
+      SET_SHARED.concat("cover").forEach(function (f, i) { $("set-follow-" + f).checked = s.follow[i]; });
+      refreshRows(); renderFormCard(); renderAlbumChecks();
+    }
+    ["title", "recordingYear", "releaseYear", "works"].forEach(function (f) { setErr(f, ""); });
+    $("set-err").textContent = ""; $("dup-warn").hidden = true; dupWarned = "";
+    if (entry.lookupDisc && lookupDiscRelease) $("lookup-disc").value = entry.lookupDisc;
+    applyMode(); captureDiscEntry();
+    if (focus && $("disc-tab-" + id)) $("disc-tab-" + id).focus({ preventScroll: true });
+  }
+  function renderDiscButtons() {
+    var tabs = $("form-disc-tabs"); if (!tabs) return;
+    tabs.textContent = "";
+    var entries = discSession ? discSession.entries.filter(function (e) { return e.include; }) : [{ id: "initial", number: formDiscNumber }];
+    entries.forEach(function (entry, i) {
+      var b = el("button", "btn small quiet", t("discEditor", { n: entry.number })); b.type = "button"; b.id = "disc-tab-" + entry.id;
+      b.setAttribute("aria-pressed", !discSession || discSession.active === entry.id ? "true" : "false");
+      b.setAttribute("aria-controls", "albumOverall works-set more-details form-audio-set"); b.disabled = discEditorBusy();
+      b.addEventListener("click", function () { activateDiscEntry(entry.id, true); });
+      b.addEventListener("keydown", function (e) {
+        var step = e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0;
+        if (step) { e.preventDefault(); activateDiscEntry(entries[(i + step + entries.length) % entries.length].id, true); }
+      }); tabs.appendChild(b);
+    });
+    $("form-add-disc").disabled = discEditorBusy();
+    ["lookup-disc", "lookup-multiple", "set-choice", "set-edit-shared"].forEach(function (id) { $(id).disabled = discEditorBusy(); });
+    qsa("#lookup-disc-choices input, #lookup-select-all").forEach(function (node) { node.disabled = discEditorBusy(); });
+    var current = activeDiscEntry();
+    $("form-remove-disc").hidden = !current || current.existing || entries.length < 2;
+    $("form-remove-disc").disabled = discEditorBusy();
+  }
+  function addEditorDisc() {
+    if (discEditorBusy()) return;
+    ensureDiscSession(); captureDiscEntry();
+    if (!formSetId) { $("set-choice").value = "+new"; $("set-choice").dispatchEvent(new Event("change")); }
+    var used = setMembers(formSetId).map(function (c) { return +c.set.disc; }).concat(discSession.entries.map(function (e) { return e.number; }));
+    var number = 1; while (used.indexOf(number) >= 0) number++;
+    if (number > 999) { toast(t("setTooMany")); return; }
+    var data = { id: newDiscDraftId(), title: $("set-title").value || $("title").value, performers: [], works: [] };
+    ["label", "issuer", "releaseYear", "catalogNo", "barcode"].forEach(function (f) { if ($(f).value) data[f] = $(f).value; });
+    copySetCover(data, { photo: coverForSaving(), photoFile: !editCover.touched && editCover.file || undefined });
+    var source = setSource(formSetId);
+    data.set = { id: formSetId, title: $("set-title").value, disc: number, total: Math.max(number, +$("set-total").value),
+      overrides: source ? setOverrides(data, setDefaults(source), setCoverSource(source)) : SET_SHARED.slice() };
+    var entry = { id: data.id, number: number, data: data, existing: false, include: true };
+    discSession.entries.push(entry); $("set-total").value = Math.max(number, +$("set-total").value);
+    activateDiscEntry(entry.id, true);
+  }
+  $("form-add-disc").addEventListener("click", addEditorDisc);
+  $("form-remove-disc").addEventListener("click", function () {
+    if (discEditorBusy()) return;
+    var entry = activeDiscEntry(); if (!entry || entry.existing) return;
+    captureDiscEntry();
+    var others = discSession.entries.filter(function (d) { return d.id !== entry.id && d.include; }); if (!others.length) return;
+    activateDiscEntry(others[0].id, true);
+    discSession.entries = discSession.entries.filter(function (d) { return d.id !== entry.id; });
+    if (entry.snapshot && entry.snapshot.audio) cleanDraftAudio(entry.snapshot.audio.copied);
+    if (entry.lookupDisc) qsa("#lookup-disc-choices input").forEach(function (box) { if (+box.value === entry.lookupDisc) box.checked = false; });
+    renderDiscButtons(); renderLookupDiscPreview();
+  });
   function translateSetForm() {
     qsa("#set-choice option").forEach(function (o) {
       var source = o.value && o.value !== "+new" && setSource(o.value);
@@ -6937,6 +7069,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     });
     if ($("lookup-select-all")) $("lookup-select-all").textContent = t("importAll");
     renderLookupDiscPreview();
+    renderDiscButtons();
   }
   function setupSetForm(cd) {
     var s = releaseSet(cd), choice = $("set-choice");
@@ -6957,9 +7090,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     });
     choice.value = s ? s.id : "";
     $("set-title").value = s ? (setSource(s.id) || cd).set.title : "";
-    $("set-disc").value = s ? s.disc : 1;
+    formDiscNumber = s ? +s.disc : 1;
     $("set-total").value = s ? setTotal(setMembers(s.id)) : 2;
-    $("set-subtitle").value = s && s.subtitle || "";
     $("set-edit-shared").checked = false;
     $("set-err").textContent = "";
     $("set-editor").hidden = !s;
@@ -7002,11 +7134,20 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     formSetDiscDraft = null;
     formSetId = value === "+new" ? "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) : value;
     $("set-editor").hidden = !value;
-    $("set-edit-shared").checked = value === "+new";
+    $("set-edit-shared").checked = false;
     var members = setMembers(formSetId), source = setSource(formSetId);
     $("set-title").value = source ? source.set.title : $("title").value;
-    $("set-disc").value = nextSetDisc(members);
+    if (discSession && value) {
+      var occupied = members.filter(function (c) { return !discSession.entries.some(function (e) { return e.id === c.id; }); }).map(function (c) { return +c.set.disc; });
+      discSession.entries.forEach(function (entry) {
+        var original = releaseSet(entry.data), number = original && original.id === formSetId ? +original.disc : 1;
+        while (occupied.indexOf(number) >= 0) number++;
+        entry.number = number; occupied.push(number);
+      });
+      formDiscNumber = activeDiscEntry().number;
+    } else if (!editingId) formDiscNumber = nextSetDisc(members);
     $("set-total").value = source ? Math.max(setTotal(members), nextSetDisc(members)) : 2;
+    if (discSession) $("set-total").value = Math.max(+$("set-total").value, Math.max.apply(null, discSession.entries.filter(function (e) { return e.include; }).map(function (e) { return e.number; })));
     renderSetInheritance(editingId && cdById(editingId));
     if (source) SET_SHARED.concat("cover").forEach(function (f) {
       if ($("set-follow-" + f).checked) fillSetDefault(f);
@@ -7053,13 +7194,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function readSetDraft() {
     $("set-err").textContent = "";
     if (!$("set-choice").value) return null;
-    var disc = +$("set-disc").value, total = +$("set-total").value, title = $("set-title").value.trim();
+    var disc = formDiscNumber, total = +$("set-total").value, title = $("set-title").value.trim();
     var error = !title || !Number.isInteger(disc) || !Number.isInteger(total) || disc < 1 || disc > total || total > 999 ? t("setErr") : "";
     var members = setMembers(formSetId).filter(function (c) { return c.id !== editingId; });
     if (!error && members.some(function (c) { return +c.set.disc === disc; })) error = t("setDuplicate", { n: disc });
     if (!error && members.some(function (c) { return +c.set.disc > total; })) error = t("setErr");
-    if (error) { $("set-err").textContent = error; focusCdError($("set-disc")); return false; }
-    return { id: formSetId, title: title, disc: disc, total: total, subtitle: $("set-subtitle").value.trim(),
+    if (error) { $("set-err").textContent = error; focusCdError(!title ? $("set-title") : $("set-total")); return false; }
+    return { id: formSetId, title: title, disc: disc, total: total,
       overrides: SET_SHARED.concat("cover").filter(function (f) { return !$("set-follow-" + f).checked; }) };
   }
   function prepareSetChanges(cd, draft) {
@@ -7099,9 +7240,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("set-choice").value = cd.set.id;
     $("set-choice").dispatchEvent(new Event("change"));
     $("set-total").value = Math.max(n, setTotal(members));
+    initDiscSession(null, false);
     applyMode(); rememberCdForm(); openWin("cd");
   }
-  function cdFormSnapshot() {
+  function singleDiscSnapshot() {
     // Keep invalid draft text too, without running validation or encoding a cover.
     // Generated ids, lookup text and disclosure state do not affect the saved CD.
     function people(root) {
@@ -7126,13 +7268,23 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var photo = editCover.file && !editCover.touched && !crop ? { file: editCover.file } : { data: photoData, crop: crop };
     return JSON.stringify({ fields: fields, works: works, performers: people($("perf-rows")), photo: photo,
       cardFields: formCard.own, favorites: readChecked().sort(), audio: formAudio ? formAudio.list : [],
-      set: [$("set-choice").value, formSetId, $("set-title").value, $("set-disc").value, $("set-total").value, $("set-subtitle").value, $("set-edit-shared").checked,
-        SET_SHARED.concat("cover").map(function (f) { return !!$("set-follow-" + f) && $("set-follow-" + f).checked; })],
-      importDiscs: $("lookup-multiple").checked ? qsa("#lookup-disc-choices input:checked").map(function (n) { return n.value; }) : null });
+      set: [$("set-edit-shared").checked,
+        SET_SHARED.concat("cover").map(function (f) { return !!$("set-follow-" + f) && $("set-follow-" + f).checked; })] });
   }
-  function rememberCdForm() { cdFormBaseline = cdFormSnapshot(); }
+  function cdFormSnapshot() {
+    captureDiscEntry();
+    return JSON.stringify({ set: [$("set-choice").value, formSetId, $("set-title").value, $("set-total").value],
+      discs: discSession ? discSession.entries.map(function (e) {
+        return [e.id, e.number, e.include, e.fingerprint !== e.initialFingerprint ? e.fingerprint : null];
+      }) : singleDiscSnapshot() });
+  }
+  function rememberCdForm() {
+    captureDiscEntry();
+    if (discSession) discSession.entries.forEach(function (e) { if (e.snapshot) e.initialFingerprint = e.fingerprint; });
+    cdFormBaseline = cdFormSnapshot();
+  }
   function cdFormDirty() {
-    return !!(formAudio && formAudio.busy) || (cdFormBaseline !== null && cdFormSnapshot() !== cdFormBaseline);
+    return discEditorBusy() || (cdFormBaseline !== null && cdFormSnapshot() !== cdFormBaseline);
   }
   function focusCdError(input) {
     for (var parent = input.parentElement; parent && parent !== $("cd-form"); parent = parent.parentElement) {
@@ -7143,12 +7295,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     input.focus();
   }
   function applyMode() {
-    var editing = !!editingId;
+    var editing = !!editingId || !!(discSession && discSession.entries.some(function (e) { return e.existing; }));
     var shared = formSetId && $("set-edit-shared").checked;
     $("add-h").textContent = shared ? t(editing ? "albumEdit" : "newSet") : editing ? t("edit") : t("add");
-    if (!$("submit").disabled) $("submit").textContent = editing ? t("saveChanges") : t("addToCollection");
+    if (!$("submit").disabled) $("submit").textContent = discSession && discSession.entries.filter(function (e) { return e.include; }).length > 1 ? t("saveDiscs") : editing ? t("saveChanges") : t("addToCollection");
     $("cancel-edit").hidden = !editing;
     renderFormAudio();
+    renderDiscButtons();
   }
   function clearForm() {
     discardFormAudio();
@@ -7187,12 +7340,19 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       renderFormCard();
     }
     applyMode();
+    ensureDiscSession();
     rememberCdForm();
     openWin("cd");
   }
   function startEdit(cd) {
     clearForm();
-    editingId = cd.id;
+    loadDiscEditor(cd, false, true);
+    initDiscSession(cd, true);
+    renderGrid(); applyMode(); rememberCdForm(); openWin("cd");
+  }
+  function loadDiscEditor(cd, isNew, resetSet) {
+    DISC_INPUTS.forEach(function (id) { $(id).classList.remove("filled"); }); $("drop").classList.remove("filled");
+    editingId = isNew ? null : cd.id;
     formAudio = makeFormAudio(cd);
     editingAddedAt = cd.addedAt || Date.now();
     $("title").value = cd.title || "";
@@ -7205,6 +7365,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("more-details").open = ["label", "issuer", "recordingYear", "releaseYear", "year", "notes"].concat(DETAIL_FIELDS)
       .some(function (f) { return !!cd[f]; });
     $("notes").value = cd.notes || "";
+    $("albumOverall").open = true; $("works-set").open = false; $("form-audio-set").open = false;
     resetWorks(cd.works);
     photoData = cd.photo || null;
     /* A cover kept as a file is read back for the cropper; until then (or if the person leaves the
@@ -7218,14 +7379,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
     showPhoto();
     resetRows(cd.performers);
-    setupSetForm(cd);
+    if (resetSet) setupSetForm(cd);
+    else { formSetOriginal = cd.set ? clone(cd.set) : null; formSetDiscDraft = null; $("set-edit-shared").checked = false; renderSetInheritance(cd); }
     formCard = { open: false, own: Array.isArray(cd.cardFields) ? capFields(cd.cardFields) : null };
     renderFormCard();
     renderAlbumChecks(albumsOf(cd.id).map(function (a) { return a.id; }));
-    renderGrid();
-    applyMode();
-    rememberCdForm();
-    openWin("cd");
   }
 
   /* ---------- finding a CD online ----------
@@ -7727,6 +7885,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   var lookupRun = 0;
   async function runLookup() {
+    if (discEditorBusy()) return;
     var q = $("lookup-q").value.trim();
     var box = $("lookup-results");
     box.textContent = "";
@@ -7758,12 +7917,60 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
   }
   var lookupDiscRelease = null;
+  function lookupDiscData(release, disc) {
+    var out = Object.assign({}, release);
+    delete out.lookupDiscs; delete out.lookupDisc;
+    out.works = clone(disc.works || []).map(function (w) {
+      var resolved = workMetadata(release, w);
+      Object.assign(w, resolved); delete w.performersMode; return w;
+    });
+    return dgNormalizeWorks(out);
+  }
+  function populateLookupDrafts(release) {
+    ensureDiscSession(); captureDiscEntry();
+    var first = activeDiscEntry(), wanted = first.id, favorites = readChecked(), n = 0;
+    if (!release.lookupDiscs || release.lookupDiscs.length < 2) {
+      discSession.entries.forEach(function (e) { if (e.lookupDisc && !e.existing && e.id !== wanted) e.include = false; });
+      if (discSession.lookupSet && !setSource(formSetId)) {
+        $("set-choice").value = ""; $("set-choice").dispatchEvent(new Event("change"));
+        first.number = formDiscNumber = 1; discSession.lookupSet = false;
+      }
+      first.include = true; first.lookupDisc = 0;
+      n = fillFromLookup(lookupDiscData(release, { works: release.works }));
+      captureDiscEntry(); renderDiscButtons(); return n;
+    }
+    if (!formSetId) {
+      $("set-choice").value = "+new"; $("set-choice").dispatchEvent(new Event("change"));
+      $("set-title").value = release.title || $("title").value; discSession.lookupSet = true;
+    }
+    var numbers = release.lookupDiscs.map(function (d) { return d.disc; });
+    discSession.entries.forEach(function (e) { if (e.lookupDisc && !e.existing && numbers.indexOf(e.lookupDisc) < 0) e.include = false; });
+    $("set-total").value = Math.max(+$("set-total").value, release.lookupDiscs.length);
+    release.lookupDiscs.forEach(function (disc) {
+      var entry = discSession.entries.find(function (e) { return e.number === disc.disc; });
+      if (!entry) {
+        var stored = setMembers(formSetId).find(function (c) { return +c.set.disc === disc.disc; });
+        var data = stored ? clone(stored) : { id: newDiscDraftId(), title: release.title || $("title").value };
+        entry = { id: data.id, number: disc.disc, data: data, existing: !!stored, include: true, favoritesSeed: favorites.slice() };
+        discSession.entries.push(entry);
+      }
+      entry.include = true; entry.lookupDisc = disc.disc;
+      activateDiscEntry(entry.id, false);
+      if (!entry.existing && entry.favoritesSeed) { formFav.ids = entry.favoritesSeed.slice(); renderAlbumChecks(); }
+      n += fillFromLookup(lookupDiscData(release, disc));
+      captureDiscEntry();
+    });
+    $("lookup-multiple").checked = true;
+    var target = discSession.entries.find(function (e) { return e.id === wanted && e.include; }) || discSession.entries.find(function (e) { return e.include; });
+    activateDiscEntry(target.id, false); $("lookup-disc").value = target.lookupDisc || release.lookupDisc;
+    renderLookupDiscPreview(); return n;
+  }
   function configureLookupDiscs(p) {
     lookupDiscRelease = p.lookupDiscs && p.lookupDiscs.length > 1 ? p : null;
     $("lookup-disc-row").hidden = !lookupDiscRelease;
     $("lookup-disc").textContent = "";
     $("lookup-multiple").checked = false;
-    $("lookup-multiple").disabled = !!editingId;
+    $("lookup-multiple").disabled = false;
     $("lookup-disc-choices").textContent = "";
     $("lookup-disc-choices").hidden = true;
     $("lookup-disc-preview").textContent = "";
@@ -7772,14 +7979,26 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var option = el("option", null, t("setPosition", { n: x.disc, total: p.lookupDiscs.length }));
       option.value = x.disc; $("lookup-disc").appendChild(option);
       var label = el("label"), check = el("input"); check.type = "checkbox"; check.value = x.disc; check.checked = true;
-      check.addEventListener("change", renderLookupDiscPreview);
+      check.addEventListener("change", updateLookupDiscSelection);
       label.appendChild(check); label.appendChild(document.createTextNode(t("setPosition", { n: x.disc, total: p.lookupDiscs.length })));
       $("lookup-disc-choices").appendChild(label);
     });
     $("lookup-disc-choices").appendChild(setButton("importAll", "lookup-select-all", function () {
-      qsa("#lookup-disc-choices input").forEach(function (n) { n.checked = true; }); renderLookupDiscPreview();
+      qsa("#lookup-disc-choices input").forEach(function (n) { n.checked = true; }); updateLookupDiscSelection();
     }, true));
     $("lookup-disc").value = p.lookupDisc;
+  }
+  function updateLookupDiscSelection() {
+    if (!discSession || !lookupDiscRelease || discEditorBusy()) return;
+    captureDiscEntry();
+    var chosen = qsa("#lookup-disc-choices input:checked").map(function (n) { return +n.value; });
+    var selected = +$("lookup-disc").value;
+    discSession.entries.forEach(function (entry) {
+      if (entry.lookupDisc) entry.include = $("lookup-multiple").checked ? chosen.indexOf(entry.lookupDisc) >= 0 : entry.lookupDisc === selected;
+    });
+    var first = discSession.entries.find(function (entry) { return entry.include; });
+    if (first && !activeDiscEntry().include) activateDiscEntry(first.id, false);
+    renderDiscButtons(); renderLookupDiscPreview();
   }
   function renderLookupDiscPreview() {
     var multiple = $("lookup-multiple").checked;
@@ -7789,23 +8008,24 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   $("lookup-multiple").addEventListener("change", function () {
     if (this.checked && lookupDiscRelease) {
-      if (!$("set-choice").value) { $("set-choice").value = "+new"; $("set-choice").dispatchEvent(new Event("change")); }
-      $("set-disc").value = $("lookup-disc").value;
-      $("set-total").value = Math.max(+$("set-total").value, lookupDiscRelease.lookupDiscs.length);
+      if (!discSession || !discSession.entries.some(function (e) { return e.lookupDisc; })) populateLookupDrafts(lookupDiscRelease);
     }
-    renderLookupDiscPreview();
+    updateLookupDiscSelection();
   });
   $("lookup-disc").addEventListener("change", function () {
     if (!lookupDiscRelease) return;
     var release = lookupDiscRelease;
     var disc = release.lookupDiscs.filter(function (x) { return x.disc === +$("lookup-disc").value; })[0];
     if (!disc) return;
-    if ($("lookup-multiple").checked) resetWorks(disc.works);
-    else fillFromLookup(Object.assign({}, release, { works: disc.works }));
-    if ($("lookup-multiple").checked) $("set-disc").value = disc.disc;
+    var entry = discSession && discSession.entries.find(function (e) { return e.lookupDisc === disc.disc; });
+    if (entry) {
+      if (!$("lookup-multiple").checked) { discSession.entries.forEach(function (e) { if (e.lookupDisc) e.include = e === entry; }); }
+      if (entry.include) activateDiscEntry(entry.id, false);
+    } else fillFromLookup(lookupDiscData(release, disc));
     renderLookupDiscPreview();
   });
   async function useLookup(item, q, btn) {
+    if (discEditorBusy()) return;
     var run = ++lookupRun;
     configureLookupDiscs({});
     btn.disabled = true;
@@ -7820,25 +8040,30 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       return;
     }
     if (run !== lookupRun) return;
+    if (discEditorBusy()) { btn.disabled = false; lookupStatus(t("discImportBusy")); return; }
     configureLookupDiscs(p);
-    var n = fillFromLookup(p);
+    var n = populateLookupDrafts(p);
+    var coverTarget = activeDiscEntry();
     /* Keep the list so another result can be chosen; mark the one in use. */
     qsa("#lookup-results .btn").forEach(function (b) { b.disabled = false; b.textContent = t("lookupUse"); });
     btn.disabled = true;
     btn.textContent = t("lookupInUse");
     var done = n ? t("lookupFilled", { n: n, source: item.source.name }) : t("lookupNothing");
     /* A cover the user chose stays; one from an earlier lookup is replaced. */
-    var ownCover = photoData && !$("drop").classList.contains("filled");
+    var ownCover = photoData && !$("drop").classList.contains("filled") || editCover.file && !editCover.touched;
     if (ownCover) { lookupStatus(done); return; }
     if (photoData) { editCover.touched = true; photoData = null; $("drop").classList.remove("filled"); showPhoto(); }
     lookupStatus(done + " " + t("coverSearching"));
     var cover = await findCover(p);
     if (run !== lookupRun) return;
-    if (cover && !photoData) {
-      editCover.touched = true;
-      photoData = cover.data;
-      showPhoto();
-      $("drop").classList.add("filled");
+    if (cover && coverTarget && discSession && discSession.entries.indexOf(coverTarget) >= 0) {
+      if (activeDiscEntry() === coverTarget && !photoData) {
+        editCover.touched = true; photoData = cover.data; showPhoto(); $("drop").classList.add("filled"); captureDiscEntry();
+      } else if (activeDiscEntry() !== coverTarget && coverTarget.snapshot && !coverTarget.snapshot.photo && !coverTarget.snapshot.editCover.file) {
+        var s = coverTarget.snapshot; s.photo = cover.data; s.editCover = { file: null, touched: true }; s.coverShown = null;
+        s.crop = { img: null, zoom: 1, x: 0, y: 0, changed: false }; s.coverFilled = true;
+        coverTarget.fingerprint = JSON.stringify({ previous: coverTarget.fingerprint, cover: cover.data });
+      }
       lookupStatus(done + " " + t(cover.exact ? "coverFoundExact" : "coverFound"));
     } else {
       lookupStatus(done + " " + t("coverNone"));
@@ -7995,9 +8220,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     } catch (e) { toast(t("toastAudioFail")); }
   }
   function discardFormAudio() {
-    var draft = formAudio;
+    var files = formAudio ? formAudio.copied.slice() : [];
+    if (discSession) discSession.entries.forEach(function (entry) {
+      if (entry.snapshot && entry.snapshot.audio) files = files.concat(entry.snapshot.audio.copied);
+    });
+    discSession = null;
     formAudio = null;
-    if (draft) cleanDraftAudio(draft.copied);
+    cleanDraftAudio(Array.from(new Set(files)));
   }
   async function addFormAudio() {
     var draft = formAudio;
@@ -8069,6 +8298,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var add = el("button", "linkbtn", t("audioAdd")); add.type = "button"; add.id = "form-audio-add";
     add.disabled = draft.busy || draft.saving;
     add.addEventListener("click", addFormAudio); box.appendChild(add);
+    renderDiscButtons();
   }
   async function commitFormAudio(draft) {
     if (!draft) return;
@@ -9311,10 +9541,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       $("set-edit-shared").dispatchEvent(new Event("change")); rememberCdForm();
     }));
     actions.appendChild(setButton("setAdd", "set-add", function () { addSetDisc(source); }, true));
-    actions.appendChild(setButton("linkDiscs", "set-link", function () { setLinkOpen = !setLinkOpen; renderDetail(); }, true));
-    if (AudioLib.ready) {
-      actions.appendChild(setButton("albumPlay", "set-play", function () { return playSet(members, true); }));
-      actions.appendChild(setButton("albumEnqueue", "set-enqueue", function () { return playSet(members, false); }, true));
+    var music = currentAlbum === "music";
+    var musicActions = el("div", "profile-actions");
+    if (music) musicActions.appendChild(setButton("linkDiscs", "set-link", function () { setLinkOpen = !setLinkOpen; renderDetail(); }, true));
+    if (music && AudioLib.ready) {
+      musicActions.appendChild(setButton("albumPlay", "set-play", function () { return playSet(members, true); }));
+      musicActions.appendChild(setButton("albumEnqueue", "set-enqueue", function () { return playSet(members, false); }, true));
       var playlist = el("select", "input"); playlist.id = "set-playlist"; playlist.setAttribute("aria-label", t("albumPlaylist"));
       var initial = el("option", null, t("albumPlaylist")); initial.value = ""; playlist.appendChild(initial);
       meta.playlists.forEach(function (p) { var o = el("option", null, p.name); o.value = p.id; playlist.appendChild(o); });
@@ -9323,17 +9555,17 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         var items = [].concat.apply([], members.map(discItems));
         if (playlist.value === "+new") openAlbumDlg("new", null, "playlist", items);
         else if (playlist.value) changePlaylist(playlist.value, function (p) { items.forEach(function (x) { if (!inPlaylist(p, x)) p.items.push(x); }); });
-      }); actions.appendChild(playlist);
+      }); musicActions.appendChild(playlist);
     }
+    if (musicActions.children.length) main.appendChild(musicActions);
     var ids = members.map(function (c) { return c.id; });
     var pk = favPicker(detailFav, "set-fav", function (id) { var a = findAlbum(id); return !!a && ids.every(function (id) { return a.cdIds.indexOf(id) >= 0; }); },
       function (a, on) { commitMeta(function (m) { m.albums.forEach(function (x) {
         if (x.id !== a.id) return; x.cdIds = x.cdIds.filter(function (id) { return ids.indexOf(id) < 0; }); if (on) x.cdIds = x.cdIds.concat(ids);
       }); }); },
       function (name) { detailFav.open = true; commitMeta(function (m) { m.albums.push({ id: newFavoriteId(), name: name, cdIds: ids }); }); });
-    actions.appendChild(pk.btn); pk.chips.forEach(function (c) { actions.appendChild(c); }); actions.appendChild(pk.list);
-    main.appendChild(actions);
-    if (setLinkOpen) {
+    actions.appendChild(pk.btn);
+    if (music && setLinkOpen) {
       var links = el("section", "psect"), list = el("div", "set-link-list");
       links.appendChild(el("h3", null, t("linkDiscs")));
       var unlinked = cds.filter(function (c) { return !releaseSet(c); });
@@ -9385,8 +9617,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       buttons.appendChild(setButton("discDelete", "set-delete-" + disc.id, function () { confirmSetRemoval(buttons, [disc], false); }, true));
       body.appendChild(buttons); fold.appendChild(body); main.appendChild(fold);
     });
-    var removal = el("div", "profile-actions");
-    removal.appendChild(setButton("albumDelete", "set-delete-all", function () { confirmSetRemoval(removal, members, true); }, true)); main.appendChild(removal);
+    actions.appendChild(setButton("albumDelete", "set-delete-all", function () { confirmSetRemoval(actions, members, true); }, true));
+    pk.chips.forEach(function (c) { actions.appendChild(c); }); actions.appendChild(pk.list);
+    main.appendChild(actions);
     box.appendChild(cover); box.appendChild(main);
     if (keep && $(keep)) $(keep).focus({ preventScroll: true });
   }
@@ -9587,7 +9820,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var b = bar(cd.barcode), c = cat(cd.catalogNo);
     if (b.length < 8 && c.length < 3) return null;
     return cds.filter(function (x) {
-      if (formSetId && releaseSet(x) && x.set.id === formSetId && +x.set.disc !== +$("set-disc").value) return false;
+      if (formSetId && releaseSet(x) && x.set.id === formSetId && +x.set.disc !== formDiscNumber) return false;
       return (b.length >= 8 && bar(x.barcode) === b) || (c.length >= 3 && cat(x.catalogNo) === c);
     })[0] || null;
   }
@@ -9599,9 +9832,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       applyMode();
     });
   });
-  $("cd-form").addEventListener("submit", async function (e) {
-    e.preventDefault();
-    if ($("submit").disabled || (formAudio && (formAudio.busy || formAudio.saving))) return;
+  function readDiscCandidate() {
     var title = $("title").value.trim();
     var recordingYear = $("recordingYear").value.trim();
     var releaseYear = $("releaseYear").value.trim();
@@ -9629,20 +9860,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (!backend || !loaded) { toast(t("toastLoading")); return; }
     var setDraft = readSetDraft();
     if (setDraft === false) return;
-    var multipleImport = !editingId && lookupDiscRelease && $("lookup-multiple").checked;
-    var importNumbers = multipleImport ? qsa("#lookup-disc-choices input:checked").map(function (n) { return +n.value; }) : [];
-    if (multipleImport && (!importNumbers.length || !setDraft)) {
-      $("set-err").textContent = t(!importNumbers.length ? "importNone" : "setErr"); return;
-    }
-    if (multipleImport && importNumbers.indexOf(+$("lookup-disc").value) < 0) {
-      $("set-err").textContent = t("importReview"); focusCdError($("lookup-disc"));
-      return;
-    }
-    if (multipleImport) {
-      var conflicting = setMembers(setDraft.id).filter(function (c) { return importNumbers.indexOf(+c.set.disc) >= 0; })[0];
-      if (conflicting) { $("set-err").textContent = t("setDuplicate", { n: conflicting.set.disc }); return; }
-      if (Math.max.apply(null, importNumbers) > setDraft.total) { $("set-err").textContent = t("setErr"); return; }
-    }
 
     var before = editingId && cdById(editingId);
     var cd = Object.assign({}, before || {});
@@ -9668,8 +9885,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
        has it, and add it only when the button is pressed again. */
     var twin = editingId ? null : sameDisc(cd);
     var twinKey = twin ? [twin.id, cd.barcode, cd.catalogNo].join("|") : "";
-    if (twin && dupWarned !== twinKey) {
+    var entry = activeDiscEntry();
+    if (twin && (entry ? entry.dupWarned : dupWarned) !== twinKey) {
       dupWarned = twinKey;
+      if (entry) entry.dupWarned = twinKey;
       $("dup-warn").textContent = t("dupWarn", { title: twin.title });
       $("dup-warn").hidden = false;
       $("submit").textContent = t("addAnyway");
@@ -9687,45 +9906,80 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var chosenAlbums = readChecked();
 
     var wasEditing = !!editingId;
-    var targetId = editingId || (audioDraft && audioDraft.id) || "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    var targetId = editingId || (entry && entry.id) || (audioDraft && audioDraft.id) || newDiscDraftId();
     cd.id = targetId;
     var changes = prepareSetChanges(cd, setDraft);
-    var importedIds = [];
     if (!setDraft && before && before.set && !releaseSet(before)) cd.set = clone(before.set);
-    if (multipleImport) {
-      lookupDiscRelease.lookupDiscs.forEach(function (disc) {
-        if (importNumbers.indexOf(disc.disc) < 0 || disc.disc === +$("lookup-disc").value) return;
-        var extra = Object.assign({}, lookupDiscRelease, { id: "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10),
-          title: cd.set.title, works: clone(disc.works), addedAt: Date.now() });
-        delete extra.lookupDiscs; delete extra.lookupDisc; delete extra.audio;
-        extra.set = Object.assign({}, cd.set, { disc: disc.disc, subtitle: "", overrides: [] });
-        SET_SHARED.forEach(function (f) { extra[f] = clone(cd.set.shared[f]); });
-        copySetCover(extra, cd); changes.push(extra);
-        importedIds.push(extra.id);
-      });
+    return { cd: cd, changes: changes, audio: audioDraft, favorites: chosenAlbums, existing: wasEditing,
+      grouped: !!setDraft || !!(before && releaseSet(before)), shared: $("set-edit-shared").checked, entry: entry };
+  }
+  $("cd-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    if ($("submit").disabled || discEditorBusy()) return;
+    ensureDiscSession(); captureDiscEntry();
+    var original = discSession.active, entries = discSession.entries.filter(function (entry) { return entry.include; });
+    if (!entries.length) { $("set-err").textContent = t("importNone"); return; }
+    var candidates = [];
+    for (var i = 0; i < entries.length; i++) {
+      var entry = entries[i];
+      var membershipChanged = (releaseSet(entry.data) ? entry.data.set.id : "") !== formSetId;
+      if (entry.existing && !membershipChanged && entry.id !== original && (!entry.snapshot || entry.fingerprint === entry.initialFingerprint)) continue;
+      activateDiscEntry(entry.id, false);
+      var candidate = readDiscCandidate();
+      if (!candidate) return;
+      candidates.push(candidate); captureDiscEntry();
     }
+    var secondary = {}, primary = {};
+    candidates.forEach(function (c) { c.changes.forEach(function (cd) { secondary[cd.id] = cd; }); primary[c.cd.id] = c.cd; });
+    var merged = Object.assign({}, secondary, primary), changes = Object.keys(merged).map(function (id) { return merged[id]; });
+    if (formSetId) {
+      var source = setSource(formSetId), sharedEdits = candidates.filter(function (c) { return c.shared; });
+      if (!source || sharedEdits.length) {
+        var chosen = sharedEdits.length ? sharedEdits[sharedEdits.length - 1].cd : candidates[0].cd;
+        var defaults = clone(chosen.set.shared), mainCover = chosen.set.cover, stamp = Date.now();
+        if (!source) SET_SHARED.forEach(function (field) {
+          if (field === "performers") defaults.performers = (chosen.performers || []).filter(function (person) {
+            return candidates.every(function (c) { return (c.cd.performers || []).some(function (p) { return p.role === person.role && p.name === person.name; }); });
+          });
+          else if (!candidates.every(function (c) { return String(c.cd[field] || "") === String(chosen[field] || ""); })) defaults[field] = "";
+        });
+        changes.forEach(function (cd) {
+          if (!releaseSet(cd) || cd.set.id !== formSetId) return;
+          var overrides = cd.set.overrides || [];
+          if (!source) overrides = Array.from(new Set(overrides.concat(setOverrides(Object.assign({}, cd, { set: null }), defaults, mainCover))));
+          cd.set = Object.assign({}, cd.set, { shared: clone(defaults), sharedAt: stamp, cover: clone(mainCover), overrides: overrides });
+          SET_SHARED.forEach(function (f) { if (overrides.indexOf(f) < 0) cd[f] = clone(defaults[f]); });
+          if (overrides.indexOf("cover") < 0) copySetCover(cd, mainCover);
+        });
+      }
+    }
+    var hadExisting = candidates.some(function (c) { return c.existing; });
+    var title = formSetId ? $("set-title").value : candidates[0].cd.title;
     var btn = $("submit");
     btn.disabled = true;
     btn.textContent = t("saving");
-    if (audioDraft) { audioDraft.saving = true; renderFormAudio(); }
+    discSession.saving = true;
+    candidates.forEach(function (c) { if (c.audio) c.audio.saving = true; }); renderFormAudio(); renderDiscButtons();
     try {
-      if (setDraft || (before && releaseSet(before))) await changeDiscs(changes);
-      else if (wasEditing) await backend.update(targetId, cd, !!audioDraft);
-      else targetId = await backend.add(cd, targetId, !!audioDraft);
-      await commitFormAudio(audioDraft);
-      if (audioDraft) audioDraft.saving = false;
-      setMembership(targetId, chosenAlbums);
-      importedIds.forEach(function (id) { setMembership(id, chosenAlbums); });
+      if (changes.length > 1 || candidates.some(function (c) { return c.grouped; })) await changeDiscs(changes);
+      else if (candidates[0].existing) await backend.update(candidates[0].cd.id, candidates[0].cd, !!candidates[0].audio);
+      else await backend.add(candidates[0].cd, candidates[0].cd.id, !!candidates[0].audio);
+      for (var j = 0; j < candidates.length; j++) {
+        await commitFormAudio(candidates[j].audio);
+        if (candidates[j].audio) candidates[j].audio.saving = false;
+        setMembership(candidates[j].cd.id, candidates[j].favorites);
+      }
+      discSession.saving = false;
       clearForm();
       closeWin("cd");
       renderAll();
-      toast(t(wasEditing ? "toastSaved" : "toastAdded", { title: title }));
+      toast(t(hadExisting ? "toastSaved" : "toastAdded", { title: title }));
     } catch (err) {
       var code = err && err.code;
-      if (audioDraft) audioDraft.saving = false;
+      candidates.forEach(function (c) { if (c.audio) c.audio.saving = false; });
+      if (discSession) discSession.saving = false;
       if (code === "local_full") {
-        await commitFormAudio(audioDraft);
-        setMembership(err.id || targetId, chosenAlbums);
+        for (var k = 0; k < candidates.length; k++) { await commitFormAudio(candidates[k].audio); setMembership(candidates[k].cd.id, candidates[k].favorites); }
         clearForm();
         closeWin("cd");
         renderAll();
@@ -9737,8 +9991,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       } else {
         toast(t("toastSaveFail"));
       }
+      if (discSession) activateDiscEntry(original, false);
     } finally {
-      if (audioDraft) audioDraft.saving = false;
+      candidates.forEach(function (c) { if (c.audio) c.audio.saving = false; });
+      if (discSession) discSession.saving = false;
       btn.disabled = false;
       applyMode();
     }
