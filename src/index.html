@@ -1239,6 +1239,30 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       <button type="button" class="iconbtn" id="close-cd" data-i18n-aria="close" aria-label="Close">×</button>
     </div>
     <form id="cd-form" autocomplete="off" novalidate>
+      <section class="lookup" id="drive-section" hidden>
+        <button type="button" class="btn small quiet" id="drive-open" aria-expanded="false" aria-controls="drive-panel" data-i18n="driveOpen">Add from CD drive · Trial</button>
+        <div id="drive-panel" hidden>
+          <p class="hint" data-i18n="driveHint">Read an audio CD, review its details, then copy its audio. Nothing is saved until you save the CD.</p>
+          <div class="lookup-row">
+            <select class="input" id="drive-device" data-i18n-aria="driveDevice" aria-label="CD drive"></select>
+            <button type="button" class="btn small quiet" id="drive-refresh" data-i18n="driveRefresh">Refresh</button>
+            <button type="button" class="btn small" id="drive-read" data-i18n="driveRead">Read disc</button>
+          </div>
+          <div id="drive-preview" hidden>
+            <label class="lbl" for="drive-release" data-i18n="driveRelease">Release to use</label>
+            <select class="input" id="drive-release"></select>
+            <ol class="ptracks" id="drive-tracks"></ol>
+            <div class="lookup-row">
+              <select class="input" id="drive-format" data-i18n-aria="driveFormat" aria-label="Audio format"><option value="flac">FLAC</option><option value="wav">WAV</option></select>
+              <button type="button" class="btn small" id="drive-copy" data-i18n="driveCopy">Import disc</button>
+            </div>
+          </div>
+          <progress id="drive-progress" max="100" value="0" hidden style="width:100%" data-i18n-aria="driveProgress" aria-label="Copy progress"></progress>
+          <p class="hint" id="drive-status" role="status" aria-live="polite"></p>
+          <button type="button" class="btn small quiet" id="drive-cancel" hidden data-i18n="driveCancel">Cancel copying</button>
+          <p class="hint" data-i18n="driveTrial">Trial: standard audio CDs only. Includes read retries and FLAC verification; secure-rip/AccurateRip verification is not included. Audio stays on this computer.</p>
+        </div>
+      </section>
       <section class="lookup" id="lookup">
         <label class="lbl" for="lookup-q" data-i18n="lookupHead">Find this CD online</label>
         <div class="lookup-row">
@@ -2479,6 +2503,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     WORK_TYPES.forEach(function (type, i) { I18N[l]["workType." + type] = WORK_TYPE_NAMES[l][i]; });
   });
   function workTypeText(type) { return WORK_TYPES.indexOf(type) >= 0 ? t("workType." + type) : type || t("typeUnknown"); }
+  I18N.en.profileForm = "Form"; I18N.ja.profileForm = "楽曲形式"; I18N.zh.profileForm = "曲式";
   Object.assign(I18N.en, { cdType: "Type of work", cdTypePh: "Type of work, if known", workTypePh: "Type of work", albumOverall: "Album information", workDetails: "Work details", workPerformers: "Performers", workInheritHint: "Works use these details unless you enter different ones in Work details.", hub: "Inner ring manufacturing", hubPh: "Inner ring manufacturing details, if known", hubClear: "Clear hub", hubClearType: "Clear hub", workDuration: "Duration of this work" });
   Object.assign(I18N.ja, { cdType: "作品の種類", cdTypePh: "作品の種類（任意）", workTypePh: "作品の種類", albumOverall: "アルバム情報", workDetails: "作品の詳細", workPerformers: "演奏者", workInheritHint: "各作品にはここで入力した情報が使われます。異なる場合は「作品の詳細」で入力してください。", hub: "内周部の製造方式", hubPh: "内周部の製造方式の詳細（任意）", hubClear: "ハブをクリア", hubClearType: "透明ハブ", workDuration: "作品の演奏時間" });
   Object.assign(I18N.zh, { cdType: "作品类型", cdTypePh: "作品类型（选填）", workTypePh: "作品类型", albumOverall: "专辑信息", workDetails: "作品详情", workPerformers: "演奏者", workInheritHint: "各作品默认使用这里的信息；如有不同，请在「作品详情」中填写。", hub: "内圈制作工艺", hubPh: "内圈制作工艺详情（选填）", hubClear: "清空银圈", hubClearType: "胶圈", workDuration: "作品时长" });
@@ -2536,6 +2561,54 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   Object.assign(I18N.en, { composerPh: "e.g. Sergei Rachmaninoff", cdTypePh: "e.g. Piano concerto", hubPh: "e.g. Full silver hub" });
   Object.assign(I18N.ja, { composerPh: "例：ラフマニノフ", cdTypePh: "例：ピアノ協奏曲", hubPh: "例：全面銀色ハブ" });
   Object.assign(I18N.zh, { composerPh: "例如：拉赫玛尼诺夫", cdTypePh: "例如：钢琴协奏曲", hubPh: "例如：满银圈" });
+  Object.assign(I18N.en, {
+    driveDiscFeature: "This trial does not yet support CDs with pre-emphasis or four-channel audio.",
+    driveOpen: "Add from CD drive · Trial", driveHint: "Read an audio CD, review its details, then copy its audio. Nothing is saved until you save the CD.",
+    driveDevice: "CD drive", driveRefresh: "Refresh", driveRead: "Read disc", driveRelease: "Release to use", driveFormat: "Audio format", driveCopy: "Import disc", driveCancel: "Cancel copying", driveProgress: "Copy progress",
+    driveTrial: "Trial: standard audio CDs only. Includes read retries and FLAC verification; secure-rip/AccurateRip verification is not included. Audio stays on this computer.",
+    driveNoDrives: "No CD drive found. Connect a CD/DVD drive and choose Refresh.", driveReady: "Insert an audio CD, then choose Read disc.", driveReading: "Reading the disc and finding matching releases…",
+    driveUnknown: "Use numbered tracks (no release selected)", driveAlbum: "Audio CD", driveTrack: "Track {n}", driveLayout: "{n} tracks read. Review the release, then import its audio.",
+    driveNoMatch: "No matching release found. You can import numbered tracks and add details yourself.", driveOffline: "Online details are unavailable. You can still import numbered tracks.",
+    driveCopying: "Copying track {n} of {total} · {progress}%", driveCancelling: "Cancelling… please wait for the current read to stop.", driveCancelled: "Copying cancelled. No imported audio was kept.",
+    driveComplete: "Audio copied into this draft. Review the details and choose Save to keep the CD.", driveHasAudio: "This disc already has audio. Use a new empty disc editor to import from a drive.",
+    driveMissing: "The CD drive is no longer connected. Reconnect it and read the disc again.", driveAccess: "Windows could not open the CD drive. Close other disc-reading apps and try again.",
+    driveEmpty: "No readable audio CD is in the drive. Insert one and choose Read disc.", driveData: "This trial supports standard audio CDs. Data and mixed-mode discs are not supported yet.",
+    driveChanged: "The disc was ejected or changed. Read the disc again before retrying.", driveReadError: "The drive could not read the audio after retries. Check the disc and try again.",
+    driveSpace: "There is not enough free disk space to import this disc. Free some space and retry.", driveWrite: "The audio could not be saved. Check free space and folder access, then retry.",
+    driveEncoder: "The bundled FLAC encoder could not finish. Retry, or choose WAV.", driveWindows: "CD-drive import is available in the Windows desktop trial.", driveBusy: "Finish or cancel the current disc import first."
+  });
+  Object.assign(I18N.ja, {
+    driveDiscFeature: "プリエンファシス付きCDや4チャンネルCDは、この試用版では未対応です。",
+    driveOpen: "CDドライブから追加・試用版", driveHint: "音楽CDを読み取り、情報を確認して音声をコピーします。CDを保存するまでコレクションには追加されません。",
+    driveDevice: "CDドライブ", driveRefresh: "更新", driveRead: "ディスクを読む", driveRelease: "使用するリリース", driveFormat: "音声形式", driveCopy: "取り込む", driveCancel: "コピーを中止", driveProgress: "コピーの進行状況",
+    driveTrial: "試用版：通常の音楽CDに対応。再読み取りとFLACの検証を行いますが、セキュアリッピング・AccurateRipの検証は未対応です。音声はこのパソコンだけに保存します。",
+    driveNoDrives: "CDドライブが見つかりません。CD/DVDドライブを接続して「更新」を押してください。", driveReady: "音楽CDを入れ、「ディスクを読む」を押してください。", driveReading: "ディスクを読み取り、リリースを検索中…",
+    driveUnknown: "番号付きトラックを使用（リリース未選択）", driveAlbum: "音楽CD", driveTrack: "トラック {n}", driveLayout: "{n}トラックを読み取りました。リリースを確認して音声を取り込めます。",
+    driveNoMatch: "一致するリリースがありません。番号付きトラックで取り込み、情報を入力できます。", driveOffline: "オンライン情報を取得できません。番号付きトラックで取り込めます。",
+    driveCopying: "トラック {n}/{total} をコピー中・{progress}%", driveCancelling: "中止しています。読み取りが停止するまでお待ちください。", driveCancelled: "コピーを中止しました。取り込んだ音声は残りません。",
+    driveComplete: "下書きに音声をコピーしました。内容を確認して保存してください。", driveHasAudio: "このディスクには音声があります。新しい空のディスク編集画面で取り込んでください。",
+    driveMissing: "CDドライブが切断されました。接続してディスクを読み直してください。", driveAccess: "CDドライブを開けません。他のディスク読み取りアプリを閉じて再試行してください。",
+    driveEmpty: "読み取れる音楽CDがありません。音楽CDを入れて読み直してください。", driveData: "試用版は通常の音楽CDに対応しています。データCD・ミックスモードCDは未対応です。",
+    driveChanged: "ディスクが取り出されたか交換されました。読み直してから再試行してください。", driveReadError: "再試行しても音声を読み取れませんでした。ディスクを確認してください。",
+    driveSpace: "空き容量が不足しています。空き容量を増やして再試行してください。", driveWrite: "音声を保存できません。空き容量とフォルダーのアクセス権を確認してください。",
+    driveEncoder: "同梱のFLACエンコーダーが失敗しました。再試行するかWAVを選んでください。", driveWindows: "CDドライブからの取り込みはWindowsデスクトップ試用版で利用できます。", driveBusy: "現在の取り込みを完了または中止してください。"
+  });
+  Object.assign(I18N.zh, {
+    driveDiscFeature: "试用版暂不支持带预加重或四声道音频的CD。",
+    driveOpen: "从CD光驱添加 · 试用", driveHint: "读取音乐CD，检查信息后复制音频。保存CD前不会加入收藏。",
+    driveDevice: "CD光驱", driveRefresh: "刷新", driveRead: "读取光盘", driveRelease: "使用的发行版本", driveFormat: "音频格式", driveCopy: "导入光盘", driveCancel: "取消复制", driveProgress: "复制进度",
+    driveTrial: "试用功能：目前支持普通音乐CD，包含读取重试和FLAC编码校验，尚不提供安全抓轨或AccurateRip校验。音频仅保存在本机。",
+    driveNoDrives: "未找到CD光驱。请连接CD/DVD光驱后刷新。", driveReady: "请放入音乐CD，然后点击「读取光盘」。", driveReading: "正在读取光盘并查询匹配的发行版本…",
+    driveUnknown: "使用编号音轨（不选择发行版本）", driveAlbum: "音乐CD", driveTrack: "音轨 {n}", driveLayout: "已读取 {n} 条音轨。检查发行版本后即可导入音频。",
+    driveNoMatch: "未找到匹配的发行版本。仍可导入编号音轨并手动填写信息。", driveOffline: "暂时无法获取在线信息，仍可导入编号音轨。",
+    driveCopying: "正在复制第 {n}/{total} 条音轨 · {progress}%", driveCancelling: "正在取消，请等待当前读取停止。", driveCancelled: "已取消复制，未保留此次导入的音频。",
+    driveComplete: "音频已复制到当前草稿。请检查信息，然后保存CD。", driveHasAudio: "本碟已有音频。请在一张新的空白CD编辑页中从光驱导入。",
+    driveMissing: "光驱已断开连接，请重新连接后读取光盘。", driveAccess: "Windows无法打开光驱，请关闭其他读取光盘的程序后重试。",
+    driveEmpty: "光驱中没有可读取的音乐CD，请放入音乐CD后重新读取。", driveData: "试用功能目前仅支持普通音乐CD，暂不支持数据光盘或混合模式光盘。",
+    driveChanged: "光盘已弹出或更换，请重新读取后再试。", driveReadError: "重试后仍无法读取音频，请检查光盘后重试。",
+    driveSpace: "磁盘空间不足，请释放空间后重试。", driveWrite: "无法保存音频，请检查磁盘空间和文件夹权限后重试。",
+    driveEncoder: "内置FLAC编码器未能完成编码，请重试或选择WAV格式。", driveWindows: "从CD光驱导入功能仅适用于Windows桌面试用版。", driveBusy: "请先完成或取消当前光盘导入。"
+  });
   var LANGS = {
     en: { tag: "en", name: "English" },
     ja: { tag: "ja", name: "日本語" },
@@ -2868,6 +2941,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function closeWin(id, force) {
     var ov = $("win-" + id);
     if (ov.hidden || ov.classList.contains("is-closing")) return;
+    if (id === "cd" && CdDrive && CdDrive.busy) { CdDrive.cancel(true, force); return; }
     if (id === "cd" && ((discSession && discSession.saving) || (formAudio && formAudio.saving))) return;
     if (id === "cd" && !force && cdFormDirty()) { openWin("cd-unsaved"); return; }
     if (id === "cd") stopCamera();
@@ -7076,6 +7150,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function ensureDiscSession() { if (!discSession) initDiscSession(editingId && cdById(editingId), false); }
   function activateDiscEntry(id, focus) {
     if (discEditorBusy() || !discSession || discSession.active === id) return;
+    if (CdDrive) CdDrive.reset();
     var entry = discSession.entries.find(function (d) { return d.id === id; }); if (!entry) return;
     finishPerformerDrag(false);
     captureDiscEntry();
@@ -7295,6 +7370,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     showPhoto();
   }
   function clearForm() {
+    if (CdDrive) CdDrive.reset();
     finishPerformerDrag(false);
     discardFormAudio();
     $("cd-form").reset();
@@ -7323,6 +7399,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     rememberCdForm();
   }
   function openAdd() {
+    $("drive-section").hidden = !IS_TAURI;
     if (!editingId) {
       var prev = readChecked();
       if (currentAlbum !== "all" && prev.indexOf(currentAlbum) === -1 && findAlbum(currentAlbum)) prev.push(currentAlbum);
@@ -7343,6 +7420,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     renderGrid(); applyMode(); rememberCdForm(); openWin("cd");
   }
   function loadDiscEditor(cd, isNew, resetSet) {
+    if (CdDrive) CdDrive.reset();
+    $("drive-section").hidden = !IS_TAURI;
     DISC_INPUTS.forEach(function (id) { $(id).classList.remove("filled"); }); $("drop").classList.remove("filled");
     editingId = isNew ? null : cd.id;
     formAudio = makeFormAudio(cd);
@@ -9602,7 +9681,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (missing.length) main.appendChild(el("p", "hint", t("missingDiscs", { discs: missing.join(", ") })));
     if (defaults.composer) main.appendChild(nameLink("composer", defaults.composer));
     var facts = el("dl", "facts");
-    if (defaults.type) main.appendChild(el("p", "album-work-type", workTypeText(defaults.type)));
+    if (defaults.type) { facts.appendChild(el("dt", null, t("profileForm"))); facts.appendChild(el("dd", null, workTypeText(defaults.type))); }
     appendPerformerFacts(facts, defaults.performers);
     SET_SHARED.filter(function (f) { return f !== "composer" && f !== "type" && f !== "performers"; }).forEach(function (f) {
       var value = defaults[f];
@@ -9726,8 +9805,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       });
       main.appendChild(cline);
     }
-    if (cd.type) main.appendChild(el("p", "album-work-type", workTypeText(cd.type)));
-
     var dl = el("dl", "facts");
     function fact(label, value) {
       if (!value) return;
@@ -9736,6 +9813,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       dd.appendChild(typeof value === "string" ? document.createTextNode(value) : value);
       dl.appendChild(dd);
     }
+    if (cd.type) fact(t("profileForm"), workTypeText(cd.type));
     appendPerformerFacts(dl, cd.performers);
 
     var pk = favPicker(detailFav, "detail-fav",
@@ -10047,6 +10125,163 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       applyMode();
     }
   });
+
+  /* ---------- CD-drive trial ---------- */
+  function driveCandidates(data, disc) {
+    var candidates = [];
+    (data.releases || []).forEach(function (release) {
+      (release.media || []).forEach(function (medium) {
+        var tracks = medium.tracks || [];
+        if (tracks.length !== disc.tracks.length || (medium.format && !/CD/i.test(medium.format))) return;
+        if (tracks.some(function (track, i) { return +track.position !== disc.tracks[i].number; })) return;
+        var known = medium.discs || [], exact = known.some(function (d) { return d.id === disc.discId; });
+        // A release can contain multiple discs; prefer its actual matched medium.
+        if (known.length && !exact) return;
+        var credits = [], artists = (release["artist-credit"] || []).map(function (a) { return a.name || a.artist && a.artist.name || ""; }).filter(Boolean);
+        function relCredits(relations) {
+          var found = [];
+          (relations || []).forEach(function (r) {
+            if (!r.artist || !r.artist.name) return;
+            var role = r.type === "composer" ? "Composed By" : r.type === "conductor" ? "Conductor" : r.type === "orchestra" ? "Orchestra" :
+              r.type === "instrument" ? (r.attributes || []).join(", ") : r.type === "vocal" ? "Vocals" : "";
+            if (role) found.push({ name: r.artist.name, role: role });
+          });
+          return found;
+        }
+        var tracklist = tracks.map(function (track, i) {
+          var recording = track.recording || {}, extra = relCredits(recording.relations);
+          (recording.relations || []).forEach(function (r) { if (r.work) extra = extra.concat(relCredits(r.work.relations)); });
+          credits = credits.concat(extra);
+          return { type_: "track", position: String(i+1), title: track.title || recording.title || t("driveTrack", { n: i+1 }), duration: disc.tracks[i].duration, extraartists: extra };
+        });
+        var composers = dgComposers(credits), p = { title: release.title || t("driveAlbum"), works: dgWorks(tracklist, composers), performers: [] };
+        p.works.forEach(function (w) { var type = inferWorkType(w.title); if (type) w.type = type; });
+        dgNormalizeWorks(p);
+        if (discTracks(p).length !== disc.tracks.length) return;
+        var label = (release["label-info"] || [])[0];
+        if (label) { p.label = label.label && label.label.name || ""; p.catalogNo = label["catalog-number"] || ""; }
+        if (release.barcode) p.barcode = release.barcode;
+        if (release.date) p.releaseYear = release.date.slice(0,4);
+        var line = [release.title, artists.join(" / "), release.date, release.country, (release.media || []).length > 1 ? t("discEditor", { n: medium.position }) : ""].filter(Boolean).join(" · ");
+        candidates.push({ value: p, line: line, releaseId: release.id, discNumber: medium.position || 1, total: (release.media || []).length, exact: exact });
+      });
+    });
+    return candidates.sort(function (a,b) { return +b.exact - +a.exact; }).slice(0,20);
+  }
+  var CdDrive = (function () {
+    var run = 0, disc = null, choices = [], busy = false, job = null, cancelRequested = false, closing = null, locked = [], reading = false;
+    function status(key, values) { $("drive-status").textContent = key ? t(key, values) : ""; }
+    function error(e) {
+      var code = String(e && e.message || e), keys = { drive_missing:"driveMissing", drive_access:"driveAccess", drive_empty:"driveEmpty", drive_disc:"driveEmpty", drive_data:"driveData", drive_disc_feature:"driveDiscFeature", drive_changed:"driveChanged", drive_read:"driveReadError", drive_space:"driveSpace", drive_write:"driveWrite", drive_encoder:"driveEncoder", drive_windows:"driveWindows", drive_busy:"driveBusy", drive_cancelled:"driveCancelled" };
+      status(keys[code] || "driveReadError");
+    }
+    function reset() {
+      if (busy) return;
+      run++; reading = false; disc = null; choices = []; job = null;
+      $("drive-panel").hidden = true; $("drive-open").setAttribute("aria-expanded", "false");
+      $("drive-preview").hidden = true; $("drive-progress").hidden = true; $("drive-cancel").hidden = true;
+      $("drive-device").textContent = ""; $("drive-release").textContent = ""; $("drive-tracks").textContent = "";
+      $("drive-read").disabled = false; $("drive-copy").disabled = false; status("");
+    }
+    async function refresh() {
+      if (busy) return;
+      var token = ++run; disc = null; reading = false; $("drive-preview").hidden = true;
+      $("drive-read").disabled = true; status("driveReading");
+      try {
+        var drives = await AudioLib.call("list_cd_drives"); if (token !== run) return;
+        $("drive-device").textContent = "";
+        drives.forEach(function (id) { var option = el("option", null, id); option.value = id; $("drive-device").appendChild(option); });
+        $("drive-read").disabled = !drives.length; status(drives.length ? "driveReady" : "driveNoDrives");
+      } catch (e) { if (token === run) error(e); }
+    }
+    function showTracks() {
+      $("drive-tracks").textContent = ""; if (!disc) return;
+      var selected = choices[+$("drive-release").value], tracks = selected ? discTracks(selected.value) : [];
+      disc.tracks.forEach(function (track, i) {
+        var li = el("li"); li.appendChild(el("span", "no", String(track.number)));
+        li.appendChild(el("span", "nm", tracks[i] && tracks[i].title || t("driveTrack", { n: track.number })));
+        li.appendChild(el("span", "len", track.duration)); $("drive-tracks").appendChild(li);
+      });
+    }
+    async function read() {
+      if (busy || !$("drive-device").value) return;
+      var token = ++run; reading = true; disc = null; choices = [];
+      $("drive-preview").hidden = true; $("drive-read").disabled = true; status("driveReading");
+      try {
+        var found = await AudioLib.call("read_cd_disc", { driveId: $("drive-device").value }); if (token !== run) return;
+        disc = found;
+        var unavailable = false, data;
+        try { data = await AudioLib.call("lookup_cd_metadata", { disc: found }); } catch (e) { unavailable = true; data = {}; }
+        if (token !== run) return;
+        choices = driveCandidates(data, found); $("drive-release").textContent = "";
+        var unknown = el("option", null, t("driveUnknown")); unknown.value = "-1"; $("drive-release").appendChild(unknown);
+        choices.forEach(function (c,i) { var option = el("option", null, c.line); option.value = String(i); $("drive-release").appendChild(option); });
+        $("drive-release").value = choices.length ? "0" : "-1";
+        $("drive-preview").hidden = false; showTracks();
+        status(unavailable ? "driveOffline" : choices.length ? "driveLayout" : "driveNoMatch", { n: found.tracks.length });
+      } catch (e) { if (token === run) error(e); }
+      finally { if (token === run) { reading = false; $("drive-read").disabled = false; } }
+    }
+    function lock(on) {
+      if (on) { locked = qsa("#cd-form input, #cd-form select, #cd-form textarea, #cd-form button").map(function (n) { var entry = [n,n.disabled]; n.disabled = n.id !== "drive-cancel"; return entry; }); }
+      else { locked.forEach(function (entry) { if (entry[0].isConnected) entry[0].disabled = entry[1]; }); locked = []; }
+      $("drive-cancel").hidden = !on; $("drive-progress").hidden = !on;
+    }
+    async function cancel(close, force) {
+      if (!busy) return;
+      if (close) closing = { force: force };
+      cancelRequested = true; status("driveCancelling");
+      if (job) { try { await AudioLib.call("cancel_cd_import", { jobId: job }); } catch (e) { /* status polling will resolve ownership */ } }
+    }
+    async function copy() {
+      if (busy || reading || !disc || discEditorBusy()) return;
+      if (!formAudio) renderFormAudio();
+      var draft = formAudio; if (!draft || draft.list.length) { status("driveHasAudio"); return; }
+      var selected = choices[+$("drive-release").value], source = selected && selected.value;
+      if (!source) source = { title: $("title").value.trim() || t("driveAlbum"), works: disc.tracks.map(function (track) { return { title:t("driveTrack",{n:track.number}),duration:track.duration,tracks:[] }; }) };
+      fillFromLookup(source); $("works-set").open = true;
+      renderFormAudio();
+      var coverEntry = activeDiscEntry(), wantedCover = editCover;
+      if (selected && selected.releaseId && !photoData && !editCover.file && !editCover.touched) {
+        var coverToken = run;
+        caaFront("release", selected.releaseId).then(function (cover) { if (cover && run === coverToken && activeDiscEntry() === coverEntry && editCover === wantedCover && !editCover.touched && !photoData && !editCover.file) { photoData=cover; showPhoto(); $("drop").classList.add("filled"); } });
+      }
+      var format = $("drive-format").value, currentDisc = disc, adopted = [];
+      busy = true; draft.busy = true; job = null; cancelRequested = false; closing = null;
+      renderDiscButtons(); lock(true); $("drive-progress").value = 0; status("driveCopying", { n:1,total:currentDisc.tracks.length,progress:0 });
+      try {
+        job = await AudioLib.call("start_cd_import", { driveId:currentDisc.driveId, fingerprint:currentDisc.fingerprint, format:format });
+        if (cancelRequested) await AudioLib.call("cancel_cd_import", { jobId:job });
+        for (;;) {
+          var s = await AudioLib.call("cd_import_status", { jobId:job });
+          $("drive-progress").value = s.progress;
+          if (!cancelRequested) status("driveCopying", { n:s.track || 1,total:s.tracks || currentDisc.tracks.length,progress:s.progress });
+          if (s.state === "done") break;
+          if (s.state === "error" || s.state === "cancelled") throw s.code || "drive_cancelled";
+          await new Promise(function (resolve) { setTimeout(resolve,250); });
+        }
+        if (cancelRequested) throw "drive_cancelled";
+        adopted = await AudioLib.call("adopt_cd_import", { jobId:job, cdId:draft.id });
+        if (cancelRequested || formAudio !== draft) { await cleanDraftAudio(adopted.map(function (a) { return a.file; })); adopted = []; throw "drive_cancelled"; }
+        draft.copied.push.apply(draft.copied,adopted.map(function (a) { return a.file; }));
+        adopted.forEach(function (a) { draft.list.push(a); AudioLib.present[a.file]=true; });
+        status("driveComplete");
+      } catch (e) {
+        if (job) { try { await AudioLib.call("cancel_cd_import", { jobId:job }); } catch (_) {} }
+        error(cancelRequested ? "drive_cancelled" : e);
+      } finally {
+        busy = false; draft.busy = false; lock(false); renderFormAudio(); renderDiscButtons();
+        var close = closing; closing = null;
+        if (close) closeWin("cd", close.force);
+      }
+    }
+    $("drive-open").addEventListener("click", function () { if (busy) return; var opening=$("drive-panel").hidden; $("drive-panel").hidden=!opening; this.setAttribute("aria-expanded",String(opening)); if(opening) refresh(); });
+    $("drive-refresh").addEventListener("click",refresh); $("drive-read").addEventListener("click",read);
+    $("drive-release").addEventListener("change",showTracks); $("drive-copy").addEventListener("click",copy);
+    $("drive-cancel").addEventListener("click",function () { cancel(false); });
+    $("drive-device").addEventListener("change",function () { if(busy)return;run++;reading=false;disc=null;choices=[];$("drive-preview").hidden=true;$("drive-read").disabled=false;status("driveReady"); });
+    return { get busy() { return busy; }, reset:reset, cancel:cancel };
+  })();
 
   /* ---------- start ---------- */
   resetRows();

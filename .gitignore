@@ -5,3 +5,4 @@ src-tauri/gen/
 .claude/settings.local.json
 installers/
 src/build.js
+src-tauri/resources/flac/

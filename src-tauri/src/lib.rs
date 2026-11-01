@@ -11,6 +11,7 @@ use base64::Engine;
 use serde_json::{json, Value};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::DialogExt;
+mod cd_drive;
 
 const DATA_FILE: &str = "collection.json";
 /// The collection as it was before the last save.
@@ -518,6 +519,8 @@ async fn remove_cd_audio(app: AppHandle, cd_id: String) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(cd_drive::DriveState::default())
+        .setup(|app| { let _ = cd_drive::recover(app.handle()); Ok(()) })
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             load_data,
@@ -535,6 +538,13 @@ pub fn run() {
             cover_data,
             tidy_covers,
             open_releases
+            ,cd_drive::list_cd_drives
+            ,cd_drive::read_cd_disc
+            ,cd_drive::lookup_cd_metadata
+            ,cd_drive::start_cd_import
+            ,cd_drive::cd_import_status
+            ,cd_drive::cancel_cd_import
+            ,cd_drive::adopt_cd_import
         ])
         .run(tauri::generate_context!())
         .expect("error while running CDshelf");
