@@ -1,7 +1,19 @@
-# CD-drive import: implementation proposal
+# CD-drive import trial: 0.3.0
 
-Assessment: 2026-11-01. This is a design proposal; drive detection and ripping are
-not implemented by the profile Form-label change.
+Implemented: 2026-11-01. The Windows trial implements drive discovery, validated
+TOC/disc-ID reading, MusicBrainz candidate selection, offline numbered tracks,
+FLAC/WAV copying, progress/cancellation and the existing draft/save/discard flow.
+FLAC 1.5.0 binaries, corresponding source and license notices are bundled using
+checksum-pinned official Xiph archives. Use `npm run prepare:windows` for local
+development; CI prepares the bundle before native tests and packaging.
+
+The design below records the intended flow and the remaining quality/hardware
+work. CD-Text, drive-offset correction and secure-rip/AccurateRip verification
+are deferred. Standard stereo audio CDs only: mixed/data, pre-emphasis and
+four-channel discs are rejected. The importer attempts to lock media removal
+while copying, unlocks on completion/cancel, and checks the media-change counter.
+Save does not run until the user reviews the populated editor. No test has used
+the owner's real collection/account. Physical-drive testing remains unverified.
 
 ## What can be implemented
 

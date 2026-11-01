@@ -201,26 +201,45 @@ fn owned_file(job:&str,file:&str)->bool {
     parts.len()==2 && super::check_cd_id(parts[0]).is_ok() && parts[1].starts_with(&format!("{job}-track-")) &&
         !parts[1].contains(['\\','/']) && (parts[1].ends_with(".wav")||parts[1].ends_with(".flac"))
 }
+fn collection_references(data:&Path)->(String,bool) {
+    let mut text=String::new();let mut safe=true;
+    let mut paths=vec![data.join(super::DATA_FILE),data.join(super::BACKUP_FILE)];
+    match fs::read_dir(data.join(super::BACKUPS_DIR)) {
+        Ok(entries)=>for entry in entries {match entry{Ok(e)=>{if super::is_daily_backup_name(&e.file_name().to_string_lossy()){paths.push(e.path());}},Err(_)=>safe=false}},
+        Err(e)=>if e.kind()!=std::io::ErrorKind::NotFound{safe=false;}
+    }
+    for path in paths {match fs::read_to_string(path){
+        Ok(value)=>{if serde_json::from_str::<Value>(&value).is_err(){safe=false;}text.push_str(&value);},
+        Err(e)=>if e.kind()!=std::io::ErrorKind::NotFound{safe=false;}
+    }} (text,safe)
+}
+fn reap_folder(folder:&Path,audio:&Path,references:&str,can_clean:bool)->bool {
+    let name=folder.file_name().unwrap_or_default().to_string_lossy();
+    let manifest=folder.join("adopted.json");
+    if manifest.exists(){
+        if !can_clean{return false;}
+        let Some(files)=fs::read(&manifest).ok().and_then(|b|serde_json::from_slice::<Vec<String>>(&b).ok()) else{return false;};
+        let Ok(root)=audio.canonicalize() else{return false;};
+        for file in files {
+            if !owned_file(&name,&file)||references.contains(&file){continue;}
+            let path=audio.join(&file);
+            if path.is_symlink(){return false;}
+            if !path.parent().and_then(|p|p.canonicalize().ok()).map(|p|p.starts_with(&root)).unwrap_or(false){continue;}
+            if let Err(e)=fs::remove_file(path){if e.kind()!=std::io::ErrorKind::NotFound{return false;}}
+        }
+    }
+    cleanup_folder(folder);true
+}
 /// Reap only inactive importer-owned jobs. A manifest keeps adopted files safe
 /// across a crash; current data AND backups are consulted before draft cleanup.
 pub fn recover(app:&AppHandle)->Result<()> {
     let base=root(app)?;let data=super::data_dir(app)?;
-    let mut references=String::new();let mut can_clean=true;
-    let current=data.join(super::DATA_FILE);
-    match fs::read_to_string(&current){Ok(text)=>{if serde_json::from_str::<Value>(&text).is_err(){can_clean=false;}references.push_str(&text);},Err(e)=>{if e.kind()!=std::io::ErrorKind::NotFound{can_clean=false;}}}
-    if let Ok(text)=fs::read_to_string(data.join(super::BACKUP_FILE)){references.push_str(&text);}
-    if let Ok(entries)=fs::read_dir(data.join(super::BACKUPS_DIR)){for e in entries.flatten(){if let Ok(text)=fs::read_to_string(e.path()){references.push_str(&text);}}}
+    let (references,can_clean)=collection_references(&data);let audio=super::audio_root(app)?;
     for entry in fs::read_dir(&base).map_err(|_|fail("drive_write"))?.flatten(){
         let name=entry.file_name().to_string_lossy().to_string();let parts=name.split('-').collect::<Vec<_>>();
         if parts.len()!=3||parts[0]!="rip"||entry.path().is_symlink(){continue;}
         let Some(pid)=parts[1].parse::<u32>().ok() else {continue};if platform::alive(pid){continue;}
-        let manifest=entry.path().join("adopted.json");
-        if manifest.exists(){
-            if !can_clean{continue;}
-            let Ok(files)=fs::read(&manifest).ok().and_then(|b|serde_json::from_slice::<Vec<String>>(&b).ok()).ok_or(()) else {continue};
-            for file in files {if owned_file(&name,&file)&&!references.contains(&file){if let Ok(path)=super::library_path(app,&file){let _=fs::remove_file(path);}}}
-        }
-        cleanup_folder(&entry.path());
+        reap_folder(&entry.path(),&audio,&references,can_clean);
     } Ok(())
 }
 fn run_job(job:&Arc<Job>,drive:&str,fingerprint:&str,format:&str,encoder:&Path)->Result<()> {
@@ -250,13 +269,25 @@ pub async fn lookup_cd_metadata(disc:Disc,state:State<'_,DriveState>)->Result<Va
     let end=disc.tracks.last().and_then(|t|t.start_sector.checked_add(t.sectors)).ok_or_else(||fail("drive_disc"))?;
     let checked=make_disc(disc.drive_id.clone(),&starts,end)?;
     if checked.fingerprint!=disc.fingerprint||checked.disc_id!=disc.disc_id{return Err(fail("drive_disc"));}
-    if let Some((key,value))=&*state.metadata.lock().unwrap(){if key==&checked.fingerprint{return Ok(value.clone());}}
+    mb_query(&state,checked.fingerprint.clone(),format!("discid/{}",checked.disc_id),Some(checked.toc),"recordings artist-credits labels").await
+}
+fn valid_release_id(id:&str)->bool {
+    id.len()==36 && id.bytes().enumerate().all(|(i,b)|if [8,13,18,23].contains(&i){b==b'-'}else{b.is_ascii_hexdigit()})
+}
+#[tauri::command]
+pub async fn lookup_cd_release(release_id:String,state:State<'_,DriveState>)->Result<Value>{
+    if !valid_release_id(&release_id){return Err(fail("drive_metadata"));}
+    mb_query(&state,format!("release-{release_id}"),format!("release/{release_id}"),None,"recordings artist-credits labels work-rels work-level-rels artist-rels recording-level-rels").await
+}
+async fn mb_query(state:&DriveState,key:String,path:String,toc:Option<String>,inc:&'static str)->Result<Value>{
+    if let Some((cached,value))=&*state.metadata.lock().unwrap(){if cached==&key{return Ok(value.clone());}}
     let wait={let mut last=state.last_lookup.lock().unwrap();let now=Instant::now();let next=last.map(|v|(v+Duration::from_millis(1100)).max(now)).unwrap_or(now);*last=Some(next);next.saturating_duration_since(now)};
-    let key=checked.fingerprint.clone();
     let value=tauri::async_runtime::spawn_blocking(move||->Result<Value>{
         std::thread::sleep(wait);
         let client=reqwest::blocking::Client::builder().timeout(Duration::from_secs(25)).user_agent(concat!("CDshelf/",env!("CARGO_PKG_VERSION")," (https://github.com/Yuritnos/CDC)")).build().map_err(|_|fail("drive_metadata"))?;
-        let response=client.get(format!("https://musicbrainz.org/ws/2/discid/{}",checked.disc_id)).query(&[("fmt","json"),("toc",checked.toc.as_str()),("inc","recordings artist-credits labels discids work-rels work-level-rels artist-rels recording-level-rels")]).send().map_err(|_|fail("drive_metadata"))?;
+        let mut request=client.get(format!("https://musicbrainz.org/ws/2/{path}")).query(&[("fmt","json"),("inc",inc)]);
+        if let Some(toc)=toc{request=request.query(&[("toc",toc)]);}
+        let response=request.send().map_err(|_|fail("drive_metadata"))?;
         if response.status().as_u16()==404{return Ok(serde_json::json!({"releases":[]}));}
         if !response.status().is_success(){return Err(fail("drive_metadata"));}
         let mut bytes=Vec::new();response.take(4*1024*1024+1).read_to_end(&mut bytes).map_err(|_|fail("drive_metadata"))?;
@@ -312,6 +343,24 @@ mod tests {
     #[test] fn write_failure_is_reported(){struct Broken;impl Write for Broken{fn write(&mut self,_:&[u8])->std::io::Result<usize>{Err(std::io::Error::from(std::io::ErrorKind::StorageFull))}fn flush(&mut self)->std::io::Result<()>{Ok(())}}assert_eq!(extract(&mut reader(),&track(),&mut Broken,&AtomicBool::new(false),|_|{}).unwrap_err(),"drive_write");}
     #[test] fn wav_header_has_cd_pcm_format_and_exact_length(){let h=wav_header(2352);assert_eq!(h.len(),44);assert_eq!(&h[..4],b"RIFF");assert_eq!(u32::from_le_bytes(h[24..28].try_into().unwrap()),44100);assert_eq!(u32::from_le_bytes(h[40..44].try_into().unwrap()),2352);}
     #[test] fn recovery_can_only_delete_its_own_adopted_files(){assert!(owned_file("rip-123-abc","disc/rip-123-abc-track-01.flac"));for f in ["../disc/rip-123-abc-track-01.flac","disc/old.flac","disc/rip-234-abc-track-01.flac","disc/rip-123-abc-track-01.flac/other","disc/rip-123-abc-track-01\\..\\old.flac"]{assert!(!owned_file("rip-123-abc",f));}}
+    #[test] fn metadata_release_requests_only_accept_uuids(){assert!(valid_release_id("d3dc4be9-9749-4959-99e5-133d0cb467fe"));for id in ["../config","https://other.test/","d3dc4be9-9749-4959-99e5-133d0cb467fe?url=other","d3dc4be99749-4959-99e5-133d0cb467fe"]{assert!(!valid_release_id(id));}}
+    fn fixture_dir()->PathBuf{let path=std::env::temp_dir().join(format!("rip-{}-fixture-{}",std::process::id(),SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()));fs::create_dir(&path).unwrap();path}
+    #[test] fn recovery_preserves_saved_backup_and_unrelated_audio(){
+        let root=fixture_dir();let audio=root.join("audio");let dir=audio.join("disc");fs::create_dir_all(&dir).unwrap();let job=root.join("rip-123-abc");fs::create_dir(&job).unwrap();
+        let files=["disc/rip-123-abc-track-01.flac","disc/rip-123-abc-track-02.flac","disc/original.flac"];
+        for file in files{fs::write(audio.join(file),b"audio").unwrap();}
+        fs::write(job.join("adopted.json"),serde_json::to_vec(&files).unwrap()).unwrap();
+        fs::write(root.join(super::super::BACKUP_FILE),serde_json::json!({"cds":[{"audio":[{"file":files[0]}]}]}).to_string()).unwrap();
+        let (refs,safe)=collection_references(&root);assert!(safe);assert!(reap_folder(&job,&audio,&refs,safe));
+        assert!(audio.join(files[0]).exists());assert!(!audio.join(files[1]).exists());assert!(audio.join(files[2]).exists());assert!(!job.exists());cleanup_folder(&root);
+    }
+    #[test] fn invalid_or_unreadable_collection_never_authorizes_draft_deletion(){
+        let root=fixture_dir();fs::write(root.join(super::super::DATA_FILE),b"broken json").unwrap();assert!(!collection_references(&root).1);
+        fs::remove_file(root.join(super::super::DATA_FILE)).unwrap();fs::create_dir(root.join(super::super::BACKUP_FILE)).unwrap();assert!(!collection_references(&root).1);cleanup_folder(&root);
+    }
+    #[test] fn crash_manifest_is_retained_when_reference_safety_is_unknown(){
+        let root=fixture_dir();let job=root.join("rip-123-abc");fs::create_dir(&job).unwrap();fs::write(job.join("adopted.json"),b"[]").unwrap();assert!(!reap_folder(&job,&root,"",false));assert!(job.exists());fs::write(job.join("adopted.json"),b"broken").unwrap();assert!(!reap_folder(&job,&root,"",true));cleanup_folder(&root);
+    }
     #[cfg(windows)]
     #[test] fn bundled_flac_encodes_and_decodes_identical_pcm(){
         let folder=std::env::temp_dir().join(format!("rip-{}-test-{}",std::process::id(),SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()));fs::create_dir(&folder).unwrap();

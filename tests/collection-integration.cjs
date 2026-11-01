@@ -947,8 +947,10 @@ async function main() {
         await page.setViewportSize({width,height:860});await setLanguage(page,lang);
         const facts=page.locator('.profile-main > .facts');
         assert.deepEqual(await facts.locator('dd .namelink').allTextContents(),['Soloist','QA Orchestra']);
-        assert.equal(await facts.locator('dt').count(),2,'one role label per person, combined for multiple roles');
-        assert.equal(await page.locator('.album-work-type').count(),1);
+        assert.equal(await facts.locator('dt').count(),3,'Form plus one combined role label per person');
+        assert.equal(await facts.locator('dt').first().textContent(),{en:'Form',ja:'楽曲形式',zh:'曲式'}[lang]);
+        assert.equal(await facts.locator('dd').first().textContent(),{en:'Concerto',ja:'協奏曲',zh:'协奏曲'}[lang]);
+        assert.equal(await page.locator('.album-work-type').count(),0);
         if(process.env.CDC_QA_ARTIFACTS&&width===1280&&lang==='en'){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'set-role-profile.png')});}
         await page.locator('.set-disc > summary').first().click();
         const row=page.locator('.set-disc .work-title-row').first();

@@ -23,6 +23,7 @@ async function fixture(options={}){
       case 'list_cd_drives':return state.drives;
       case 'read_cd_disc':if(state.readHold)await state.readHold;if(state.readError)throw state.readError;return structuredClone(disc);
       case 'lookup_cd_metadata':if(state.offline)throw 'drive_metadata';return structuredClone(state.metadata);
+      case 'lookup_cd_release':if(state.releaseHold)await state.releaseHold;if(state.offline)throw 'drive_metadata';return structuredClone(state.metadata.releases[0]);
       case 'start_cd_import':state.cancelled=false;if(state.startHold)await state.startHold;return 'rip-fixture';
       case 'cd_import_status':return {state:state.cancelled?'cancelled':state.jobError?'error':state.complete?'done':'copying',code:state.cancelled?'drive_cancelled':state.jobError||'',track:1,tracks:2,progress:state.complete?100:25};
       case 'cancel_cd_import':state.cancelled=true;return null;
@@ -70,6 +71,13 @@ async function main(){
   });
   await test('preview controls fit all locales, themes and narrow widths with no automatic imports',async()=>{
     const f=await fixture();try{await scan(f.page);for(const lang of ['en','ja','zh']){await f.page.locator('#lang-set').evaluate((n,l)=>{n.value=l;n.dispatchEvent(new Event('change',{bubbles:true}));},lang);for(const width of [1280,420,360]){await f.page.setViewportSize({width,height:900});for(const theme of ['light','dark']){await f.page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);assert(await f.page.locator('#win-cd .panel').evaluate(n=>n.scrollWidth<=n.clientWidth+1),`${lang}/${theme}/${width}`);}}}assert(!f.state.calls.some(c=>c.command==='start_cd_import'));if(process.env.CDC_QA_ARTIFACTS){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await f.page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'drive-preview-mobile-zh.png')});}}finally{await f.close();}
+  });
+  await test('choosing numbered tracks invalidates a late release-detail response',async()=>{
+    let finish;const f=await fixture({releaseHold:new Promise(r=>finish=r)});try{await scan(f.page);assert(await f.page.locator('#drive-copy').isDisabled());await f.page.locator('#drive-release').selectOption('-1');await copy(f.page);finish();await new Promise(r=>setTimeout(r,100));assert.equal(await f.page.locator('#title').inputValue(),'Audio CD');assert.deepEqual(await f.page.locator('#work-list .w-title').evaluateAll(ns=>ns.map(n=>n.value)),['Track 1','Track 2']);}finally{finish();await f.close();}
+  });
+  await test('an existing disc with audio cannot be overwritten by drive import',async()=>{
+    const saved={id:'saved',title:'Existing audio',works:[{title:'Keep original',duration:'1:00',tracks:[]}],audio:[{file:'saved/original.flac',track:1}]};
+    const f=await fixture({doc:{cds:[saved],meta:{albums:[],playlists:[],settings:{lang:'en'}}}});try{await f.page.locator('#close-cd').click();await f.page.locator('#grid .card h3').click();await f.page.locator('#win-detail .profile-actions > button').first().click();await scan(f.page);await f.page.locator('#drive-copy').click();await f.page.waitForFunction(()=>document.getElementById('drive-status').textContent.includes('already has audio'));assert(!f.state.calls.some(c=>c.command==='start_cd_import'));assert.equal(await f.page.locator('#title').inputValue(),'Existing audio');assert.deepEqual(f.state.removed,[]);}finally{await f.close();}
   });
 }
 main().catch(e=>{failed++;console.error(e);}).finally(async()=>{if(browser)await browser.close();console.log(`${passed}/${passed+failed} drive-import checks passed`);if(failed)process.exitCode=1;});

@@ -12,8 +12,22 @@ GitHub builds the installer on its own Windows machines.
 2. Upload this whole folder to it, keeping the folder structure. The hidden `.github` folder must be included, because it holds the build instructions.
 3. Open the repository's **Actions** tab, select **Build Windows app**, then select **Run workflow**.
 4. Wait about 10–15 minutes, then open the finished run. Under **Artifacts**, download **CDshelf-windows**. It contains:
-   - `CDshelf_0.2.0_x64-setup.exe`, the installer to give people. It installs for the current user, so no administrator rights are needed.
-   - `CDshelf_0.2.0_x64_en-US.msi`, an alternative installer for company IT departments.
+   - `CDshelf_0.3.0_x64-setup.exe`, the installer to give people. It installs for the current user, so no administrator rights are needed.
+   - `CDshelf_0.3.0_x64_en-US.msi`, an alternative installer for company IT departments.
+
+### CD-drive import trial (0.3.0, Windows)
+
+In **Add a CD**, choose **Add from CD drive · Trial**, connect a CD/DVD drive,
+then choose **Refresh** and **Read disc**. Review the matching release or use
+numbered tracks. Choose FLAC (default) or WAV and **Import disc**. After copying,
+review the editor and save the CD. Cancelling or discarding removes the new copies;
+audio stays local and only metadata syncs. The encoder is bundled.
+
+This first trial supports standard stereo audio CDs. Data/mixed-mode,
+pre-emphasis and four-channel discs are rejected. It retries read failures and
+verifies FLAC encoding, but does not offer secure-rip/AccurateRip verification,
+drive-offset correction or CD-Text yet. Exact release matching is not guaranteed.
+Physical-drive validation is still needed; see [the importer notes](docs/cd-drive-import.md).
 
 ### Publishing a release for others to download
 
@@ -37,6 +51,7 @@ You need [Node.js](https://nodejs.org) 20 or later and [Rust](https://rustup.rs)
 
 ```
 npm install
+npm run prepare:windows  # Windows: fetch checksum-pinned FLAC binaries, source and licenses
 npm run dev      # opens the app with live reload of src/index.html
 npm run build    # makes the installer in src-tauri/target/release/bundle/
 ```

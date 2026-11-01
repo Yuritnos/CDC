@@ -4,6 +4,7 @@
   "version": "0.3.0",
   "description": "CDshelf: catalogue the CDs on your shelf.",
   "scripts": {
+    "prepare:windows": "powershell -NoProfile -File scripts/prepare-flac.ps1",
     "tauri": "tauri",
     "dev": "tauri dev",
     "build": "tauri build"

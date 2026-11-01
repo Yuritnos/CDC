@@ -10169,7 +10169,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     return candidates.sort(function (a,b) { return +b.exact - +a.exact; }).slice(0,20);
   }
   var CdDrive = (function () {
-    var run = 0, disc = null, choices = [], busy = false, job = null, cancelRequested = false, closing = null, locked = [], reading = false;
+    var run = 0, detailRun = 0, disc = null, choices = [], busy = false, job = null, cancelRequested = false, closing = null, locked = [], reading = false;
     function status(key, values) { $("drive-status").textContent = key ? t(key, values) : ""; }
     function error(e) {
       var code = String(e && e.message || e), keys = { drive_missing:"driveMissing", drive_access:"driveAccess", drive_empty:"driveEmpty", drive_disc:"driveEmpty", drive_data:"driveData", drive_disc_feature:"driveDiscFeature", drive_changed:"driveChanged", drive_read:"driveReadError", drive_space:"driveSpace", drive_write:"driveWrite", drive_encoder:"driveEncoder", drive_windows:"driveWindows", drive_busy:"driveBusy", drive_cancelled:"driveCancelled" };
@@ -10177,7 +10177,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
     function reset() {
       if (busy) return;
-      run++; reading = false; disc = null; choices = []; job = null;
+      run++; detailRun++; reading = false; disc = null; choices = []; job = null;
       $("drive-panel").hidden = true; $("drive-open").setAttribute("aria-expanded", "false");
       $("drive-preview").hidden = true; $("drive-progress").hidden = true; $("drive-cancel").hidden = true;
       $("drive-device").textContent = ""; $("drive-release").textContent = ""; $("drive-tracks").textContent = "";
@@ -10203,6 +10203,19 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         li.appendChild(el("span", "len", track.duration)); $("drive-tracks").appendChild(li);
       });
     }
+    async function enrich() {
+      var index = +$("drive-release").value, selected = choices[index], token = run, detail = ++detailRun;
+      if (!selected || selected.loaded) { reading = false; $("drive-copy").disabled = false; return; }
+      reading = true; $("drive-copy").disabled = true;
+      try {
+        var release = await AudioLib.call("lookup_cd_release", { releaseId:selected.releaseId });
+        if (run !== token || detailRun !== detail) return;
+        var richer = driveCandidates({ releases:[release] }, disc).filter(function (c) { return c.discNumber === selected.discNumber; })[0];
+        if (richer) { richer.loaded = true; choices[index] = richer; showTracks(); }
+        else selected.loaded = true;
+      } catch (e) { if (run === token && detailRun === detail) selected.loaded = true; /* basic release details remain usable */ }
+      finally { if (run === token && detailRun === detail) { reading = false; $("drive-copy").disabled = false; } }
+    }
     async function read() {
       if (busy || !$("drive-device").value) return;
       var token = ++run; reading = true; disc = null; choices = [];
@@ -10219,8 +10232,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         $("drive-release").value = choices.length ? "0" : "-1";
         $("drive-preview").hidden = false; showTracks();
         status(unavailable ? "driveOffline" : choices.length ? "driveLayout" : "driveNoMatch", { n: found.tracks.length });
+        enrich();
       } catch (e) { if (token === run) error(e); }
-      finally { if (token === run) { reading = false; $("drive-read").disabled = false; } }
+      finally { if (token === run) { $("drive-read").disabled = false; if (!choices.length) reading = false; } }
     }
     function lock(on) {
       if (on) { locked = qsa("#cd-form input, #cd-form select, #cd-form textarea, #cd-form button").map(function (n) { var entry = [n,n.disabled]; n.disabled = n.id !== "drive-cancel"; return entry; }); }
@@ -10277,7 +10291,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
     $("drive-open").addEventListener("click", function () { if (busy) return; var opening=$("drive-panel").hidden; $("drive-panel").hidden=!opening; this.setAttribute("aria-expanded",String(opening)); if(opening) refresh(); });
     $("drive-refresh").addEventListener("click",refresh); $("drive-read").addEventListener("click",read);
-    $("drive-release").addEventListener("change",showTracks); $("drive-copy").addEventListener("click",copy);
+    $("drive-release").addEventListener("change",function () { showTracks(); enrich(); }); $("drive-copy").addEventListener("click",copy);
     $("drive-cancel").addEventListener("click",function () { cancel(false); });
     $("drive-device").addEventListener("change",function () { if(busy)return;run++;reading=false;disc=null;choices=[];$("drive-preview").hidden=true;$("drive-read").disabled=false;status("driveReady"); });
     return { get busy() { return busy; }, reset:reset, cancel:cancel };
