@@ -1094,6 +1094,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 .work-title-row > .pwork-title, .work-title-row > .meta { flex: 1; min-width: 0; margin: 0; }
 .pwork-heading > .work-title-row { flex: 1; min-width: 0; gap: 10px; align-items: flex-end; align-items: last baseline; }
 .pwork-heading > .work-title-row > .work-info { align-self: flex-start; margin-top: 2px; }
+.pwork-heading > .timed-work.wrapped-timing { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.timed-work.wrapped-timing > .pwork-title { grid-column: 1; grid-row: 1; }
+.timed-work.wrapped-timing > .work-info { grid-column: 2; grid-row: 1; justify-self: end; align-self: start; }
+/* Reserve the same width as the inline icon/gap to keep wrap detection stable. */
+.timed-work.wrapped-timing > .pwork-duration { grid-column: 2; grid-row: 1; justify-self: end; padding-left: 30px; }
 .work-info { flex: none; width: 20px; height: 20px; min-height: 20px; padding: 0; border: 0; color: var(--muted); background: none; display: inline-grid; place-items: center; border-radius: 50%; cursor: pointer; }
 .work-info:hover, .work-info[aria-expanded="true"] { color: var(--accent); background: var(--accent-soft); }
 .work-info-popup { position: fixed; z-index: 100; box-sizing: border-box; padding: 12px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); box-shadow: 0 5px 20px #0003; overflow: auto; font-family: var(--font-body); font-size: 14px; animation: pop-in .15s ease-out; }
@@ -1140,7 +1145,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   <header class="top">
     <div class="disc" style="--s:46px" aria-hidden="true"></div>
     <h1>PMCO</h1>
-    <p class="tag" data-i18n="tagline">Catalogue the discs on your shelf.</p>
+    <p class="tag" data-i18n="tagline">A home for your physical music collection.</p>
     <div class="top-actions">
       <div class="acct-wrap">
         <button type="button" class="acct-btn" id="open-account" aria-haspopup="dialog" aria-expanded="false" aria-controls="acct-pop" data-i18n-aria="acctSection" aria-label="Account">
@@ -1666,7 +1671,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       <div class="field">
         <label class="lbl" for="pf-handle" data-i18n="pfHandle">User ID</label>
         <input class="input" id="pf-handle" type="text" maxlength="20" autocomplete="off" spellcheck="false" data-i18n-ph="pfHandlePh" placeholder="e.g. user_id">
-        <p class="hint" data-i18n="pfHandleHint">Your unique code: 4 to 20 letters, numbers or underscores. Each ID can belong to only one account.</p>
+        <p class="hint" data-i18n="pfHandleHint">Your unique code: 6 to 20 letters, numbers or underscores. Each ID can belong to only one account.</p>
         <p class="hint" id="pf-handle-policy" aria-live="polite"></p>
         <p class="err" id="pf-handle-err" role="alert"></p>
       </div>
@@ -1825,7 +1830,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   /* ---------- text in three languages ---------- */
   var I18N = {
     en: {
-      tagline: "A home for your CD collection.", langLabel: "Language",
+      tagline: "A home for your physical music collection.", langLabel: "Language",
       settings: "Settings", collection: "Your collection", albumsBar: "Favorites",
       add: "Add a CD", edit: "Edit CD", close: "Close", cover: "Cover", coverAdded: "Cover added",
       coverHint: "Drop an image here or choose one. A front cover or the disc itself both work.",
@@ -1938,7 +1943,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       pfCropHint: "Drag the photo to choose the part inside the circle. Zoom with the slider or the mouse wheel.",
       pfCropAria: "Photo position. Drag, or use the arrow keys; plus and minus zoom.",
       pfHandle: "User ID", pfHandlePh: "e.g. user_id", acctUser: "User",
-      pfHandleHint: "Your unique code: 4 to 20 letters, numbers or underscores. Each ID can belong to only one account.",
+      pfHandleHint: "Your unique code: 6 to 20 letters, numbers or underscores. Each ID can belong to only one account.",
       pfHandleRule: "You can change your user ID once a month.",
       pfHandleSchema: "User ID changes need a server update. You can still save your nickname and photo.",
       pfHandleUnavailable: "Connect to your account to edit your user ID.",
@@ -1979,7 +1984,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       pfNick: "Nickname", pfNickPh: "e.g. Music lover",
       errNick: "Use at most 20 characters.",
       pfIdLine: "User ID: {id}",
-      errHandle: "Use 4 to 20 letters, numbers or underscores, with no spaces.",
+      errHandle: "Use 6 to 20 letters, numbers or underscores, with no spaces.",
       errHandleTaken: "That user ID is already taken. Try another one.",
       toastProfileSaved: "Profile saved.",
       fsHead: "CDs on this computer", fsAnd: " and ",
@@ -2041,7 +2046,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       notes: "Notes", notesPh: "Anything you want to remember about this disc"
     },
     ja: {
-      tagline: "CDコレクションのための場所。", langLabel: "言語",
+      tagline: "音楽のフィジカルコレクションのための場所。", langLabel: "言語",
       settings: "設定", collection: "コレクション", albumsBar: "お気に入り",
       add: "CDを追加", edit: "CDを編集", close: "閉じる", cover: "カバー", coverAdded: "カバーを追加しました",
       coverHint: "画像をここにドロップするか、ファイルを選んでください。ジャケットでもディスクの写真でも構いません。",
@@ -2154,7 +2159,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       pfCropHint: "写真をドラッグして、円の中に表示する部分を選んでください。スライダーまたはマウスホイールで拡大できます。",
       pfCropAria: "写真の位置。ドラッグするか矢印キーで移動し、プラスとマイナスで拡大・縮小します。",
       pfHandle: "ユーザーID", pfHandlePh: "例：user_id", acctUser: "ユーザー",
-      pfHandleHint: "あなただけのコード：半角英数字とアンダースコアで4〜20文字。同じIDは1つのアカウントだけが使えます。",
+      pfHandleHint: "あなただけのコード：半角英数字とアンダースコアで6〜20文字。同じIDは1つのアカウントだけが使えます。",
       pfHandleRule: "ユーザーIDの変更は月に1回です。",
       pfHandleSchema: "ユーザーIDの変更にはサーバーの更新が必要です。ニックネームと写真は保存できます。",
       pfHandleUnavailable: "ユーザーIDを編集するには、アカウントに接続してください。",
@@ -2195,7 +2200,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       pfNick: "ニックネーム", pfNickPh: "例：音楽好き",
       errNick: "20文字以内にしてください。",
       pfIdLine: "ユーザーID：{id}",
-      errHandle: "半角英数字とアンダースコアで4〜20文字にしてください（スペースは使えません）。",
+      errHandle: "半角英数字とアンダースコアで6〜20文字にしてください（スペースは使えません）。",
       errHandleTaken: "このユーザーIDはすでに使われています。別のIDをお試しください。",
       toastProfileSaved: "プロフィールを保存しました。",
       fsHead: "このパソコンにあるCD", fsAnd: "と",
@@ -2257,7 +2262,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       notes: "メモ", notesPh: "このディスクについて自由に書き留めてください"
     },
     zh: {
-      tagline: "为你的CD收藏打造一个专属空间。", langLabel: "语言",
+      tagline: "为你的实体音乐收藏打造一个专属空间。", langLabel: "语言",
       settings: "设置", collection: "你的CD", albumsBar: "收藏夹",
       add: "添加CD", edit: "编辑CD", close: "关闭", cover: "封面", coverAdded: "封面已添加",
       coverHint: "将图片拖到此处，或选择文件。封面或光盘照片均可。",
@@ -2370,7 +2375,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       pfCropHint: "拖动照片，选择要显示在圆圈内的部分。可用滑块或鼠标滚轮缩放。",
       pfCropAria: "照片位置。拖动或使用方向键移动，加号和减号缩放。",
       pfHandle: "用户ID", pfHandlePh: "例如：user_id", acctUser: "用户",
-      pfHandleHint: "你独有的代码：4 到 20 个英文字母、数字或下划线。每个 ID 只能属于一个账户。",
+      pfHandleHint: "你独有的代码：6 到 20 个英文字母、数字或下划线。每个 ID 只能属于一个账户。",
       pfHandleRule: "用户ID每月可更改一次。",
       pfHandleSchema: "更改用户ID需要先更新服务器。你仍可保存昵称和头像。",
       pfHandleUnavailable: "请连接账户以编辑用户ID。",
@@ -2411,7 +2416,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       pfNick: "昵称", pfNickPh: "例如：古典乐迷",
       errNick: "最多 20 个字。",
       pfIdLine: "用户ID：{id}",
-      errHandle: "请使用 4 到 20 个英文字母、数字或下划线，不能有空格。",
+      errHandle: "请使用 6 到 20 个英文字母、数字或下划线，不能有空格。",
       errHandleTaken: "该用户ID已被使用，请换一个。",
       toastProfileSaved: "个人资料已保存。",
       fsHead: "这台电脑上的CD", fsAnd: "和",
@@ -2889,6 +2894,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function applyAll() {
     applyI18n();
     if (CdDrive) CdDrive.translate();
+    if (Cloud && !$("win-profile").hidden) {
+      renderHandlePolicy();
+      $("pf-email").textContent = t("signedInAs", { email: Cloud.email() });
+      if (pf && pf.handleError) setErr("pf-handle", t(pf.handleError));
+    }
     translateSetForm();
     fillComposers();
     refreshRows();
@@ -3828,18 +3838,39 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     button.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Escape") closeWorkTip(); });
     return button;
   }
+  var workTitleObserver = new ResizeObserver(function (entries) {
+    entries.forEach(function (entry) {
+      var title = entry.target;
+      if (!title.isConnected) { workTitleObserver.unobserve(title); return; }
+      var line = parseFloat(getComputedStyle(title).lineHeight);
+      title.parentElement.classList.toggle("wrapped-timing", title.getBoundingClientRect().height > line * 1.5);
+    });
+  });
   function workTitleRow(cd, work, titleClass) {
     var row = el("div", "work-title-row"), info = workInfoButton(cd, work);
     if (info && titleClass !== "pwork-title") row.appendChild(info);
-    row.appendChild(el("p", titleClass, work.title || "—"));
-    if (titleClass === "pwork-title" && !(work.tracks || []).length && work.duration) row.appendChild(el("span", "pwork-duration", work.duration));
+    var title = el("p", titleClass, work.title || "—"); row.appendChild(title);
     if (info && titleClass === "pwork-title") row.appendChild(info);
+    if (titleClass === "pwork-title" && !(work.tracks || []).length && work.duration) {
+      row.appendChild(el("span", "pwork-duration", work.duration));
+      if (info) {
+        row.classList.add("timed-work");
+        requestAnimationFrame(function () { if (title.isConnected) workTitleObserver.observe(title); });
+      }
+    }
     return row;
   }
   document.addEventListener("pointerdown", function (e) { if (workTip && !workTip.popup.contains(e.target) && !workTip.button.contains(e.target)) closeWorkTip(); });
   window.addEventListener("resize", closeWorkTip);
   window.addEventListener("scroll", function (e) { if (workTip && !workTip.popup.contains(e.target)) closeWorkTip(); }, true);
-  new MutationObserver(function () { if (workTip && !document.contains(workTip.button)) closeWorkTip(); }).observe(document.body, { childList: true, subtree: true });
+  new MutationObserver(function (records) {
+    if (workTip && !document.contains(workTip.button)) closeWorkTip();
+    records.forEach(function (record) { Array.from(record.removedNodes).forEach(function (node) {
+      if (node.nodeType !== 1) return;
+      if (node.matches(".pwork-title")) workTitleObserver.unobserve(node);
+      qsa(".pwork-title",node).forEach(function (title) { workTitleObserver.unobserve(title); });
+    }); });
+  }).observe(document.body, { childList: true, subtree: true });
   Object.assign(I18N.en, { workSpecificDetails: "Work details" });
   Object.assign(I18N.ja, { workSpecificDetails: "作品の詳細" });
   Object.assign(I18N.zh, { workSpecificDetails: "作品详情" });
@@ -6235,9 +6266,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
      The nickname is what others see (up to 20 characters, any language, not unique). The user ID
      is each person's unique code. The photo is saved as a 256 px JPEG of the circle. */
   var AVATAR_OUT = 256;
-  var HANDLE = /^[A-Za-z0-9_]{4,20}$/;
-  // Temporarily suspended; keep monthly fallback wording without exact timestamps.
-  var HANDLE_COOLDOWN_DAYS = 0;
+  var HANDLE = /^[A-Za-z0-9_]{6,20}$/;
+  // Match the server policy: 30 days; never display an exact next-change date.
+  var HANDLE_COOLDOWN_DAYS = 30;
   var NICK_MAX = 20;
   var pf = { saved: "", removed: false, selecting: false, photoRequest: 0 };
   var pfCrop = makeCropper($("crop-canvas"), $("crop-zoom"), function () {
@@ -6329,6 +6360,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var handle = $("pf-handle").value.trim();
     setErr("pf-nick", "");
     setErr("pf-handle", "");
+    pf.handleError = null;
     if (Array.from(nickname).length > NICK_MAX) { setErr("pf-nick", t("errNick")); $("pf-nick").focus(); return; }
     if (handle && handle !== Cloud.profile().handle && !HANDLE.test(handle)) { setErr("pf-handle", t("errHandle")); $("pf-handle").focus(); return; }
     var avatar = pf.removed ? "" : pf.saved || "";
@@ -6347,6 +6379,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       else if (code === "handle_cooldown") {
         await Cloud.loadProfile();
         renderHandlePolicy();
+        pf.handleError = "pfHandleRule";
         setErr("pf-handle", t("pfHandleRule"));
         $("pf-handle").value = Cloud.profile().handle;
         $("pf-handle").focus();

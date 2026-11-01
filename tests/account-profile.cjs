@@ -46,44 +46,44 @@ async function main() {
     assert.equal(await page.locator('#pf-handle').getAttribute('readonly'),'');
     policy=true; profile.handle_changed_at=null;
     await page.evaluate(()=>window.accountQA.closeWin('profile'));await open();
-    await page.waitForFunction(()=>!document.getElementById('pf-handle').readOnly);
+    await page.waitForFunction(()=>document.getElementById('pf-handle-policy').textContent.includes('once a month'));
     assert.equal(await page.locator('#pf-handle').getAttribute('readonly'),null);
     await page.locator('#pf-nick').fill('New nickname');await page.locator('#pf-save').click();
     await page.locator('#win-profile').waitFor({state:'hidden'});
     assert.equal(saves.at(-1).handle,'old');assert.equal(saves.at(-1).nickname,'New nickname');
   });
-  await test('client accepts 4–20 character IDs and allows repeated immediate changes',async()=>{
+  await test('client rejects short/invalid new IDs and saves a valid ID before displaying cooldown',async()=>{
     await open(); const before=saves.length;
-    await page.locator('#pf-handle').fill('abc');await page.locator('#pf-save').click();
-    assert((await page.locator('#pf-handle-err').textContent()).includes('4 to 20'));
+    await page.locator('#pf-handle').fill('short');await page.locator('#pf-save').click();
+    assert((await page.locator('#pf-handle-err').textContent()).includes('6 to 20'));
     assert.equal(saves.length,before);
-    await page.locator('#pf-handle').fill('new_id7');await page.locator('#pf-save').click();
-    await page.locator('#win-profile').waitFor({state:'hidden'});assert.equal(saves.at(-1).handle,'new_id7');
-    await open();await page.waitForFunction(()=>!document.getElementById('pf-handle').readOnly);
-    assert(await page.locator('#pf-handle-policy').isHidden());
-    assert.equal(await page.locator('[data-i18n="pfNickHint"]').count(),0);
-    await page.locator('#pf-handle').fill('ID_4');await page.locator('#pf-save').click();
-    await page.locator('#win-profile').waitFor({state:'hidden'});assert.equal(profile.handle,'ID_4');
-    await open();assert.equal(await page.locator('#pf-handle').getAttribute('readonly'),null);
+    await page.locator('#pf-handle').fill('new_06');await page.locator('#pf-save').click();
+    await page.locator('#win-profile').waitFor({state:'hidden'});assert.equal(saves.at(-1).handle,'new_06');
+    await open();await page.waitForFunction(()=>document.getElementById('pf-handle-policy').textContent.includes('once a month'));
+    assert.equal(await page.locator('#pf-handle').getAttribute('readonly'),'');
     const timestamp=profile.handle_changed_at;
-    await page.locator('#pf-nick').fill('Nickname updated');await page.locator('#pf-save').click();
+    await page.locator('#pf-nick').fill('Nickname in cooldown');await page.locator('#pf-save').click();
     await page.locator('#win-profile').waitFor({state:'hidden'});assert.equal(profile.handle_changed_at,timestamp);
   });
-  await test('legacy server cooldown errors use generic monthly copy without dates; brand and hints translate',async()=>{
+  await test('server cooldown errors refresh the lock; localized hints and brand are complete',async()=>{
     profile.handle_changed_at=null;await open();await page.waitForFunction(()=>!document.getElementById('pf-handle').readOnly);
     await page.locator('#pf-handle').fill('race_id7');
     forcedCooldown=true;profile.handle_changed_at=new Date().toISOString();
-    await page.locator('#pf-save').click();await page.waitForFunction(()=>document.getElementById('pf-handle-err').textContent.includes('once a month'));
-    assert.equal(await page.locator('#pf-handle').inputValue(),'ID_4');
+    await page.locator('#pf-save').click();await page.waitForFunction(()=>document.getElementById('pf-handle').readOnly);
+    assert.equal(await page.locator('#pf-handle').inputValue(),'new_06');
     assert((await page.locator('#pf-handle-err').textContent()).includes('once a month'));
     for(const lang of ['en','ja','zh']) {
       await page.evaluate(lang=>window.accountQA.setLang(lang),lang);
-      assert.match(await page.locator('[data-i18n="pfHandleHint"]').textContent(),/4/);
+      assert.match(await page.locator('[data-i18n="pfHandleHint"]').textContent(),/6/);
+      const monthly={en:'You can change your user ID once a month.',ja:'ユーザーIDの変更は月に1回です。',zh:'用户ID每月可更改一次。'}[lang];
+      assert.equal(await page.locator('#pf-handle-policy').textContent(),monthly);
+      assert.equal(await page.locator('#pf-handle-err').textContent(),monthly);
+      assert.equal(await page.locator('[data-i18n="pfNickHint"]').count(),0);
+      assert(!/GMT|again on|nickname|\d{4}/i.test(await page.locator('#pf-handle-policy').textContent()));
+      assert.equal(await page.locator('.tag').textContent(),{en:'A home for your physical music collection.',ja:'音楽のフィジカルコレクションのための場所。',zh:'为你的实体音乐收藏打造一个专属空间。'}[lang]);
       assert.equal(await page.title(),'PMCO');assert.equal(await page.locator('h1').textContent(),'PMCO');
     }
-    assert.equal(await page.locator('#pf-handle').getAttribute('readonly'),null);
-    assert(!/GMT|again on|nickname|\d{4}/i.test(await page.locator('#pf-handle-err').textContent()));
-    if(process.env.CDC_QA_ARTIFACTS){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});forcedCooldown=false;await page.evaluate(()=>window.accountQA.closeWin('profile'));await open();await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'profile-no-notes.png')});}
+    if(process.env.CDC_QA_ARTIFACTS){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'monthly-profile.png')});}
     assert.deepEqual(errors,[]);
   });
 }

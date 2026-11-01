@@ -199,27 +199,30 @@ async function main() {
   await test('work/track durations and total stay independent of info icons', async () => {
     const cd = {...structuredClone(album), works: [
       {title: 'Variationen Über Ein Thema Von Joseph Haydn Op. 56a · Variations On A Theme By Joseph Haydn, Op. 56a', composer: 'Work Composer', duration: '12:34', tracks: []},
-      {title: 'Tracked work', composer: 'Work Composer', duration: '99:00', tracks: [{title: 'Movement', duration: '3:21'}]}]};
+      {title: 'Tracked work', composer: 'Work Composer', duration: '99:00', tracks: [{title: 'Movement', duration: '3:21'}]}, {title:'Short',composer:'Work Composer',duration:'1:23',tracks:[]}, {title:'Transition between title widths',composer:'Work Composer',duration:'1:00',tracks:[]}]};
     const f = await fixture([cd]), {page} = f;
     try {
-      assert((await card(page).innerText()).includes('15:55'));
+      assert((await card(page).innerText()).includes('18:18'));
       await card(page).locator('h3').click();
       const works = page.locator('#detail-body .pwork');
       assert.equal(await works.nth(0).locator('.pwork-duration').textContent(), '12:34');
-      assert.equal(await works.nth(0).locator('.pwork-heading').evaluate(n=>{const icon=n.querySelector('.work-info').getBoundingClientRect(),r=n.getBoundingClientRect(),duration=n.querySelector('.pwork-duration').getBoundingClientRect();return Math.abs(icon.right-r.right)<1&&duration.right<=icon.left;}),true,'duration precedes the far-right icon');
-      for (const width of [1280,420,360]) {
+      for (const width of [1280,420,360,1280]) {
         await page.setViewportSize({width,height:900});
-        assert(await works.nth(0).locator('.work-title-row').evaluate(n=>{
-          const title=n.querySelector('.pwork-title'),r=title.getBoundingClientRect(),line=parseFloat(getComputedStyle(title).lineHeight),icon=n.querySelector('.work-info').getBoundingClientRect(),duration=n.querySelector('.pwork-duration').getBoundingClientRect();
-          return r.height>line*1.5 && Math.abs(icon.top-r.top)<=3 && Math.abs(duration.bottom-r.bottom)<=6 && duration.right<=icon.left;
-        }),`${width}px: icon follows first line and duration follows last line`);
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+        for(const [index,wrapped] of [[0,true],[2,false],[3,width<1280]]) {
+          assert(await works.nth(index).locator('.work-title-row').evaluate((n,wrapped)=>{
+            const title=n.querySelector('.pwork-title'),r=title.getBoundingClientRect(),line=parseFloat(getComputedStyle(title).lineHeight),icon=n.querySelector('.work-info').getBoundingClientRect(),duration=n.querySelector('.pwork-duration').getBoundingClientRect(),row=n.getBoundingClientRect();
+            return Math.abs(duration.right-row.right)<1 && (wrapped ? r.height>line*1.5 && Math.abs(icon.top-r.top)<=3 && Math.abs(duration.bottom-r.bottom)<=6 && Math.abs(icon.right-duration.right)<1 && icon.bottom<duration.top : r.height<line*1.5 && icon.right<duration.left && Math.abs(icon.top-duration.top)<12);
+          },wrapped),width+'px work '+index+': '+JSON.stringify(await works.nth(index).locator('.work-title-row').evaluate(n=>Object.fromEntries(['.pwork-title','.work-info','.pwork-duration'].map(sel=>{const r=n.querySelector(sel).getBoundingClientRect();return [sel,{top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height}];})))));
+        }
+        if(process.env.CDC_QA_ARTIFACTS&&width===1280){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'work-right-edge.png')});}
       }
       assert.equal(await works.nth(1).locator('.pwork-duration').count(), 0);
       assert.equal(await works.nth(1).locator('.ptracks .len').textContent(), '3:21');
-      assert((await page.locator('#detail-body .ptotal').textContent()).includes('15:55'));
-      const before = await works.locator('.pwork-duration').boundingBox();
+      assert((await page.locator('#detail-body .ptotal').textContent()).includes('18:18'));
+      const before = await works.nth(0).locator('.pwork-duration').boundingBox();
       await works.nth(0).locator('.work-info').hover(); await tip(page).waitFor();
-      assert.deepEqual(await works.locator('.pwork-duration').boundingBox(), before, 'popup shifted duration');
+      assert.deepEqual(await works.nth(0).locator('.pwork-duration').boundingBox(), before, 'popup shifted duration');
     } finally { await f.close(); }
   });
 }

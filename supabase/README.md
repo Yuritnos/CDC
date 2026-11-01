@@ -13,13 +13,11 @@ PMCO's accounts and online sync run on a free Supabase project. Do this once.
 1. Open **SQL Editor**, then **New query**.
 2. Paste everything from [`schema.sql`](schema.sql) and select **Run**. It should finish with "Success. No rows returned".
 
-For an existing project without the timestamp column/trigger, first run [`20261101_profile_handle_rules.sql`](migrations/20261101_profile_handle_rules.sql), then [`20261101_profile_handle_relaxed.sql`](migrations/20261101_profile_handle_relaxed.sql). If the first migration is already deployed, apply only the relaxed migration. Both preserve existing IDs, nicknames, photos and rows.
+For existing projects with the timestamp column/trigger, apply [20261101120000_profile_handle_monthly.sql](migrations/20261101120000_profile_handle_monthly.sql). If those objects are absent, first apply the older [profile setup migration](migrations/20261101_profile_handle_rules.sql). The latest migration replaces only the trigger function; it preserves rows, history, indexes and access policies. Historical relaxed-ID migrations are superseded; do not reapply them afterward.
 
-New and changed IDs use **4–20 ASCII letters, numbers or underscores**. Existing shorter IDs survive unchanged during nickname/photo edits. The monthly change limit is **temporarily suspended** in the client and database. The server still records change timestamps, enforces case-insensitive uniqueness and preserves RLS/own-profile access. The restrictive profile-delete policy is unchanged.
+New/changed User IDs use **6–20 ASCII letters, numbers or underscores**. Existing shorter IDs remain unchanged during nickname/photo edits. Changes require **30 days (720 hours)** since the recorded last change. Clearing an ID counts as a change. Recorded dates from the temporarily relaxed period are retained; no timestamps are reset or invented. The UI displays only a generic monthly notice, with no exact next-change date or nickname sentence.
 
-Existing projects should run migrations in order, ending with `migrations/20261101_profile_handle_relaxed.sql`. This replaces only the trigger function; it does not rewrite profiles, remove timestamps or change access policies. The full schema includes the same current rule. Historical cooldown migrations remain for upgrade history; do not reapply an older migration after the relaxed one.
-
-Deployment verification is recorded in STATUS.md. The client hides the monthly notice while suspended; any legacy server cooldown error uses a generic monthly message, never an exact date or nickname sentence. Email OTP is configured separately.
+The server owns timestamps, ignores forged dates, preserves case-insensitive uniqueness and keeps own-profile RLS/restrictive deletion. Deployment verification belongs in STATUS.md. Email OTP configuration is separate.
 
 ## 3. Send sign-in codes instead of links
 
@@ -57,6 +55,6 @@ The anon key is meant to be public and is safe inside the installer: row-level s
 
 For project `ogpzmnaqybxybybooebi`, these operations require an authorized Supabase account session. The profile migration is confirmed above; use these checks for future deployments:
 
-1. Apply the latest relaxed-ID migration. Verify the enabled profile trigger's function checks 4–20 characters and contains no cooldown rejection. Keep the unique index, timestamp column and own-profile/restrictive-delete policies.
-2. Use isolated PostgreSQL fixtures to verify repeated immediate changes, clearing/reassignment, invalid IDs, case-insensitive uniqueness, legacy-ID preservation, timestamp forgery protection and cross-account RLS. Never edit the owner's profile for testing.
+1. Apply the latest monthly-ID migration. Verify the enabled trigger checks 6–20 characters and the 720-hour interval. Keep the unique index, timestamp column and existing RLS policies.
+2. Use isolated PostgreSQL fixtures for format boundaries, immediately-before/exactly-at the cooldown boundary, clearing/upsert bypasses, legacy IDs, timestamps, uniqueness and cross-account RLS. Never edit the owner's profile for testing.
 3. Verify hosted email OTP settings separately. Keep authentication tokens, email codes, SMTP passwords and management credentials out of reports.
