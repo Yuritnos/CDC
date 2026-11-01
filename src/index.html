@@ -305,6 +305,9 @@ label.lbl, legend, .sect h3 {
 fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 legend { margin-bottom: 8px; }
 .prow { display: grid; grid-template-columns: 132px minmax(0, 1fr) 38px; gap: 8px; align-items: start; }
+.prow.perf-dragging { opacity: .4; cursor: grabbing; }
+.prow.perf-drop-before { box-shadow: 0 -3px 0 var(--accent); }
+.prow.perf-drop-after { box-shadow: 0 3px 0 var(--accent); }
 .perf-roles { min-width: 0; }
 .perf-role-trigger { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; cursor: pointer; }
 .perf-role-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1087,6 +1090,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 .work-title-row { display: flex; gap: 7px; align-items: baseline; min-width: 0; }
 .work-title-row > .pwork-title, .work-title-row > .meta { flex: 1; min-width: 0; margin: 0; }
 .pwork-heading > .work-title-row { flex: 1; min-width: 0; }
+.pwork-heading .work-title-row > .pwork-title { flex: 0 1 auto; }
 .work-info { flex: none; width: 20px; height: 20px; min-height: 20px; padding: 0; border: 0; color: var(--muted); background: none; display: inline-grid; place-items: center; border-radius: 50%; cursor: pointer; }
 .work-info:hover, .work-info[aria-expanded="true"] { color: var(--accent); background: var(--accent-soft); }
 .work-info-popup { position: fixed; z-index: 100; box-sizing: border-box; padding: 12px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); box-shadow: 0 5px 20px #0003; overflow: auto; font-family: var(--font-body); font-size: 14px; animation: pop-in .15s ease-out; }
@@ -1329,6 +1333,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           <legend data-i18n="performers">Performers</legend>
           <div id="perf-rows" style="display:flex;flex-direction:column;gap:8px"></div>
           <button type="button" class="linkbtn" id="add-perf" data-i18n="addPerformer">+ Add performer</button>
+          <p class="hint" data-i18n="performerOrderHint">Alt + drag to reorder performers, or use Alt + Up/Down in a performer row.</p>
         </fieldset>
         </div>
       </details>
@@ -2485,6 +2490,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   I18N.zh.discImportBusy = "请等待音频导入完成后再填入查询结果。";
   I18N.en.albumMembershipSet = "Album / box set"; I18N.ja.albumMembershipSet = "アルバム／ボックスセット"; I18N.zh.albumMembershipSet = "专辑／套装";
   I18N.en.deleteBtn = "Delete"; I18N.ja.deleteBtn = "削除"; I18N.zh.deleteBtn = "删除";
+  I18N.en.performerOrderHint = "Alt + drag to reorder performers, or use Alt + Up/Down in a performer row.";
+  I18N.ja.performerOrderHint = "Altを押しながらドラッグして演奏者を並べ替えます。演奏者の行でAlt＋上下矢印も使えます。";
+  I18N.zh.performerOrderHint = "按住 Alt 拖动可调整演奏者顺序，也可在演奏者行内使用 Alt＋上下方向键。";
   Object.assign(I18N.en, { discSet: "Standalone or set", discDelete: "Delete this disc", statsAlbums: "Albums", "albumTally.one": "1 album", "albumTally.other": "{n} albums", shelfCount: "{albums} / {discs}", setCover: "Album / set cover", setCoverHint: "This cover belongs to the whole album or set. Drag to crop, or use the zoom slider." });
   Object.assign(I18N.ja, { discSet: "単独またはセット", discDelete: "このディスクを削除", statsAlbums: "アルバム", "albumTally.one": "{n}アルバム", "albumTally.other": "{n}アルバム", shelfCount: "{albums} / {discs}", setCover: "アルバム／セットのカバー", setCoverHint: "このカバーはアルバムまたはセット全体に使われます。ドラッグして位置を調整し、スライダーで拡大・縮小できます。" });
   Object.assign(I18N.zh, { discSet: "独立或套装", discDelete: "删除本碟", statsAlbums: "专辑", "albumTally.one": "{n} 张专辑", "albumTally.other": "{n} 张专辑", shelfCount: "{albums} / {discs}", setCover: "专辑／套装封面", setCoverHint: "此封面用于整张专辑或套装。可拖动调整位置，或使用滑块缩放。" });
@@ -3049,6 +3057,61 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   $("photo-remove").addEventListener("click", function () { editCover.touched = true; photoData = null; $("drop").classList.remove("filled"); showPhoto(); });
 
   /* ---------- performer rows ---------- */
+  var performerDrag = null, performerClickUntil = 0, performerClickRow = null;
+  function performerRoot(row) {
+    var root = row && row.parentElement;
+    return root && (root.id === "perf-rows" || root.classList.contains("w-perf-rows")) ? root : null;
+  }
+  function markPerformerOrder(row) {
+    row.querySelector(".perf-name").classList.remove("filled");
+    var work = row.closest(".work"); if (work) work.querySelector(".w-title").classList.remove("filled");
+  }
+  function finishPerformerDrag(commit) {
+    var d = performerDrag; performerDrag = null; if (!d) return;
+    rolePointerActive = false;
+    d.row.classList.remove("perf-dragging");
+    if (d.target) d.target.classList.remove("perf-drop-before", "perf-drop-after");
+    if (d.row.hasPointerCapture(d.pointer)) d.row.releasePointerCapture(d.pointer);
+    if (commit && d.active && d.target && d.row.isConnected && d.target.parentElement === d.root && d.row.parentElement === d.root && !discEditorBusy()) {
+      var before = d.before ? d.target : d.target.nextElementSibling;
+      if (before !== d.row && before !== d.row.nextElementSibling) { d.root.insertBefore(d.row, before); markPerformerOrder(d.row); }
+      (d.focus && d.focus.isConnected ? d.focus : d.row.querySelector(".perf-name")).focus({ preventScroll:true });
+    }
+    performerClickUntil = performance.now() + 250; performerClickRow = d.row;
+  }
+  function pointPerformerDrag(e) {
+    var d = performerDrag; if (!d || e.pointerId !== d.pointer) return;
+    if (!d.active && Math.hypot(e.clientX-d.x, e.clientY-d.y) < 5) return;
+    d.active = true; d.row.classList.add("perf-dragging");
+    if (d.target) d.target.classList.remove("perf-drop-before", "perf-drop-after");
+    var hit = document.elementFromPoint(e.clientX,e.clientY), row = hit && hit.closest(".prow");
+    d.target = row && row !== d.row && row.parentElement === d.root ? row : null;
+    if (d.target) {
+      var r = d.target.getBoundingClientRect(); d.before = e.clientY < r.top + r.height/2;
+      d.target.classList.add(d.before ? "perf-drop-before" : "perf-drop-after");
+    }
+    e.preventDefault();
+  }
+  $("cd-form").addEventListener("pointerdown", function (e) {
+    var row = e.target.closest(".prow"), root = performerRoot(row);
+    if (!e.altKey || e.button !== 0 || !root || e.target.closest(".perf-role-options") || discEditorBusy()) return;
+    finishPerformerDrag(false); e.preventDefault();
+    qsa(".perf-roles.is-open",root).forEach(function (menu) { setPerformerRolesOpen(menu,false); });
+    performerDrag = {row:row,root:root,pointer:e.pointerId,x:e.clientX,y:e.clientY,focus:e.target.closest("input,button")};
+    row.setPointerCapture(e.pointerId);
+  });
+  $("cd-form").addEventListener("pointermove", pointPerformerDrag);
+  $("cd-form").addEventListener("pointerup", function (e) { if (performerDrag && e.pointerId === performerDrag.pointer) { pointPerformerDrag(e); finishPerformerDrag(true); } });
+  $("cd-form").addEventListener("pointercancel", function () { finishPerformerDrag(false); });
+  $("cd-form").addEventListener("click", function (e) { if (e.detail && e.target.closest(".prow") === performerClickRow && performance.now() < performerClickUntil) { e.preventDefault(); e.stopPropagation(); } }, true);
+  $("cd-form").addEventListener("keydown", function (e) {
+    if (performerDrag && e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finishPerformerDrag(false); return; }
+    var row = e.target.closest(".prow"), root = performerRoot(row), step = e.key === "ArrowUp" ? -1 : e.key === "ArrowDown" ? 1 : 0;
+    if (!e.altKey || e.ctrlKey || e.metaKey || !step || !root || e.target.closest(".perf-role-options") || discEditorBusy()) return;
+    e.preventDefault(); e.stopPropagation();
+    var neighbor = step < 0 ? row.previousElementSibling : row.nextElementSibling, focus = e.target;
+    if (neighbor) { root.insertBefore(row, step < 0 ? neighbor : neighbor.nextElementSibling); markPerformerOrder(row); focus.focus({preventScroll:true}); }
+  }, true);
   var rolePointerActive = false;
   function setPerformerRolesOpen(menu, open, focus) {
     if (open) qsa(".perf-roles.is-open").forEach(function (other) {
@@ -3135,6 +3198,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     inp.autocomplete = "off";
     inp.placeholder = t("performerName");
     inp.setAttribute("aria-label", t("performerNameAria"));
+    inp.setAttribute("aria-keyshortcuts", "Alt+ArrowUp Alt+ArrowDown");
+    summary.setAttribute("aria-keyshortcuts", "Alt+ArrowUp Alt+ArrowDown");
     if (name) inp.value = name;
     var rm = el("button", "iconbtn", "×");
     rm.type = "button";
@@ -3490,6 +3555,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     addPerformer.setAttribute("data-i18n", "addPerformer");
     addPerformer.addEventListener("click", function () { addRow(null, "", rows).focus(); });
     performers.appendChild(addPerformer);
+    var orderHint = el("p", "hint", t("performerOrderHint")); orderHint.setAttribute("data-i18n", "performerOrderHint"); performers.appendChild(orderHint);
     body.appendChild(performers);
     details.appendChild(body);
     box.appendChild(el("div", "tracks"));
@@ -3513,6 +3579,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function resetWorks(list) {
     $("work-list").textContent = "";
     (list && list.length ? list : [{}]).forEach(addWork);
+    $("works-set").open = !!(list && list.length);
   }
   /* Lengths are minutes:seconds (13:17) or hours:minutes:seconds. */
   var DURATION = /^(\d{1,2}:[0-5]\d|\d{1,3}):[0-5]\d$/;
@@ -3659,6 +3726,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       popup.style.width = Math.max(1, Math.min(280, right - left)) + "px";
       popup.style.maxHeight = Math.max(80, innerHeight - 24) + "px";
       var p = popup.getBoundingClientRect(), x = r.left - p.width - 8, y = r.top;
+      var profileHeading = button.closest(".pwork-heading");
+      if (profileHeading) { r = profileHeading.getBoundingClientRect(); x = left - 1; }
       if (x < left) {
         x = left;
         var above = Math.max(0, r.top - 16), below = Math.max(0, innerHeight - r.bottom - 16);
@@ -3682,8 +3751,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   function workTitleRow(cd, work, titleClass) {
     var row = el("div", "work-title-row"), info = workInfoButton(cd, work);
-    if (info) row.appendChild(info);
+    if (info && titleClass !== "pwork-title") row.appendChild(info);
     row.appendChild(el("p", titleClass, work.title || "—"));
+    if (info && titleClass === "pwork-title") row.appendChild(info);
     return row;
   }
   document.addEventListener("pointerdown", function (e) { if (workTip && !workTip.popup.contains(e.target) && !workTip.button.contains(e.target)) closeWorkTip(); });
@@ -4867,6 +4937,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       ul.appendChild(li);
     });
     return ul;
+  }
+  function appendPerformerFacts(facts, performers) {
+    groupedPerformers(performers).forEach(function (p) {
+      facts.appendChild(el("dt", null, p.roles.map(roleText).join(" / ")));
+      var value = el("dd"); value.appendChild(nameLink("performer", p.name)); facts.appendChild(value);
+    });
   }
   function sampleCard() {
     var card = el("article", "card sample");
@@ -6987,6 +7063,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function activateDiscEntry(id, focus) {
     if (discEditorBusy() || !discSession || discSession.active === id) return;
     var entry = discSession.entries.find(function (d) { return d.id === id; }); if (!entry) return;
+    finishPerformerDrag(false);
     captureDiscEntry();
     // The visible cover belongs to the whole set and stays in place across disc tabs.
     var setCover = formSetId ? activeDiscEntry().snapshot : null;
@@ -7204,6 +7281,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     showPhoto();
   }
   function clearForm() {
+    finishPerformerDrag(false);
     discardFormAudio();
     $("cd-form").reset();
     dupWarned = "";
@@ -7265,7 +7343,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("more-details").open = ["label", "issuer", "recordingYear", "releaseYear", "year", "notes"].concat(DETAIL_FIELDS)
       .some(function (f) { return !!cd[f]; });
     $("notes").value = cd.notes || "";
-    $("albumOverall").open = true; $("works-set").open = false; $("form-audio-set").open = false;
+    $("albumOverall").open = true; $("form-audio-set").open = false;
     resetWorks(cd.works);
     var coverSource = releaseSet(cd) ? setCoverSource(setSource(cd.set.id) || cd) : cd;
     photoData = coverSource.photo || null;
@@ -9502,8 +9580,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (missing.length) main.appendChild(el("p", "hint", t("missingDiscs", { discs: missing.join(", ") })));
     if (defaults.composer) main.appendChild(nameLink("composer", defaults.composer));
     var facts = el("dl", "facts");
-    SET_SHARED.filter(function (f) { return f !== "composer"; }).forEach(function (f) {
-      var value = f === "performers" ? groupedPerformers(defaults.performers).map(function (p) { return p.name + " (" + p.roles.map(roleText).join(" / ") + ")"; }).join(", ") : f === "type" && defaults[f] ? workTypeText(defaults[f]) : defaults[f];
+    if (defaults.type) main.appendChild(el("p", "album-work-type", workTypeText(defaults.type)));
+    appendPerformerFacts(facts, defaults.performers);
+    SET_SHARED.filter(function (f) { return f !== "composer" && f !== "type" && f !== "performers"; }).forEach(function (f) {
+      var value = defaults[f];
       if (value) { facts.appendChild(el("dt", null, t(SET_LABELS[f]))); facts.appendChild(el("dd", null, String(value))); }
     });
     main.appendChild(facts);
@@ -9634,9 +9714,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       dd.appendChild(typeof value === "string" ? document.createTextNode(value) : value);
       dl.appendChild(dd);
     }
-    groupedPerformers(cd.performers).forEach(function (p) {
-      fact(p.roles.map(roleText).join(" / "), nameLink("performer", p.name));
-    });
+    appendPerformerFacts(dl, cd.performers);
 
     var pk = favPicker(detailFav, "detail-fav",
       function (id) { var a = findAlbum(id); return !!a && a.cdIds.indexOf(cd.id) !== -1; },
@@ -9872,6 +9950,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   $("cd-form").addEventListener("submit", async function (e) {
     e.preventDefault();
+    finishPerformerDrag(false);
     if ($("submit").disabled || discEditorBusy()) return;
     ensureDiscSession(); captureDiscEntry();
     var original = discSession.active, entries = discSession.entries.filter(function (entry) { return entry.include; });

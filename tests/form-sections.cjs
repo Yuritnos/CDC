@@ -95,8 +95,7 @@ async function main() {
       await page.evaluate(() => window.sectionQA.clearForm());
       assert.deepEqual(await page.locator('#cd-form > .form-section').evaluateAll(ns => ns.map(n => n.open)), [true, false, false, false]);
       await openEdit(page);
-      assert.deepEqual(await page.locator('#cd-form > .form-section').evaluateAll(ns => ns.map(n => n.open)), [true, false, false, false]);
-      await page.locator('#works-set > summary').click();
+      assert.deepEqual(await page.locator('#cd-form > .form-section').evaluateAll(ns => ns.map(n => n.open)), [true, true, false, false]);
       assert.equal(await page.locator('.w-details').getAttribute('open'), null);
       assert.equal(await page.locator('.work > [data-i18n=addTrack]').evaluate(n => !!(n.compareDocumentPosition(n.parentElement.querySelector('.w-details')) & Node.DOCUMENT_POSITION_FOLLOWING)), true);
       await page.locator('.work > [data-i18n=addTrack]').click();
@@ -266,12 +265,12 @@ async function main() {
       assert.deepEqual(state.doc.cds[0].works[0].performers, imported.works[0].performers);
       await page.reload(); await openEdit(page, state.doc.cds[0]);
       assert.equal(await page.locator('.work').getAttribute('data-performers-mode'), 'additional');
-      await page.locator('#works-set > summary').click(); await page.locator('.w-details > summary').click();
+      await page.locator('#works-set').evaluate(n=>n.open=true); await page.locator('.w-details > summary').click();
       await page.locator('.w-perf-rows .perf-name').fill('Changed extra soloist'); await save(page);
       assert.equal(state.doc.cds[0].works[0].performersMode, 'additional');
       assert.deepEqual(state.doc.cds[0].works[0].performers, [{role: 'Pianist', name: 'Changed extra soloist'}]);
       await openEdit(page, state.doc.cds[0]);
-      await page.locator('#works-set > summary').click(); await page.locator('.w-details > summary').click();
+      await page.locator('#works-set').evaluate(n=>n.open=true); await page.locator('.w-details > summary').click();
       await page.locator('.w-perf-rows .perf-name').fill(''); await save(page);
       const stored = state.doc.cds[0];
       assert.equal(stored.works[0].performers, undefined); assert.equal(stored.works[0].performersMode, undefined);

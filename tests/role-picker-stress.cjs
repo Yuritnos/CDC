@@ -115,7 +115,7 @@ async function run(exe) {
       await openPicker(global);await global.locator('.perf-name').click();
       assert.equal(await global.locator('.perf-role-trigger').getAttribute('aria-expanded'),'false');
     });
-    await page.locator('#works-set > summary').click();await page.locator('.w-details > summary').first().click();
+    await page.locator('#works-set').evaluate(n=>n.open=true);await page.locator('.w-details > summary').first().click();
     await page.locator('.w-add-perf').first().click();const work=page.locator('.w-perf-rows .prow').first();
     await test('work repeated multiselect/custom roles, wheel scroll and ancestor collapse',async()=>{
       await work.locator('.perf-name').fill('Work stress');await exercise(work,page);

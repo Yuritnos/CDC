@@ -160,6 +160,15 @@ async function search(page) {
 async function flush(page) {
   await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 }
+async function movePerformer(page,from,to,{alt=true,cancel=false}={}){
+  await from.scrollIntoViewIfNeeded();await to.scrollIntoViewIfNeeded();
+  const a=await from.boundingBox(),b=await to.boundingBox();
+  if(alt)await page.keyboard.down('Alt');
+  await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();
+  await page.mouse.move(b.x+b.width/2,b.y+b.height-3,{steps:12});
+  if(cancel)await page.keyboard.press('Escape');
+  await page.mouse.up();if(alt)await page.keyboard.up('Alt');await flush(page);
+}
 async function releaseHeld(page, state, id) {
   const response = page.waitForResponse(r => r.url().endsWith('/releases/' + id));
   state.holds[id].resolve(); await (await response).finished(); await flush(page);
@@ -925,6 +934,73 @@ async function main() {
         await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'disc-4-work-credits.png')});
       }
       await save(page);assert.equal(state.doc.cds.length,11);
+    }finally{await f.close();}
+  });
+  await test('set profiles use standalone role/name facts and trailing work icons in every locale and narrow width',async()=>{
+    const performers=[{name:'Soloist',role:'Conductor'},{name:'Soloist',role:'Pianist'},{name:'QA Orchestra',role:'Orchestra'}];
+    const cds=[1,2].map(n=>({id:'facts-'+n,title:'Disc '+n,type:'Concerto',performers,
+      set:{id:'facts-set',title:'Facts album',disc:n,total:2},works:[{title:'Concerto '+n+' with a long work title',performers:[{name:'Work soloist',role:'Violinist'}],tracks:[]}]}));
+    const f=await fixture({cds}),{page}=f;
+    try{
+      await openCard(page,'Facts album');
+      for(const width of [1280,360])for(const lang of ['en','ja','zh']){
+        await page.setViewportSize({width,height:860});await setLanguage(page,lang);
+        const facts=page.locator('.profile-main > .facts');
+        assert.deepEqual(await facts.locator('dd .namelink').allTextContents(),['Soloist','QA Orchestra']);
+        assert.equal(await facts.locator('dt').count(),2,'one role label per person, combined for multiple roles');
+        assert.equal(await page.locator('.album-work-type').count(),1);
+        if(process.env.CDC_QA_ARTIFACTS&&width===1280&&lang==='en'){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'set-role-profile.png')});}
+        await page.locator('.set-disc > summary').first().click();
+        const row=page.locator('.set-disc .work-title-row').first();
+        assert.deepEqual(await row.evaluate(n=>Array.from(n.children).map(c=>c.tagName)),['P','BUTTON']);
+        assert.equal(await row.evaluate(n=>{const title=n.querySelector('p').getBoundingClientRect(),icon=n.querySelector('button').getBoundingClientRect();return icon.left>=title.right-1;}),true);
+        const info=row.locator('.work-info');await info.scrollIntoViewIfNeeded();await info.press('Enter');await page.locator('.work-info-popup').waitFor();
+        assert.equal(await info.evaluate(n=>{const title=n.parentElement.querySelector('p').getBoundingClientRect(),p=document.getElementById(n.getAttribute('aria-describedby')).getBoundingClientRect();return p.bottom<=title.top||p.top>=title.bottom;}),true);
+        if(process.env.CDC_QA_ARTIFACTS&&width===360&&lang==='en')await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'trailing-work-info-mobile.png')});
+        await info.press('Escape');await page.locator('.set-disc > summary').first().click();
+      }
+      await page.locator('.profile-main > .facts .namelink').first().click();
+      assert.equal(await page.locator('#win-detail').isHidden(),true);assert.equal(await page.locator('#grid .card').count(),1,'performer name remains a functional shelf filter');
+    }finally{await f.close();}
+  });
+  await test('Alt drag and keyboard reorder complete performer rows within their scope and persist every role',async()=>{
+    const performers=[{name:'A',role:'Conductor'},{name:'A',role:'Pianist'},{name:'B',role:'Orchestra'},{name:'C',role:'Singer'}];
+    const workPeople=[{name:'D',role:'Violinist'},{name:'E',role:'Cellist'},{name:'F',role:'Organist'}];
+    const cd={id:'performer-order',title:'Performer order',performers,works:[{title:'Work',performers:workPeople,tracks:[]}]};
+    const f=await fixture({cds:[cd]}),{page,state}=f;
+    const names=root=>root.locator('.perf-name').evaluateAll(ns=>ns.map(n=>n.value));
+    try{
+      await page.setViewportSize({width:1280,height:1400});await openCard(page,cd.title);await edit(page);
+      const root=page.locator('#perf-rows'),work=page.locator('.w-perf-rows');await page.locator('.w-details').evaluate(n=>n.open=true);
+      await movePerformer(page,root.locator('.perf-name').first(),root.locator('.perf-name').last(),{alt:false});assert.deepEqual(await names(root),['A','B','C']);
+      await movePerformer(page,root.locator('.perf-name').first(),root.locator('.perf-name').last(),{cancel:true});assert.deepEqual(await names(root),['A','B','C']);
+      assert.equal(await page.locator('#win-cd').isVisible(),true,'Escape cancels drag without closing editor');
+      await movePerformer(page,root.locator('.perf-name').first(),root.locator('.perf-name').last());assert.deepEqual(await names(root),['B','C','A']);
+      await root.locator('.perf-name').last().press('Alt+ArrowUp');assert.deepEqual(await names(root),['B','A','C']);
+      await movePerformer(page,work.locator('.perf-name').first(),work.locator('.perf-name').last());assert.deepEqual(await names(work),['E','F','D']);
+      await work.locator('.perf-name').last().press('Alt+ArrowUp');assert.deepEqual(await names(work),['E','D','F']);
+      await movePerformer(page,root.locator('.perf-name').last(),work.locator('.perf-name').first());
+      assert.deepEqual(await names(root),['B','A','C']);assert.deepEqual(await names(work),['E','D','F']);
+      assert.deepEqual(state.doc.cds[0],cd,'ordering is a draft until Save');await save(page);
+      assert.deepEqual(state.doc.cds[0].performers,[performers[2],performers[0],performers[1],performers[3]]);
+      assert.deepEqual(state.doc.cds[0].works[0].performers,[workPeople[1],workPeople[0],workPeople[2]]);
+      await page.reload();await openCard(page,cd.title);await edit(page);
+      assert.deepEqual(await names(root),['B','A','C']);assert.deepEqual(await names(work),['E','D','F']);
+      await root.locator('.perf-name').first().press('Alt+ArrowDown');await page.locator('#close-cd').click();
+      await page.locator('#cd-unsaved-discard').click();await openCard(page,cd.title);await edit(page);assert.deepEqual(await names(root),['B','A','C']);
+    }finally{await f.close();}
+  });
+  await test('works unfold for saved and imported content while empty discs start folded and manual folds survive tab switches',async()=>{
+    const cds=[1,2].map(n=>({id:'fold-'+n,title:'Fold '+n,set:{id:'fold-set',title:'Fold album',disc:n,total:2},...(n===1?{works:[{title:'Saved work',tracks:[]}]}:{})}));
+    const f=await fixture({cds}),{page,state}=f;
+    try{
+      await openCard(page,'Fold album');await page.locator('#set-edit').click();assert.equal(await page.locator('#works-set').evaluate(n=>n.open),true);
+      await page.locator('#works-set > summary').click();await page.locator('#form-disc-tabs button').last().click();assert.equal(await page.locator('#works-set').evaluate(n=>n.open),false);
+      await page.locator('#form-disc-tabs button').first().click();assert.equal(await page.locator('#works-set').evaluate(n=>n.open),false,'manual fold is retained');
+      await page.locator('#close-cd').click();assert.equal(await page.locator('#win-cd-unsaved').isVisible(),false,'folding does not change saved data');
+      await openAdd(page);await search(page);await page.locator('#lookup-use-0').click();await page.waitForFunction(()=>document.querySelectorAll('#form-disc-tabs button').length===2);
+      assert.equal(await page.locator('#works-set').evaluate(n=>n.open),true);await page.locator('#form-disc-tabs button').last().click();assert.equal(await page.locator('#works-set').evaluate(n=>n.open),true);
+      assert.deepEqual(state.doc.cds,cds);
     }finally{await f.close();}
   });
   await test('legacy set data roundtrips JSON export and both import modes', async () => {
