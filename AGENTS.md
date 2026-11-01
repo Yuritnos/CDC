@@ -11,7 +11,7 @@ PMCO is a Tauri 2 physical music catalogue and audio player, shipping on Windows
 
 ## Code map and checks
 
-- `src/index.html`: all HTML, CSS and plain JavaScript; no framework/bundler. `I18N` keys must exist in en/ja/zh; use `t()` and `data-i18n*`. Use theme tokens; support system/light/dark, keyboard access and reduced motion.
+- `src/index.html`: all HTML, CSS and plain JavaScript; no framework/bundler. `I18N` keys must exist in en/ja/zh; use `t()` and `data-i18n*`. Use theme tokens; support system/light/dark, keyboard access and reduced motion. Release work-title resize observations when headings are removed.
 - `Store`/backend owns persistence; `Cloud` owns Supabase sync. Preserve Tauri, HTTP `/api/data` preview and conditional `window.claude` artifact paths.
 - `src-tauri/src/lib.rs`: atomic saves, backups, cover/audio files and native commands. Data lives under the app data directory; retain the previous-save backup and newest 14 daily backups. Validate paths; cleanup must preserve referenced files and Undo/draft semantics.
 - `src-tauri/src/cd_drive.rs`: Windows CD-drive track counts/durations, bounded CDDA reads, bundled FLAC/WAV and cancellable staged jobs; no metadata recognition. Preserve physical track mapping and draft ownership/recovery; never use real drives or the owner's library in automated tests. `scripts/prepare-flac.ps1` pins the encoder/source archives.
