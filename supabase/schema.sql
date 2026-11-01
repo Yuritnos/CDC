@@ -1,4 +1,4 @@
--- CDshelf accounts and sync. Run this once in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
+-- PMCO accounts and sync. Run this once in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
 -- Each signed-in user can only read and change their own rows (row-level security).
 
 -- One row per CD. `data` is the CD exactly as the app stores it (cover included).
@@ -32,7 +32,7 @@ create policy "own meta" on public.meta
   for all to authenticated
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- One row per user: the profile. New/changed handles use 7-20 ASCII letters,
+-- One row per user: the profile. New/changed handles use 4-20 ASCII letters,
 -- numbers or underscores (enforced below); existing shorter IDs are preserved.
 -- Handles are unique regardless of upper/lower case. `nickname` is the name
 -- shown to others (up to 20 characters, any language, several people may share one). `avatar` is
@@ -55,8 +55,7 @@ create policy "own profile" on public.profiles
   for all to authenticated
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- Preserve profiles and existing policies. NULL timestamps allow one grandfathered
--- change; initial assignment and later changes start a 30-day cooldown.
+-- Preserve profile history while the User ID cooldown is temporarily suspended.
 alter table public.profiles add column if not exists handle_changed_at timestamptz;
 
 create or replace function public.enforce_profile_handle_cooldown()
@@ -64,31 +63,19 @@ returns trigger
 language plpgsql
 set search_path = ''
 as $$
-declare
-  next_change_at timestamptz;
 begin
-  -- Only new/changed IDs use the new format. Preserve existing shorter IDs
-  -- during nickname/photo edits, and never rewrite an owner's profile.
+  -- Preserve unchanged legacy IDs during nickname/photo edits.
   if TG_OP = 'INSERT' or NEW.handle is distinct from OLD.handle then
-    if NEW.handle is not null and NEW.handle !~ '^[A-Za-z0-9_]{7,20}$' then
-      raise exception using errcode = '23514', message = 'CDSHELF_HANDLE_FORMAT';
+    if NEW.handle is not null and NEW.handle !~ '^[A-Za-z0-9_]{4,20}$' then
+      raise exception using errcode = '23514', message = 'PMCO_HANDLE_FORMAT';
     end if;
   end if;
   if TG_OP = 'INSERT' then
-    -- Ignore any timestamp supplied by an API client.
     NEW.handle_changed_at := case when NEW.handle is null then null else statement_timestamp() end;
   elsif NEW.handle is distinct from OLD.handle then
-    next_change_at := OLD.handle_changed_at + interval '720 hours';
-    if next_change_at > statement_timestamp() then
-      raise exception using
-        errcode = 'P0001',
-        message = 'CDC_HANDLE_COOLDOWN',
-        detail = to_char(next_change_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"');
-    end if;
-    -- Clearing an ID also consumes the change; reassigning cannot evade the cooldown.
+    -- Cooldown intentionally suspended. Ignore client-supplied timestamps.
     NEW.handle_changed_at := statement_timestamp();
   else
-    -- Nickname/avatar edits never move the cooldown, even with a forged timestamp.
     NEW.handle_changed_at := OLD.handle_changed_at;
   end if;
   return NEW;

@@ -6,7 +6,7 @@ It retains the upstream Apache-2.0/MIT licensing.
 
 Only two definitions differ: `UNINSTKEY` and `MANUPRODUCTKEY` keep the original
 `CDC` registry keys. The visible product name, shortcuts and installer remain
-**CDshelf**. Keeping these keys lets the normal installer detect/uninstall the
+**PMCO**. Keeping these keys lets the normal installer detect/uninstall the
 previous CDC version and restore its installation directory, including custom
 paths. It also avoids a duplicate entry in Windows Installed apps. The executable
 remains `cdc.exe`; the library stays under `com.cdc.collection`.

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>:root{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>CDshelf</title>
+<title>PMCO</title>
 <!-- Written by the GitHub build (build number and date for Settings → About); absent elsewhere. -->
 <script src="build.js"></script>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -784,6 +784,9 @@ li.drop-after { box-shadow: inset 0 -3px 0 var(--accent); }
 .perfs li { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: 14px; }
 .perfs .role { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); overflow-wrap: anywhere; }
 .perfs .name { overflow-wrap: anywhere; }
+.card-form { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; align-items: baseline; margin: 0; font-size: 14px; }
+.card-form dt { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); overflow-wrap: anywhere; }
+.card-form dd { margin: 0; overflow-wrap: anywhere; }
 .perfs.codes li { display: flex; flex-direction: column; gap: 0; }
 .meta { margin: 0; font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1136,7 +1139,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 <div class="shell">
   <header class="top">
     <div class="disc" style="--s:46px" aria-hidden="true"></div>
-    <h1>CDshelf</h1>
+    <h1>PMCO</h1>
     <p class="tag" data-i18n="tagline">Catalogue the discs on your shelf.</p>
     <div class="top-actions">
       <div class="acct-wrap">
@@ -1530,7 +1533,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       <p class="hint" data-i18n="exportNote">JSON includes cover images and favorites. CSV is a plain list for spreadsheets.</p>
       <div class="restore" id="import-box" hidden>
         <div class="btnrow">
-          <button type="button" class="btn small quiet" id="import-btn" data-i18n="importBtn">Import a CDshelf file (JSON)…</button>
+          <button type="button" class="btn small quiet" id="import-btn" data-i18n="importBtn">Import a PMCO file (JSON)…</button>
         </div>
         <input type="file" id="import-file" accept=".json,application/json" hidden>
         <div class="ask-box" id="import-ask" hidden>
@@ -1555,12 +1558,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
             <button type="button" class="btn small quiet" id="backup-no" data-i18n="keep">Keep</button>
           </div>
         </div>
-        <p class="hint" data-i18n="backupNote">CDshelf keeps a copy of your collection from each of the last 14 days you changed it, on this computer.</p>
+        <p class="hint" data-i18n="backupNote">PMCO keeps a copy of your collection from each of the last 14 days you changed it, on this computer.</p>
       </div>
     </div>
 
     <div class="sect" id="about-sect">
-      <h3 data-i18n="aboutSection">About CDshelf</h3>
+      <h3 data-i18n="aboutSection">About PMCO</h3>
       <p class="hint" id="app-version"></p>
       <div class="btnrow" id="update-row" hidden>
         <button type="button" class="btn small quiet" id="check-update" data-i18n="checkUpdate">Check for a new version</button>
@@ -1658,13 +1661,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       <div class="field">
         <label class="lbl" for="pf-nick" data-i18n="pfNick">Nickname</label>
         <input class="input" id="pf-nick" type="text" maxlength="40" autocomplete="nickname" data-autofocus data-i18n-ph="pfNickPh" placeholder="e.g. Music lover">
-        <p class="hint" data-i18n="pfNickHint">Shown to others next to your photo. Up to 20 characters; other people may use the same nickname.</p>
         <p class="err" id="pf-nick-err" role="alert"></p>
       </div>
       <div class="field">
         <label class="lbl" for="pf-handle" data-i18n="pfHandle">User ID</label>
         <input class="input" id="pf-handle" type="text" maxlength="20" autocomplete="off" spellcheck="false" data-i18n-ph="pfHandlePh" placeholder="e.g. user_id">
-        <p class="hint" data-i18n="pfHandleHint">Your unique code: 7 to 20 letters, numbers or underscores. Each ID can belong to only one account.</p>
+        <p class="hint" data-i18n="pfHandleHint">Your unique code: 4 to 20 letters, numbers or underscores. Each ID can belong to only one account.</p>
         <p class="hint" id="pf-handle-policy" aria-live="polite"></p>
         <p class="err" id="pf-handle-err" role="alert"></p>
       </div>
@@ -1862,10 +1864,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       fMultiHelp: "Choose any matching names within a category. CDs must match every category you use.",
       cardGroupMusic: "Music", cardGroupRelease: "Release", cardGroupDisc: "Disc details",
       fShowAll: "Show all CDs with {name}", fNoMatch: "No CDs match these filters.",
-      importBtn: "Import a CDshelf file (JSON)…", importMerge: "Add to my collection", importReplace: "Replace my collection",
+      importBtn: "Import a PMCO file (JSON)…", importMerge: "Add to my collection", importReplace: "Replace my collection",
       "importAsk.one": "“{name}” has 1 CD. Add it to your collection, or replace your collection with it?",
       "importAsk.other": "“{name}” has {n} CDs. Add them to your collection, or replace your collection with them?",
-      importBad: "That file isn't a CDshelf export.", "importAdded.one": "Imported 1 CD", "importAdded.other": "Imported {n} CDs",
+      importBad: "That file isn't a PMCO export.", "importAdded.one": "Imported 1 CD", "importAdded.other": "Imported {n} CDs",
       "importReplaced.one": "Your collection now has the 1 CD from the file", "importReplaced.other": "Your collection now has the {n} CDs from the file",
       backupsHead: "Go back to a backup", backupRestore: "Restore…", backupRestoreYes: "Restore this backup",
       "backupDaily.one": "{date} · 1 CD", "backupDaily.other": "{date} · {n} CDs",
@@ -1873,8 +1875,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       "backupAsk.one": "Replace your collection with the backup from {date} (1 CD)? Changes made since then are undone.",
       "backupAsk.other": "Replace your collection with the backup from {date} ({n} CDs)? Changes made since then are undone.",
       backupRestored: "Backup restored", backupFail: "The backup could not be restored.",
-      backupNote: "CDshelf keeps a copy of your collection from each of the last 14 days you changed it, on this computer.",
-      aboutSection: "About CDshelf", aboutVersion: "Version {v}", aboutBuild: "build {n}, {d}", aboutWeb: "Web version",
+      backupNote: "PMCO keeps a copy of your collection from each of the last 14 days you changed it, on this computer.",
+      aboutSection: "About PMCO", aboutVersion: "Version {v}", aboutBuild: "build {n}, {d}", aboutWeb: "Web version",
       checkUpdate: "Check for a new version", updChecking: "Checking…", updNone: "No version has been published yet.",
       updAvailable: "Version {v} is available.", updLatest: "You have the newest version.",
       updFail: "Couldn't reach GitHub. Try again later.", openReleases: "Open the download page",
@@ -1936,13 +1938,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       pfCropHint: "Drag the photo to choose the part inside the circle. Zoom with the slider or the mouse wheel.",
       pfCropAria: "Photo position. Drag, or use the arrow keys; plus and minus zoom.",
       pfHandle: "User ID", pfHandlePh: "e.g. user_id", acctUser: "User",
-      pfHandleHint: "Your unique code: 7 to 20 letters, numbers or underscores. Each ID can belong to only one account.",
-      pfHandleRule: "You can change your user ID once every 30 days. You can change your nickname at any time.",
-      pfHandleNext: "You can change your user ID again on {date}. Your nickname can still be changed.",
+      pfHandleHint: "Your unique code: 4 to 20 letters, numbers or underscores. Each ID can belong to only one account.",
+      pfHandleRule: "You can change your user ID once a month.",
       pfHandleSchema: "User ID changes need a server update. You can still save your nickname and photo.",
-      pfHandleUnavailable: "Connect to your account to check when you can change your user ID.",
+      pfHandleUnavailable: "Connect to your account to edit your user ID.",
       audioHead: "Audio", audioPlayAll: "Play all", audioAdd: "+ Add audio files",
-      audioNone: "No audio yet. Add the disc's audio files (MP3, FLAC, WAV, AAC or OGG); CDshelf copies them into its library on this computer.",
+      audioNone: "No audio yet. Add the disc's audio files (MP3, FLAC, WAV, AAC or OGG); PMCO copies them into its library on this computer.",
       audioPlay: "Play {title}", audioTrackAria: "Track for {name}", audioTrackNone: "No track",
       audioMissing: "{name} (on another computer)", audioRemove: "Remove {name}",
       toastAudioAdded: "Added {n} audio files.", toastAudioAdded1: "Added 1 audio file.",
@@ -1976,10 +1977,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       "musicTracks.one": "1 track", "musicTracks.other": "{n} tracks",
       musicEmpty: "No audio on this computer yet. Open a CD and use “Add audio files” in its profile; it then appears here, and clicking it plays it.",
       pfNick: "Nickname", pfNickPh: "e.g. Music lover",
-      pfNickHint: "Shown to others next to your photo. Up to 20 characters; other people may use the same nickname.",
       errNick: "Use at most 20 characters.",
       pfIdLine: "User ID: {id}",
-      errHandle: "Use 7 to 20 letters, numbers or underscores, with no spaces.",
+      errHandle: "Use 4 to 20 letters, numbers or underscores, with no spaces.",
       errHandleTaken: "That user ID is already taken. Try another one.",
       toastProfileSaved: "Profile saved.",
       fsHead: "CDs on this computer", fsAnd: " and ",
@@ -2080,10 +2080,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       fMultiHelp: "各分類では選んだ項目のいずれかに一致し、使用するすべての分類を満たすCDを表示します。",
       cardGroupMusic: "音楽", cardGroupRelease: "リリース", cardGroupDisc: "ディスクの詳細",
       fShowAll: "{name} のCDをすべて表示", fNoMatch: "条件に合うCDはありません。",
-      importBtn: "CDshelfファイル（JSON）を読み込む…", importMerge: "コレクションに追加", importReplace: "コレクションを置き換える",
+      importBtn: "PMCOファイル（JSON）を読み込む…", importMerge: "コレクションに追加", importReplace: "コレクションを置き換える",
       "importAsk.one": "「{name}」には{n}枚のCDがあります。コレクションに追加しますか、それともコレクションを置き換えますか？",
       "importAsk.other": "「{name}」には{n}枚のCDがあります。コレクションに追加しますか、それともコレクションを置き換えますか？",
-      importBad: "CDshelfで書き出したファイルではありません。", "importAdded.one": "{n}枚のCDを読み込みました", "importAdded.other": "{n}枚のCDを読み込みました",
+      importBad: "PMCOで書き出したファイルではありません。", "importAdded.one": "{n}枚のCDを読み込みました", "importAdded.other": "{n}枚のCDを読み込みました",
       "importReplaced.one": "コレクションをファイルの{n}枚に置き換えました", "importReplaced.other": "コレクションをファイルの{n}枚に置き換えました",
       backupsHead: "バックアップに戻す", backupRestore: "復元…", backupRestoreYes: "このバックアップを復元",
       "backupDaily.one": "{date} · {n}枚", "backupDaily.other": "{date} · {n}枚",
@@ -2091,8 +2091,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       "backupAsk.one": "コレクションを{date}のバックアップ（{n}枚）に置き換えますか？それ以降の変更は元に戻ります。",
       "backupAsk.other": "コレクションを{date}のバックアップ（{n}枚）に置き換えますか？それ以降の変更は元に戻ります。",
       backupRestored: "バックアップを復元しました", backupFail: "バックアップを復元できませんでした。",
-      backupNote: "CDshelfは、変更のあった直近14日分のコレクションのコピーをこのパソコンに保存しています。",
-      aboutSection: "CDshelfについて", aboutVersion: "バージョン {v}", aboutBuild: "ビルド {n}、{d}", aboutWeb: "Web版",
+      backupNote: "PMCOは、変更のあった直近14日分のコレクションのコピーをこのパソコンに保存しています。",
+      aboutSection: "PMCOについて", aboutVersion: "バージョン {v}", aboutBuild: "ビルド {n}、{d}", aboutWeb: "Web版",
       checkUpdate: "新しいバージョンを確認", updChecking: "確認中…", updNone: "公開されたバージョンはまだありません。",
       updAvailable: "バージョン {v} があります。", updLatest: "最新のバージョンです。",
       updFail: "GitHubに接続できませんでした。後でもう一度お試しください。", openReleases: "ダウンロードページを開く",
@@ -2154,13 +2154,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       pfCropHint: "写真をドラッグして、円の中に表示する部分を選んでください。スライダーまたはマウスホイールで拡大できます。",
       pfCropAria: "写真の位置。ドラッグするか矢印キーで移動し、プラスとマイナスで拡大・縮小します。",
       pfHandle: "ユーザーID", pfHandlePh: "例：user_id", acctUser: "ユーザー",
-      pfHandleHint: "あなただけのコード：半角英数字とアンダースコアで7〜20文字。同じIDは1つのアカウントだけが使えます。",
-      pfHandleRule: "ユーザーIDの変更は30日に1回です。ニックネームはいつでも変更できます。",
-      pfHandleNext: "ユーザーIDは{date}に再び変更できます。ニックネームは引き続き変更できます。",
+      pfHandleHint: "あなただけのコード：半角英数字とアンダースコアで4〜20文字。同じIDは1つのアカウントだけが使えます。",
+      pfHandleRule: "ユーザーIDの変更は月に1回です。",
       pfHandleSchema: "ユーザーIDの変更にはサーバーの更新が必要です。ニックネームと写真は保存できます。",
-      pfHandleUnavailable: "ユーザーIDを変更できる日時を確認するには、アカウントに接続してください。",
+      pfHandleUnavailable: "ユーザーIDを編集するには、アカウントに接続してください。",
       audioHead: "音源", audioPlayAll: "すべて再生", audioAdd: "+ 音源ファイルを追加",
-      audioNone: "音源はまだありません。ディスクの音源ファイル（MP3、FLAC、WAV、AAC、OGG）を追加すると、このパソコンのCDshelfライブラリにコピーされます。",
+      audioNone: "音源はまだありません。ディスクの音源ファイル（MP3、FLAC、WAV、AAC、OGG）を追加すると、このパソコンのPMCOライブラリにコピーされます。",
       audioPlay: "{title} を再生", audioTrackAria: "{name} のトラック", audioTrackNone: "トラックなし",
       audioMissing: "{name}（別のパソコンにあります）", audioRemove: "{name} を削除",
       toastAudioAdded: "音源ファイルを{n}件追加しました。", toastAudioAdded1: "音源ファイルを1件追加しました。",
@@ -2194,10 +2193,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       "musicTracks.one": "1曲", "musicTracks.other": "{n}曲",
       musicEmpty: "このパソコンにはまだ音源がありません。CDのプロフィールで「音源ファイルを追加」すると、ここに表示され、クリックで再生できます。",
       pfNick: "ニックネーム", pfNickPh: "例：音楽好き",
-      pfNickHint: "写真の横に表示され、ほかの人にも見えます。20文字まで。ほかの人と同じニックネームでも構いません。",
       errNick: "20文字以内にしてください。",
       pfIdLine: "ユーザーID：{id}",
-      errHandle: "半角英数字とアンダースコアで7〜20文字にしてください（スペースは使えません）。",
+      errHandle: "半角英数字とアンダースコアで4〜20文字にしてください（スペースは使えません）。",
       errHandleTaken: "このユーザーIDはすでに使われています。別のIDをお試しください。",
       toastProfileSaved: "プロフィールを保存しました。",
       fsHead: "このパソコンにあるCD", fsAnd: "と",
@@ -2298,10 +2296,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       fMultiHelp: "同一类别中满足任一所选项目即可；不同类别的条件须同时满足。",
       cardGroupMusic: "音乐", cardGroupRelease: "发行信息", cardGroupDisc: "唱片详情",
       fShowAll: "显示 {name} 的所有CD", fNoMatch: "没有符合筛选条件的CD。",
-      importBtn: "导入 CDshelf 文件（JSON）…", importMerge: "添加到我的收藏", importReplace: "替换我的收藏",
+      importBtn: "导入 PMCO 文件（JSON）…", importMerge: "添加到我的收藏", importReplace: "替换我的收藏",
       "importAsk.one": "“{name}”中有 {n} 张CD。要添加到你的收藏，还是用它替换你的收藏？",
       "importAsk.other": "“{name}”中有 {n} 张CD。要添加到你的收藏，还是用它替换你的收藏？",
-      importBad: "这不是 CDshelf 导出的文件。", "importAdded.one": "已导入 {n} 张CD", "importAdded.other": "已导入 {n} 张CD",
+      importBad: "这不是 PMCO 导出的文件。", "importAdded.one": "已导入 {n} 张CD", "importAdded.other": "已导入 {n} 张CD",
       "importReplaced.one": "你的收藏已替换为文件中的 {n} 张CD", "importReplaced.other": "你的收藏已替换为文件中的 {n} 张CD",
       backupsHead: "恢复到备份", backupRestore: "恢复…", backupRestoreYes: "恢复此备份",
       "backupDaily.one": "{date} · {n} 张", "backupDaily.other": "{date} · {n} 张",
@@ -2309,8 +2307,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       "backupAsk.one": "用 {date} 的备份（{n} 张CD）替换你的收藏？此后的更改将被撤销。",
       "backupAsk.other": "用 {date} 的备份（{n} 张CD）替换你的收藏？此后的更改将被撤销。",
       backupRestored: "已恢复备份", backupFail: "无法恢复备份。",
-      backupNote: "CDshelf 会在这台电脑上保留最近 14 个有更改的日子里各一份收藏副本。",
-      aboutSection: "关于 CDshelf", aboutVersion: "版本 {v}", aboutBuild: "构建 {n}，{d}", aboutWeb: "网页版",
+      backupNote: "PMCO 会在这台电脑上保留最近 14 个有更改的日子里各一份收藏副本。",
+      aboutSection: "关于 PMCO", aboutVersion: "版本 {v}", aboutBuild: "构建 {n}，{d}", aboutWeb: "网页版",
       checkUpdate: "检查新版本", updChecking: "正在检查…", updNone: "尚未发布任何版本。",
       updAvailable: "有新版本 {v}。", updLatest: "已是最新版本。",
       updFail: "无法连接 GitHub，请稍后再试。", openReleases: "打开下载页面",
@@ -2372,13 +2370,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       pfCropHint: "拖动照片，选择要显示在圆圈内的部分。可用滑块或鼠标滚轮缩放。",
       pfCropAria: "照片位置。拖动或使用方向键移动，加号和减号缩放。",
       pfHandle: "用户ID", pfHandlePh: "例如：user_id", acctUser: "用户",
-      pfHandleHint: "你独有的代码：7 到 20 个英文字母、数字或下划线。每个 ID 只能属于一个账户。",
-      pfHandleRule: "用户ID每30天可更改一次。昵称随时可以更改。",
-      pfHandleNext: "你可以在{date}再次更改用户ID。昵称仍可随时更改。",
+      pfHandleHint: "你独有的代码：4 到 20 个英文字母、数字或下划线。每个 ID 只能属于一个账户。",
+      pfHandleRule: "用户ID每月可更改一次。",
       pfHandleSchema: "更改用户ID需要先更新服务器。你仍可保存昵称和头像。",
-      pfHandleUnavailable: "请连接账户以确认何时可以更改用户ID。",
+      pfHandleUnavailable: "请连接账户以编辑用户ID。",
       audioHead: "音频", audioPlayAll: "全部播放", audioAdd: "+ 添加音频文件",
-      audioNone: "还没有音频。添加这张CD的音频文件（MP3、FLAC、WAV、AAC 或 OGG），CDshelf 会把它们复制到这台电脑上的资料库中。",
+      audioNone: "还没有音频。添加这张CD的音频文件（MP3、FLAC、WAV、AAC 或 OGG），PMCO 会把它们复制到这台电脑上的资料库中。",
       audioPlay: "播放 {title}", audioTrackAria: "{name} 的音轨", audioTrackNone: "无音轨",
       audioMissing: "{name}（在另一台电脑上）", audioRemove: "删除 {name}",
       toastAudioAdded: "已添加 {n} 个音频文件。", toastAudioAdded1: "已添加 1 个音频文件。",
@@ -2412,10 +2409,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       "musicTracks.one": "1 首", "musicTracks.other": "{n} 首",
       musicEmpty: "这台电脑上还没有音频。在CD的档案中使用“添加音频文件”后，它就会出现在这里，点击即可播放。",
       pfNick: "昵称", pfNickPh: "例如：古典乐迷",
-      pfNickHint: "显示在头像旁边，其他人也能看到。最多 20 个字，可以与他人重名。",
       errNick: "最多 20 个字。",
       pfIdLine: "用户ID：{id}",
-      errHandle: "请使用 7 到 20 个英文字母、数字或下划线，不能有空格。",
+      errHandle: "请使用 4 到 20 个英文字母、数字或下划线，不能有空格。",
       errHandleTaken: "该用户ID已被使用，请换一个。",
       toastProfileSaved: "个人资料已保存。",
       fsHead: "这台电脑上的CD", fsAnd: "和",
@@ -5133,7 +5129,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     fieldsFor(cd).forEach(function (f) { picked[f] = true; });
     var shownComposer = picked.composer ? cd.composer || "" : "";
     if (shownComposer) body.appendChild(el("p", "composer", shownComposer));
-    if (picked.type && cd.type) body.appendChild(el("p", "meta", workTypeText(cd.type)));
+    if (picked.type && cd.type) {
+      var form = el("dl", "card-form");
+      form.appendChild(el("dt", null, t("profileForm")));
+      form.appendChild(el("dd", null, workTypeText(cd.type)));
+      body.appendChild(form);
+    }
     var codes = [];
     CARD_FIELDS.forEach(function (pair) {
       var f = pair[0];
@@ -6059,7 +6060,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function renderAccount() {
     applyTheme(currentTheme());
     var signedIn = Cloud.signedIn();
-    /* The account uses its photo or CDshelf's C mark. Signed out on desktop: just "User".
+    /* The account uses its photo or PMCO's C mark. Signed out on desktop: just "User".
        In claude.ai the account name still comes from Claude. */
     var prof = Cloud.profile();
     var plain = !signedIn && !!window.CDC_DESKTOP;
@@ -6234,7 +6235,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
      The nickname is what others see (up to 20 characters, any language, not unique). The user ID
      is each person's unique code. The photo is saved as a 256 px JPEG of the circle. */
   var AVATAR_OUT = 256;
-  var HANDLE = /^[A-Za-z0-9_]{7,20}$/;
+  var HANDLE = /^[A-Za-z0-9_]{4,20}$/;
+  // Temporarily suspended; keep monthly fallback wording without exact timestamps.
+  var HANDLE_COOLDOWN_DAYS = 0;
   var NICK_MAX = 20;
   var pf = { saved: "", removed: false, selecting: false, photoRequest: 0 };
   var pfCrop = makeCropper($("crop-canvas"), $("crop-zoom"), function () {
@@ -6256,17 +6259,15 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("pf-remove").hidden = !has;
     $("pf-remove").title = t("pfRemove");
   });
-  function profileHandleDate(nextAt) {
-    return new Date(nextAt).toLocaleString(LANGS[lang].tag, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZoneName: "short" });
-  }
   function renderHandlePolicy() {
     var p = Cloud.profile();
-    var next = Date.parse(p.handleChangedAt) + 30 * 86400000;
-    var locked = p.handlePolicy !== true || next > Date.now();
+    var next = Date.parse(p.handleChangedAt) + HANDLE_COOLDOWN_DAYS * 86400000;
+    var locked = p.handlePolicy !== true || (HANDLE_COOLDOWN_DAYS > 0 && next > Date.now());
     $("pf-handle").readOnly = locked;
     $("pf-handle").setAttribute("aria-describedby", "pf-handle-policy");
-    $("pf-handle-policy").textContent = p.handlePolicy !== true ? t(p.handlePolicy === false ? "pfHandleSchema" : "pfHandleUnavailable") :
-      next > Date.now() ? t("pfHandleNext", { date: profileHandleDate(next) }) : t("pfHandleRule");
+    var message = p.handlePolicy !== true ? t(p.handlePolicy === false ? "pfHandleSchema" : "pfHandleUnavailable") : HANDLE_COOLDOWN_DAYS > 0 ? t("pfHandleRule") : "";
+    $("pf-handle-policy").textContent = message;
+    $("pf-handle-policy").hidden = !message;
   }
   function openProfile() {
     var p = Cloud.profile();
@@ -6346,7 +6347,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       else if (code === "handle_cooldown") {
         await Cloud.loadProfile();
         renderHandlePolicy();
-        setErr("pf-handle", Number.isFinite(Date.parse(err.nextAt)) ? t("pfHandleNext", { date: profileHandleDate(err.nextAt) }) : t("pfHandleRule"));
+        setErr("pf-handle", t("pfHandleRule"));
         $("pf-handle").value = Cloud.profile().handle;
         $("pf-handle").focus();
       }
@@ -6711,14 +6712,14 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var full = [];
       for (var i = 0; i < cds.length; i++) full.push(await withCoverData(cds[i]));
       data = JSON.stringify({
-        app: "CDshelf",
+        app: "PMCO",
         exportedAt: new Date().toISOString(),
         albums: meta.albums,
         playlists: meta.playlists,
         order: meta.order,
         cds: full
       }, null, 2);
-      name = "cdshelf-collection.json";
+      name = "pmco-collection.json";
     } else {
       var head = ["cdTitle", "composer", "works", "performers", "label", "issuer", "recYear", "relYear"]
         .concat(DETAIL_FIELDS.map(function (f) { return f === "recordingVenue" ? "venue" : f; }), ["notes", "albumsField"])
@@ -6739,7 +6740,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         ]).map(csvCell).join(",");
       });
       data = "﻿" + [head].concat(rows).join("\r\n");
-      name = "cdshelf-collection.csv";
+      name = "pmco-collection.csv";
     }
     try {
       await downloadsApi.save({ filename: name, data: data });
@@ -7458,7 +7459,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   /* ---------- finding a CD online ----------
      The user types or scans a barcode, catalogue number or matrix, picks the matching release, and its
      details fill the empty parts of the form. Each source in LOOKUP_SOURCES turns a query into a list
-     of candidates, and a candidate into CD fields in CDshelf's own shape (title, composer, performers,
+     of candidates, and a candidate into CD fields in PMCO's own shape (title, composer, performers,
      works, label, catalogNo, barcode, years, madeIn, manufacturer, recordingVenue, spars, IFPI codes).
      Another database, or reading the cover photo with AI, can be added as one more source. */
   function dgClean(s) {
@@ -7510,7 +7511,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     return anv && anv.toLowerCase() === name.toLowerCase() &&
       anv !== anv.toUpperCase() && anv !== anv.toLowerCase() ? anv : name;
   }
-  /* All performing roles, deduplicated after mapping to CDshelf's existing role choices. */
+  /* All performing roles, deduplicated after mapping to PMCO's existing role choices. */
   function dgRoles(role) {
     var parts = String(role || "").replace(/\[[^\]]*\]/g, "").split(",");
     var roles = [];
@@ -8230,7 +8231,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
 
   /* ---------- audio ----------
-     A CD can hold its audio. Files the person adds are copied into CDshelf's library on this computer
+     A CD can hold its audio. Files the person adds are copied into PMCO's library on this computer
      (lib.rs: add_audio) and listed in cd.audio as { file, name, size, track }: `file` is the path
      inside the library, `track` the disc's track number (1, 2, ...), or 0 for none. Only the list
      syncs between computers, not the files; a file missing here shows as on another computer.

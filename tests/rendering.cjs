@@ -81,6 +81,26 @@ async function waitUntil(fn) {
 }
 async function main() {
   browser = await playwright.chromium.launch({headless: true, ...(executablePath ? {executablePath} : {})});
+  await test('home-page standalone and set cards show FORM beside the value in all locales', async () => {
+    const cds=[{id:'plain-form',title:'Standalone',type:'Symphony',cardFields:['type','performers'],performers:[{role:'Conductor',name:'Herbert von Karajan'}]},
+      ...[1,2].map(n=>({id:'set-form-'+n,title:'Disc '+n,type:'Symphony',cardFields:['type','performers'],performers:[{role:'Conductor',name:'Herbert von Karajan'}],set:{id:'form-set',title:'Set',disc:n,total:2}}))];
+    const f=await fixture({cds}),{page}=f;
+    try {
+      for(const width of [1280,420,360])for(const lang of ['en','ja','zh']){
+        await page.setViewportSize({width,height:900});await language(page,lang);
+        assert.equal(await page.locator('#grid .card').count(),2);
+        const forms=page.locator('#grid .card-form');assert.equal(await forms.count(),2);
+        assert.deepEqual(await forms.locator('dt').allTextContents(),Array(2).fill({en:'FORM',ja:'楽曲形式',zh:'曲式'}[lang]));
+        assert.deepEqual(await forms.locator('dd').allTextContents(),Array(2).fill({en:'Symphony',ja:'交響曲',zh:'交响曲'}[lang]));
+        assert(await forms.evaluateAll(ns=>ns.every(n=>{const a=n.querySelector('dt').getBoundingClientRect(),b=n.querySelector('dd').getBoundingClientRect();return a.right<=b.left&&Math.abs(a.top-b.top)<8;})));
+        if(process.env.CDC_QA_ARTIFACTS&&width===1280&&lang==='en'){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'home-form-labels.png')});}
+      }
+      await card(page,'plain-form').click();await page.locator('#win-detail .profile-actions button').first().click();
+      await page.locator('#ff-toggle').click();await page.locator('#ff-type').uncheck();
+      await page.locator('#submit').click();await page.locator('#win-cd').waitFor({state:'hidden'});
+      assert.equal(await card(page,'plain-form').locator('.card-form').count(),0,'hidden card type stays hidden');
+    }finally{await f.close();}
+  });
   await test('standalone profile labels the form to the left of its value beside performer facts', async () => {
     const f = await fixture({cds: [{id:'form',title:'Piano Concertos',type:'PianoConcerto',performers:[{role:'Pianist',name:'Yundi Li'}]}]}), {page} = f;
     try {

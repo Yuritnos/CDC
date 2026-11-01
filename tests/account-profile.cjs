@@ -22,7 +22,7 @@ async function main() {
   });
   await ctx.route('**/*',async route=>{
     const req=route.request(),url=new URL(req.url());
-    if(url.hostname==='cdshelf-profile.test') {
+    if(url.hostname==='pmco-profile.test') {
       if(url.pathname==='/')return route.fulfill({contentType:'text/html',body:html});
       if(url.pathname==='/api/data')return route.fulfill({json:{cds:[],meta:{albums:[],playlists:[],settings:{lang:'en'}}}});
     }
@@ -39,44 +39,51 @@ async function main() {
     return route.abort();
   });
   const page=await ctx.newPage(); page.setDefaultTimeout(6000);page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://cdshelf-profile.test/');
+  await page.goto('http://pmco-profile.test/');
   const open=async()=>{await page.evaluate(()=>window.accountQA.openProfile());await page.locator('#win-profile').waitFor({state:'visible'});};
   await test('legacy hosted schema explains the reminder; refreshed migrated schema enables ID editing',async()=>{
     await open(); await page.waitForFunction(()=>document.getElementById('pf-handle-policy').textContent.includes('server update'));
     assert.equal(await page.locator('#pf-handle').getAttribute('readonly'),'');
     policy=true; profile.handle_changed_at=null;
     await page.evaluate(()=>window.accountQA.closeWin('profile'));await open();
-    await page.waitForFunction(()=>document.getElementById('pf-handle-policy').textContent.includes('30 days'));
+    await page.waitForFunction(()=>!document.getElementById('pf-handle').readOnly);
     assert.equal(await page.locator('#pf-handle').getAttribute('readonly'),null);
     await page.locator('#pf-nick').fill('New nickname');await page.locator('#pf-save').click();
     await page.locator('#win-profile').waitFor({state:'hidden'});
     assert.equal(saves.at(-1).handle,'old');assert.equal(saves.at(-1).nickname,'New nickname');
   });
-  await test('client rejects short/invalid new IDs and saves a valid ID before displaying cooldown',async()=>{
+  await test('client accepts 4–20 character IDs and allows repeated immediate changes',async()=>{
     await open(); const before=saves.length;
-    await page.locator('#pf-handle').fill('short');await page.locator('#pf-save').click();
-    assert((await page.locator('#pf-handle-err').textContent()).includes('7 to 20'));
+    await page.locator('#pf-handle').fill('abc');await page.locator('#pf-save').click();
+    assert((await page.locator('#pf-handle-err').textContent()).includes('4 to 20'));
     assert.equal(saves.length,before);
     await page.locator('#pf-handle').fill('new_id7');await page.locator('#pf-save').click();
     await page.locator('#win-profile').waitFor({state:'hidden'});assert.equal(saves.at(-1).handle,'new_id7');
-    await open();await page.waitForFunction(()=>document.getElementById('pf-handle-policy').textContent.includes('again on'));
-    assert.equal(await page.locator('#pf-handle').getAttribute('readonly'),'');
+    await open();await page.waitForFunction(()=>!document.getElementById('pf-handle').readOnly);
+    assert(await page.locator('#pf-handle-policy').isHidden());
+    assert.equal(await page.locator('[data-i18n="pfNickHint"]').count(),0);
+    await page.locator('#pf-handle').fill('ID_4');await page.locator('#pf-save').click();
+    await page.locator('#win-profile').waitFor({state:'hidden'});assert.equal(profile.handle,'ID_4');
+    await open();assert.equal(await page.locator('#pf-handle').getAttribute('readonly'),null);
     const timestamp=profile.handle_changed_at;
-    await page.locator('#pf-nick').fill('Nickname in cooldown');await page.locator('#pf-save').click();
+    await page.locator('#pf-nick').fill('Nickname updated');await page.locator('#pf-save').click();
     await page.locator('#win-profile').waitFor({state:'hidden'});assert.equal(profile.handle_changed_at,timestamp);
   });
-  await test('server cooldown errors refresh the lock; localized hints and brand are complete',async()=>{
+  await test('legacy server cooldown errors use generic monthly copy without dates; brand and hints translate',async()=>{
     profile.handle_changed_at=null;await open();await page.waitForFunction(()=>!document.getElementById('pf-handle').readOnly);
     await page.locator('#pf-handle').fill('race_id7');
     forcedCooldown=true;profile.handle_changed_at=new Date().toISOString();
-    await page.locator('#pf-save').click();await page.waitForFunction(()=>document.getElementById('pf-handle').readOnly);
-    assert.equal(await page.locator('#pf-handle').inputValue(),'new_id7');
-    assert((await page.locator('#pf-handle-err').textContent()).includes('again on'));
+    await page.locator('#pf-save').click();await page.waitForFunction(()=>document.getElementById('pf-handle-err').textContent.includes('once a month'));
+    assert.equal(await page.locator('#pf-handle').inputValue(),'ID_4');
+    assert((await page.locator('#pf-handle-err').textContent()).includes('once a month'));
     for(const lang of ['en','ja','zh']) {
       await page.evaluate(lang=>window.accountQA.setLang(lang),lang);
-      assert.match(await page.locator('[data-i18n="pfHandleHint"]').textContent(),/7/);
-      assert.equal(await page.title(),'CDshelf');assert.equal(await page.locator('h1').textContent(),'CDshelf');
+      assert.match(await page.locator('[data-i18n="pfHandleHint"]').textContent(),/4/);
+      assert.equal(await page.title(),'PMCO');assert.equal(await page.locator('h1').textContent(),'PMCO');
     }
+    assert.equal(await page.locator('#pf-handle').getAttribute('readonly'),null);
+    assert(!/GMT|again on|nickname|\d{4}/i.test(await page.locator('#pf-handle-err').textContent()));
+    if(process.env.CDC_QA_ARTIFACTS){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});forcedCooldown=false;await page.evaluate(()=>window.accountQA.closeWin('profile'));await open();await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'profile-no-notes.png')});}
     assert.deepEqual(errors,[]);
   });
 }

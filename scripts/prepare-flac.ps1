@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 # Official Xiph release, pinned archive. Includes runtime DLL and redistribution texts.
 $archiveHash = '53F1500F0D6E7C61379D7FEE50D4A9F7F504C650009506D9BA015530D76C0DDE'
-$taskRoot = Join-Path ([IO.Path]::GetTempPath()) ('cdshelf-flac-' + [guid]::NewGuid().ToString('N'))
+$taskRoot = Join-Path ([IO.Path]::GetTempPath()) ('pmco-flac-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $taskRoot | Out-Null
 try {
   $archive = Join-Path $taskRoot 'flac.zip'
@@ -29,6 +29,6 @@ See COPYING.GPL, COPYING.LGPL, COPYING.Xiph and AUTHORS in this folder.
 } finally {
   $resolved = [IO.Path]::GetFullPath($taskRoot)
   $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
-  if (-not $resolved.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -or -not (Split-Path $resolved -Leaf).StartsWith('cdshelf-flac-')) { throw 'Unexpected temporary directory.' }
+  if (-not $resolved.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -or -not (Split-Path $resolved -Leaf).StartsWith('pmco-flac-')) { throw 'Unexpected temporary directory.' }
   Remove-Item -LiteralPath $resolved -Recurse -Force
 }

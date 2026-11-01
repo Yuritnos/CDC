@@ -1,6 +1,6 @@
-# CDshelf
+# PMCO
 
-CDshelf is an app for cataloguing the CDs on your shelf. For each CD you can record a cover image, title, composer, performers, label, issuing corporation, recording year and release year. You can group CDs into favorites, and the app is available in English, Japanese and Simplified Chinese.
+PMCO is an app for cataloguing the CDs on your shelf. For each CD you can record a cover image, title, composer, performers, label, issuing corporation, recording year and release year. You can group CDs into favorites, and the app is available in English, Japanese and Simplified Chinese.
 
 It is built with [Tauri 2](https://tauri.app). The screens are a single web page (`src/index.html`) shown in the system's own web view. A small Rust program (`src-tauri/`) keeps the collection in a file on the computer. The same project can later be built for macOS, iPhone and Android.
 
@@ -11,9 +11,9 @@ GitHub builds the installer on its own Windows machines.
 1. Create a repository on GitHub. It can be private.
 2. Upload this whole folder to it, keeping the folder structure. The hidden `.github` folder must be included, because it holds the build instructions.
 3. Open the repository's **Actions** tab, select **Build Windows app**, then select **Run workflow**.
-4. Wait about 10–15 minutes, then open the finished run. Under **Artifacts**, download **CDshelf-windows**. It contains:
-   - `CDshelf_0.3.0_x64-setup.exe`, the installer to give people. It installs for the current user, so no administrator rights are needed.
-   - `CDshelf_0.3.0_x64_en-US.msi`, an alternative installer for company IT departments.
+4. Wait about 10–15 minutes, then open the finished run. Under **Artifacts**, download **PMCO-windows**. It contains:
+   - `PMCO_0.3.0_x64-setup.exe`, the installer to give people. It installs for the current user, so no administrator rights are needed.
+   - `PMCO_0.3.0_x64_en-US.msi`, an alternative installer for company IT departments.
 
 ### CD-drive import trial (0.3.0, Windows)
 

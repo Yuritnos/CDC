@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "CDshelf",
+  "productName": "PMCO",
   "version": "0.3.0",
   "identifier": "com.cdc.collection",
   "build": {
@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "CDshelf",
+        "title": "PMCO",
         "width": 1280,
         "height": 860,
         "minWidth": 420,
@@ -34,7 +34,7 @@
     "category": "Music",
     "resources": { "resources/flac/": "flac/" },
     "shortDescription": "Catalogue the CDs on your shelf",
-    "longDescription": "CDshelf lets you record the CDs you own: cover, title, composer, performers, label, issuing corporation and years, sorted into favorites.",
+    "longDescription": "PMCO lets you record the CDs you own: cover, title, composer, performers, label, issuing corporation and years, sorted into favorites.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

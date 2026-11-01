@@ -1,8 +1,8 @@
 {
-  "name": "cdshelf",
+  "name": "pmco",
   "private": true,
   "version": "0.3.0",
-  "description": "CDshelf: catalogue the CDs on your shelf.",
+  "description": "PMCO: catalogue the CDs on your shelf.",
   "scripts": {
     "prepare:windows": "powershell -NoProfile -File scripts/prepare-flac.ps1",
     "tauri": "tauri",
