@@ -2896,6 +2896,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   function applyAll() {
     applyI18n();
+    if (CdDrive) CdDrive.translate();
     translateSetForm();
     fillComposers();
     refreshRows();
@@ -10169,8 +10170,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     return candidates.sort(function (a,b) { return +b.exact - +a.exact; }).slice(0,20);
   }
   var CdDrive = (function () {
-    var run = 0, detailRun = 0, disc = null, choices = [], busy = false, job = null, cancelRequested = false, closing = null, locked = [], reading = false;
-    function status(key, values) { $("drive-status").textContent = key ? t(key, values) : ""; }
+    var run = 0, detailRun = 0, disc = null, choices = [], busy = false, job = null, cancelRequested = false, closing = null, locked = [], reading = false, statusKey = "", statusValues = null;
+    function status(key, values) { statusKey = key; statusValues = values; $("drive-status").textContent = key ? t(key, values) : ""; }
+    function translate() { status(statusKey,statusValues); var unknown=$("drive-release").querySelector('option[value="-1"]'); if(unknown)unknown.textContent=t("driveUnknown"); if(disc)showTracks(); }
     function error(e) {
       var code = String(e && e.message || e), keys = { drive_missing:"driveMissing", drive_access:"driveAccess", drive_empty:"driveEmpty", drive_disc:"driveEmpty", drive_data:"driveData", drive_disc_feature:"driveDiscFeature", drive_changed:"driveChanged", drive_read:"driveReadError", drive_space:"driveSpace", drive_write:"driveWrite", drive_encoder:"driveEncoder", drive_windows:"driveWindows", drive_busy:"driveBusy", drive_cancelled:"driveCancelled" };
       status(keys[code] || "driveReadError");
@@ -10294,7 +10296,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("drive-release").addEventListener("change",function () { showTracks(); enrich(); }); $("drive-copy").addEventListener("click",copy);
     $("drive-cancel").addEventListener("click",function () { cancel(false); });
     $("drive-device").addEventListener("change",function () { if(busy)return;run++;reading=false;disc=null;choices=[];$("drive-preview").hidden=true;$("drive-read").disabled=false;status("driveReady"); });
-    return { get busy() { return busy; }, reset:reset, cancel:cancel };
+    return { get busy() { return busy; }, reset:reset, cancel:cancel, translate:translate };
   })();
 
   /* ---------- start ---------- */
