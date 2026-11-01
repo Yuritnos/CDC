@@ -540,8 +540,6 @@ pub fn run() {
             open_releases
             ,cd_drive::list_cd_drives
             ,cd_drive::read_cd_disc
-            ,cd_drive::lookup_cd_metadata
-            ,cd_drive::lookup_cd_release
             ,cd_drive::start_cd_import
             ,cd_drive::cd_import_status
             ,cd_drive::cancel_cd_import

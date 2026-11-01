@@ -3,7 +3,6 @@
 use std::{fs::{self, File, OpenOptions}, io::{Read, Write}, path::{Path, PathBuf},
     process::{Child, ChildStdin, Command, Stdio}, sync::{Arc, Mutex, atomic::{AtomicBool, AtomicU32, Ordering}},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH}};
-use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha1::{Digest, Sha1};
@@ -19,23 +18,19 @@ fn fail(code: &str) -> String { code.into() }
 pub struct DiscTrack { pub number: u32, pub start_sector: u32, pub sectors: u32, pub duration: String }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Disc { pub drive_id: String, pub fingerprint: String, pub disc_id: String, pub toc: String, pub tracks: Vec<DiscTrack> }
+pub struct Disc { pub drive_id: String, pub fingerprint: String, pub tracks: Vec<DiscTrack> }
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Progress { id: String, state: String, track: u32, tracks: u32, progress: u32, code: String }
 struct Job { id: String, folder: PathBuf, cancel: AtomicBool, thread: AtomicU32, status: Mutex<Progress> }
 #[derive(Default)]
-pub struct DriveState { job: Mutex<Option<Arc<Job>>>, metadata: Mutex<Option<(String, Value)>>, last_lookup: Mutex<Option<Instant>> }
+pub struct DriveState { job: Mutex<Option<Arc<Job>>> }
 #[derive(Serialize)]
 pub struct ImportedTrack { file: String, name: String, size: u64, track: u32 }
 
 fn make_disc(drive: String, starts: &[u32], leadout: u32) -> Result<Disc> {
     if starts.is_empty() || starts.len() > 99 || leadout > 100 * 60 * 75 || starts[0] > leadout ||
         starts.windows(2).any(|p| p[0] >= p[1]) || *starts.last().unwrap() >= leadout { return Err(fail("drive_disc")); }
-    let mut input = format!("01{:02X}{:08X}", starts.len(), leadout + 150);
-    for i in 0..99 { input.push_str(&format!("{:08X}", starts.get(i).map(|s| s + 150).unwrap_or(0))); }
-    let digest = Sha1::digest(input.as_bytes());
-    let disc_id = base64::engine::general_purpose::STANDARD.encode(digest).replace('+', ".").replace('/', "_").replace('=', "-");
     let toc = format!("1 {} {} {}", starts.len(), leadout + 150, starts.iter().map(|n| (n+150).to_string()).collect::<Vec<_>>().join(" "));
     let fingerprint = format!("{:x}", Sha1::digest(toc.as_bytes()));
     let tracks = starts.iter().enumerate().map(|(i, start)| {
@@ -43,7 +38,7 @@ fn make_disc(drive: String, starts: &[u32], leadout: u32) -> Result<Disc> {
         let seconds = (sectors + 37) / 75;
         DiscTrack { number: (i+1) as u32, start_sector: *start, sectors, duration: format!("{}:{:02}", seconds/60, seconds%60) }
     }).collect();
-    Ok(Disc { drive_id: drive, fingerprint, disc_id, toc, tracks })
+    Ok(Disc { drive_id: drive, fingerprint, tracks })
 }
 fn parse_toc(drive: String, bytes: &[u8]) -> Result<Disc> {
     if bytes.len() < 12 || bytes[2] != 1 || !(1..=99).contains(&bytes[3]) { return Err(fail("drive_disc")); }
@@ -263,39 +258,6 @@ pub async fn list_cd_drives()->Result<Vec<String>> {tauri::async_runtime::spawn_
 #[tauri::command]
 pub async fn read_cd_disc(drive_id:String)->Result<Disc>{tauri::async_runtime::spawn_blocking(move||platform::Device::open(&drive_id)?.disc()).await.map_err(|_|fail("drive_read"))?}
 #[tauri::command]
-pub async fn lookup_cd_metadata(disc:Disc,state:State<'_,DriveState>)->Result<Value>{
-    // Build one fixed-host request from a validated TOC; caller cannot supply a URL.
-    let starts:Vec<u32>=disc.tracks.iter().map(|t|t.start_sector).collect();
-    let end=disc.tracks.last().and_then(|t|t.start_sector.checked_add(t.sectors)).ok_or_else(||fail("drive_disc"))?;
-    let checked=make_disc(disc.drive_id.clone(),&starts,end)?;
-    if checked.fingerprint!=disc.fingerprint||checked.disc_id!=disc.disc_id{return Err(fail("drive_disc"));}
-    mb_query(&state,checked.fingerprint.clone(),format!("discid/{}",checked.disc_id),Some(checked.toc),"recordings artist-credits labels").await
-}
-fn valid_release_id(id:&str)->bool {
-    id.len()==36 && id.bytes().enumerate().all(|(i,b)|if [8,13,18,23].contains(&i){b==b'-'}else{b.is_ascii_hexdigit()})
-}
-#[tauri::command]
-pub async fn lookup_cd_release(release_id:String,state:State<'_,DriveState>)->Result<Value>{
-    if !valid_release_id(&release_id){return Err(fail("drive_metadata"));}
-    mb_query(&state,format!("release-{release_id}"),format!("release/{release_id}"),None,"recordings artist-credits labels work-rels work-level-rels artist-rels recording-level-rels").await
-}
-async fn mb_query(state:&DriveState,key:String,path:String,toc:Option<String>,inc:&'static str)->Result<Value>{
-    if let Some((cached,value))=&*state.metadata.lock().unwrap(){if cached==&key{return Ok(value.clone());}}
-    let wait={let mut last=state.last_lookup.lock().unwrap();let now=Instant::now();let next=last.map(|v|(v+Duration::from_millis(1100)).max(now)).unwrap_or(now);*last=Some(next);next.saturating_duration_since(now)};
-    let value=tauri::async_runtime::spawn_blocking(move||->Result<Value>{
-        std::thread::sleep(wait);
-        let client=reqwest::blocking::Client::builder().timeout(Duration::from_secs(25)).user_agent(concat!("CDshelf/",env!("CARGO_PKG_VERSION")," (https://github.com/Yuritnos/CDC)")).build().map_err(|_|fail("drive_metadata"))?;
-        let mut request=client.get(format!("https://musicbrainz.org/ws/2/{path}")).query(&[("fmt","json"),("inc",inc)]);
-        if let Some(toc)=toc{request=request.query(&[("toc",toc)]);}
-        let response=request.send().map_err(|_|fail("drive_metadata"))?;
-        if response.status().as_u16()==404{return Ok(serde_json::json!({"releases":[]}));}
-        if !response.status().is_success(){return Err(fail("drive_metadata"));}
-        let mut bytes=Vec::new();response.take(4*1024*1024+1).read_to_end(&mut bytes).map_err(|_|fail("drive_metadata"))?;
-        if bytes.len()>4*1024*1024{return Err(fail("drive_metadata"));}serde_json::from_slice(&bytes).map_err(|_|fail("drive_metadata"))
-    }).await.map_err(|_|fail("drive_metadata"))??;
-    *state.metadata.lock().unwrap()=Some((key,value.clone()));Ok(value)
-}
-#[tauri::command]
 pub async fn start_cd_import(app:AppHandle,state:State<'_,DriveState>,drive_id:String,fingerprint:String,format:String)->Result<String>{
     if !["wav","flac"].contains(&format.as_str())||fingerprint.len()!=40||!fingerprint.bytes().all(|b|b.is_ascii_hexdigit()){return Err(fail("drive_disc"));}
     let mut slot=state.job.lock().unwrap();
@@ -329,7 +291,7 @@ mod tests {
     }
     fn reader()->Mock{Mock{reads:Vec::new(),failures:0,short:false,changed:false}}
     fn track()->DiscTrack{DiscTrack{number:1,start_sector:100,sectors:CHUNK+3,duration:"0:01".into()}}
-    #[test] fn musicbrainz_public_disc_id_fixture(){let disc=make_disc("D:".into(),&[0,15213,32164,46442,63264,80339],95312).unwrap();assert_eq!(disc.disc_id,"49HHV7Eb8UKF3aQiNmu1GR8vKTY-");assert_eq!(disc.tracks.len(),6);assert!(disc.toc.starts_with("1 6 95462 150 15363"));}
+    #[test] fn physical_layout_fingerprint_and_durations(){let disc=make_disc("D:".into(),&[0,15213,32164,46442,63264,80339],95312).unwrap();assert_eq!(disc.tracks.len(),6);assert_eq!(disc.fingerprint.len(),40);assert_eq!(disc.tracks[0].duration,"3:23");assert_ne!(disc.fingerprint,make_disc("D:".into(),&[0,15213,32164,46442,63264,80339],95313).unwrap().fingerprint);}
     #[test] fn invalid_layouts_are_rejected(){for starts in [vec![],vec![10,10],vec![11,10],vec![100],vec![0;100]]{assert!(make_disc("D:".into(),&starts,100).is_err());}}
     fn toc_bytes()->Vec<u8>{let mut b=vec![0;28];b[1]=26;b[2]=1;b[3]=2;for (i,start) in [0u32,9000,18000].iter().enumerate(){let at=4+i*8;let msf=start+150;b[at+1]=0x10;b[at+2]=if i==2{0xaa}else{(i+1) as u8};b[at+5]=(msf/4500) as u8;b[at+6]=((msf/75)%60) as u8;b[at+7]=(msf%75) as u8;}b}
     #[test] fn windows_msf_toc_has_physical_track_durations(){let d=parse_toc("D:".into(),&toc_bytes()).unwrap();assert_eq!(d.tracks[0].start_sector,0);assert_eq!(d.tracks[0].sectors,9000);assert_eq!(d.tracks[1].duration,"2:00");}
@@ -343,7 +305,6 @@ mod tests {
     #[test] fn write_failure_is_reported(){struct Broken;impl Write for Broken{fn write(&mut self,_:&[u8])->std::io::Result<usize>{Err(std::io::Error::from(std::io::ErrorKind::StorageFull))}fn flush(&mut self)->std::io::Result<()>{Ok(())}}assert_eq!(extract(&mut reader(),&track(),&mut Broken,&AtomicBool::new(false),|_|{}).unwrap_err(),"drive_write");}
     #[test] fn wav_header_has_cd_pcm_format_and_exact_length(){let h=wav_header(2352);assert_eq!(h.len(),44);assert_eq!(&h[..4],b"RIFF");assert_eq!(u32::from_le_bytes(h[24..28].try_into().unwrap()),44100);assert_eq!(u32::from_le_bytes(h[40..44].try_into().unwrap()),2352);}
     #[test] fn recovery_can_only_delete_its_own_adopted_files(){assert!(owned_file("rip-123-abc","disc/rip-123-abc-track-01.flac"));for f in ["../disc/rip-123-abc-track-01.flac","disc/old.flac","disc/rip-234-abc-track-01.flac","disc/rip-123-abc-track-01.flac/other","disc/rip-123-abc-track-01\\..\\old.flac"]{assert!(!owned_file("rip-123-abc",f));}}
-    #[test] fn metadata_release_requests_only_accept_uuids(){assert!(valid_release_id("d3dc4be9-9749-4959-99e5-133d0cb467fe"));for id in ["../config","https://other.test/","d3dc4be9-9749-4959-99e5-133d0cb467fe?url=other","d3dc4be99749-4959-99e5-133d0cb467fe"]{assert!(!valid_release_id(id));}}
     fn fixture_dir()->PathBuf{let path=std::env::temp_dir().join(format!("rip-{}-fixture-{}",std::process::id(),SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()));fs::create_dir(&path).unwrap();path}
     #[test] fn recovery_preserves_saved_backup_and_unrelated_audio(){
         let root=fixture_dir();let audio=root.join("audio");let dir=audio.join("disc");fs::create_dir_all(&dir).unwrap();let job=root.join("rip-123-abc");fs::create_dir(&job).unwrap();

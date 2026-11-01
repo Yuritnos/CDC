@@ -2,15 +2,17 @@
 
 Updated: 2026-11-01 (Asia/Shanghai). Read `AGENTS.md` for project rules. Verify git/build state before continuing.
 
-## Current milestone: 0.3.0 CD-drive trial complete
+## Current milestone: simplified CD-drive audio import
 
-- Version is **0.3.0** in package.json, Cargo.toml and Tauri config. Windows CD editor includes **Add from CD drive · Trial**: Refresh drives, Read disc, review a MusicBrainz release (or numbered tracks), select FLAC/default or WAV, Import disc, then review/save the editor. Audio stays local. This build also includes the localized **FORM / Symphony** row in standalone/set profiles.
-- `src-tauri/src/cd_drive.rs` owns enumerated-device access, validated audio TOC/physical durations, MusicBrainz disc IDs, fixed-host/rate-limited metadata requests, background raw CDDA extraction, bounded reads/retries, media locking/change checks, progress/cancel, free-space checks, job staging and draft adoption. Disc-ID lookup and release-detail lookup use different verified include parameters; release requests accept UUIDs only. Public MusicBrainz sample returned HTTP 200 for both endpoints and normalized to all six physical tracks with measured timings.
-- FLAC 1.5.0 is bundled from pinned official Xiph Windows/source archives using `scripts/prepare-flac.ps1`; resources include the encoder, DLL, corresponding source and license notices. Users need no separate encoder installation. Local development uses `npm run prepare:windows`. The CLI/template remains pinned to Tauri 2.12.4, with the two legacy NSIS registry definitions preserved.
-- Cancel/error removes importer staging; adopted copies belong to the existing audio draft. Save failure keeps that draft for retry; Discard removes only new files. Restart recovery checks current collection/previous/daily backups, retains manifests when reference safety is unknown, skips active process jobs and only removes validated importer-owned unreferenced files. Existing saved audio cannot be overwritten by a drive import.
-- **104 checks passed across broad and focused regression runs:** native Windows 18; mocked drive-import UI 12; collection integration 38; lookup normalization 17; audio drafts 7; unsaved forms 8; rendering 4. The two initial integration failures (translation placement and FORM-row expectations) were corrected and rerun successfully. Final drive checks include localization after language changes, late metadata/adoption/start responses, cancellation, media errors, save retries, offline WAV and existing-audio protection. Native CI includes exact PCM boundaries/retries, cancellation, TOC/disc-ID fixtures, recovery safety and a bundled FLAC encode/decode equality check. No automated test touched real drives or the owner's collection/account. Visual QA: `installers/qa-drive-trial/`.
+- Version remains **0.3.0**. CD-drive controls are now inside the editor's folded **Audio** section. Read disc shows physical track counts/durations; Copy audio supports FLAC/default or WAV. Removed the release selector, drive metadata/artwork requests, native MusicBrainz commands and Trial labels. The separate manual/Discogs lookup remains available.
+- Copying preserves entered CD details, work/movement names, composer/type/performer overrides and grouping. Existing layouts must have the same audio-slot count as the disc; a work without movements counts as one slot. Successful copying updates physical durations; an empty Works section gets numbered tracks. Read/cancel/failure leaves existing works/durations untouched. Existing audio, staging/recovery and Save/Discard ownership are preserved.
+- Standalone/set profiles show **FORM / value** in the same facts layout as performers (localized in Japanese/Chinese). Wrapped profile work titles align the info icon with the first line and duration with the last line; popup placement still uses the entire heading.
+- **51 focused browser checks passed:** drive import 15, rendering 5, work tooltips 6, audio drafts 7, unsaved forms 8, sections 9 and set-profile integration 1. Tests use isolated fixtures/mocked services and never touch real drives or the owner's collection/account. Screenshots reviewed in installers/qa-drive-audio/. Native checks will run in Windows CI; local Rust/MSVC is unavailable.
+- Owner's earlier physical-drive test succeeded: roughly 40 minutes of audio imports as FLAC in 3 minutes or more (about 13.3× at 3 minutes). Drive model/exact timing remain unknown. This change removes recognition latency but does not change extraction block sizes or claim a measured ripping speedup. See docs/cd-drive-import.md.
 
-## Windows build and installer replacement: complete
+## Windows build and installer replacement: requested update pending
+
+- New source is ready for an authorized manual Windows build and staged installer verification/replacement. The packages below remain the previous build until replacement finishes.
 
 - **Build 37 succeeded**, [Actions run 41275102283](https://github.com/Yuritnos/CDC/actions/runs/41275102283), source `5be7140e431af892e434b00b0ff024d9a80617eb`. Final Windows CI reports 18 native tests passed, zero failed. Intermediate builds 35/36 are superseded.
 - Downloaded `CDshelf-windows` archive SHA-256 `79081696dd7d6a5d9f043ff5444b0fd5432e8bc355924949cd60dd87ade8a168` matches GitHub's artifact digest. Both installers passed integrity/extraction, x64 PE/product/version, preserved MSI upgrade-code and app-payload-equivalence checks. All nine FLAC resource files matched between packages, official binary/source hashes matched, and both staged encoder runtimes reported 1.5.0. Evidence: `installers/staging-drive-trial-41275102283/{artifact,verification,replacement}.json`.
@@ -18,10 +20,10 @@ Updated: 2026-11-01 (Asia/Shanghai). Read `AGENTS.md` for project rules. Verify 
 - Verified 0.2.0/build-34 installers, source archive and hashes remain in `installers/rollback-before-drive-trial-20261101/`. Earlier rollback folders remain. No owner collection snapshots were created/restored; no application installation or launch against the owner's library, tags or releases.
 - Identity retained: `com.cdc.collection`, existing storage/session keys, Rust binary `cdc.exe`, repository `Yuritnos/CDC`, legacy NSIS registry keys and MSI upgrade code `{A095093C-258B-5ED8-8E7E-48EA16A86CE9}`.
 
-## Trial limits and next user check
+## Remaining limitations
 
-- **Physical-drive validation remains unverified.** User should try an ordinary stereo audio CD with a working Windows CD/DVD drive, review the match, import, save and play it. No secure-rip/AccurateRip verification, drive-offset correction or CD-Text yet. Data/mixed-mode, pre-emphasis and four-channel discs are explicitly rejected. Exact pressing identification, damaged-disc recovery and rip speed are not guaranteed. See `docs/cd-drive-import.md` for implementation and hardware QA notes.
-- Original WebView2 role-picker STATUS_BREAKPOINT crash was not reproduced by browser stress tests; installed-app confirmation remains needed. Do not use the owner's collection/account for automated tests. Future physical QA should use an isolated library with explicit authorization.
+- Standard stereo audio CDs only; data/mixed-mode, pre-emphasis and four-channel discs are rejected. No secure-rip/AccurateRip verification, drive-offset correction or CD-Text. Broader hardware validation, damaged-disc recovery and extraction speed remain unverified beyond the owner's earlier test. Future physical QA requires an authorized isolated library.
+- Original WebView2 role-picker STATUS_BREAKPOINT crash was not reproduced by browser stress tests; installed-app confirmation remains needed.
 
 ## Retained metadata/account state
 

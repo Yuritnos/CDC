@@ -81,6 +81,20 @@ async function waitUntil(fn) {
 }
 async function main() {
   browser = await playwright.chromium.launch({headless: true, ...(executablePath ? {executablePath} : {})});
+  await test('standalone profile labels the form to the left of its value beside performer facts', async () => {
+    const f = await fixture({cds: [{id:'form',title:'Piano Concertos',type:'PianoConcerto',performers:[{role:'Pianist',name:'Yundi Li'}]}]}), {page} = f;
+    try {
+      await card(page,'form').click();
+      for (const lang of ['en','ja','zh']) {
+        await language(page,lang);
+        const facts=page.locator('.profile-main > .facts');
+        assert.equal(await facts.locator('dt').first().textContent(),{en:'FORM',ja:'楽曲形式',zh:'曲式'}[lang]);
+        assert.equal(await facts.locator('dd').first().textContent(),{en:'Piano concerto',ja:'ピアノ協奏曲',zh:'钢琴协奏曲'}[lang]);
+        assert(await facts.evaluate(n=>{const label=n.querySelector('dt').getBoundingClientRect(),value=n.querySelector('dd').getBoundingClientRect();return label.right<value.left&&Math.abs(label.top-value.top)<10;}));
+        if (process.env.CDC_QA_ARTIFACTS && lang==='en') { fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'standalone-form-profile.png')}); }
+      }
+    } finally { await f.close(); }
+  });
   await test('cards and profiles show each name once with localized, distinct roles and literal custom labels', async () => {
     const f = await fixture(), {page, state} = f;
     const labels = {
@@ -192,7 +206,7 @@ async function main() {
               const d = n.getBoundingClientRect(), t = title.getBoundingClientRect(), s = getComputedStyle(n), ts = getComputedStyle(title);
               const probe = document.createElement('span'); probe.style.color = 'var(--muted)'; n.appendChild(probe);
               const muted = getComputedStyle(probe).color; probe.remove();
-              return {right: Math.abs(d.right - h.right) < 1, noOverlap: t.right + 9 <= d.left,
+              return {lastLine: Math.abs(d.bottom - t.bottom) <= 6, right: Math.abs(d.right - h.right) < 1, noOverlap: t.right + 9 <= d.left,
                 fits: d.right <= innerWidth && h.left >= 0 && h.right <= innerWidth,
                 size: s.fontSize, smaller: parseFloat(s.fontSize) < parseFloat(ts.fontSize),
                 mono: s.fontFamily.includes('Mono'), muted: s.color === muted,
@@ -200,7 +214,7 @@ async function main() {
                 titleWrapped: t.height > parseFloat(ts.lineHeight) * 2};
             }));
             for (const g of geometry) {
-              assert.equal(g.right && g.noOverlap && g.fits && g.smaller && g.mono && g.muted && g.singleLine, true,
+              assert.equal(g.lastLine && g.right && g.noOverlap && g.fits && g.smaller && g.mono && g.muted && g.singleLine, true,
                 `${width}px ${lang} ${theme}: ${JSON.stringify(g)}`);
               assert.equal(g.size, '12px');
             }

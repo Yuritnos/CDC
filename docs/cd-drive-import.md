@@ -1,98 +1,48 @@
-# CD-drive import trial: 0.3.0
+# CD-drive audio import: 0.3.0
 
-Implemented: 2026-11-01. The Windows trial implements drive discovery, validated
-TOC/disc-ID reading, MusicBrainz candidate selection, offline numbered tracks,
-FLAC/WAV copying, progress/cancellation and the existing draft/save/discard flow.
-FLAC 1.5.0 binaries, corresponding source and license notices are bundled using
-checksum-pinned official Xiph archives. Use `npm run prepare:windows` for local
-development; CI prepares the bundle before native tests and packaging.
+The Windows CD editor's **Audio** section includes **Add from CD drive**.
+Read disc shows physical track count and durations. Choose FLAC (default) or WAV,
+then Copy audio and Save the CD. The drive does not identify releases, titles,
+composers, performers, artwork or other metadata; no online request is made.
+Manual editing and the separate Discogs lookup remain available.
 
-The design below records the intended flow and the remaining quality/hardware
-work. CD-Text, drive-offset correction and secure-rip/AccurateRip verification
-are deferred. Standard stereo audio CDs only: mixed/data, pre-emphasis and
-four-channel discs are rejected. The importer attempts to lock media removal
-while copying, unlocks on completion/cancel, and checks the media-change counter.
-Save does not run until the user reviews the populated editor. No test has used
-the owner's real collection/account. Physical-drive testing remains unverified.
+Copying preserves entered CD details, work titles, movement titles and credits.
+If the editor already has works, their audio-slot count must match the physical
+disc before copying; work-only entries count as one slot. Successful copying
+updates physical durations in the existing layout. An empty Works section gets
+numbered tracks. Reading, cancellation and copying failures do not overwrite the
+editor's works or durations. Existing audio is protected from replacement.
 
-## What can be implemented
+## Implementation and safety
 
-A Windows-first import flow can enumerate optical drives, detect an audio disc,
-read its table of contents (track count, start sectors and durations), identify
-candidate releases, extract the digital audio, and save a CD with its local audio
-already linked to physical track numbers. Metadata review fits the existing CD
-editor and lookup confirmation behavior. Playback and local audio storage already
-exist in CDshelf; reading and encoding audio from an optical drive do not.
+- The native CD-drive module enumerates optical drive letters, validates the
+  table of contents and uses a layout fingerprint to detect disc changes.
+- Standard stereo audio CDs only. Data/mixed-mode, pre-emphasis and four-channel
+  discs are rejected. Bounded CDDA reads, retries, media locking/change checks,
+  cancellation, free-space checks and FLAC verification are retained.
+- FLAC 1.5.0 encoder, corresponding source and license notices are bundled from
+  checksum-pinned official Xiph archives. npm run prepare:windows prepares
+  resources locally; Windows CI prepares them before native tests and packaging.
+- Jobs stage in their own folders. Completed files are adopted into the existing
+  editor's audio draft. Save failure retains the draft for retry; Discard removes
+  only newly copied files. Restart recovery checks current/previous/daily backups
+  before deleting validated importer-owned unreferenced files. Audio stays local.
+- No secure-rip/AccurateRip verification, drive-offset correction or CD-Text.
+  Read-error recovery and speed vary by drive and disc.
 
-Windows provides
-[TOC queries](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddcdrm/ni-ntddcdrm-ioctl_cdrom_read_toc_ex)
-and [raw CDDA reads](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddcdrm/ni-ntddcdrm-ioctl_cdrom_raw_read).
-[MusicBrainz disc-ID/TOC lookup](https://musicbrainz.org/doc/MusicBrainz_API#discid)
-returns candidate releases, including fuzzy TOC matches. It does not guarantee one
-exact edition. Artwork, composers, work groupings, performers and physical-edition
-details depend on available metadata. Optional CD-Text can supplement the lookup;
-absence of text must still allow a draft with numbered tracks and measured times.
-Do not infer a printed matrix code or exact pressing from track layout alone.
+## Verification and hardware baseline
 
-## Suggested first version
+Automated tests use isolated collections and mocked devices/network services;
+they never enumerate real drives or touch the owner's collection/account.
+Native tests cover TOC timings/fingerprints, exact PCM boundaries, retries,
+cancellation, safe recovery and FLAC encode/decode equality. UI tests cover
+metadata preservation, physical-slot mapping, mismatched counts, save/discard,
+late responses, cancellation, failures and all three locales.
 
-1. Add **Add from CD drive** to the Add a CD flow. List drives and show no-drive,
-   empty-tray, unsupported-disc and read-error states. Disc insertion can update
-   the UI, but copying begins only after the user chooses Import.
-2. Read the TOC, calculate a MusicBrainz disc ID, then show release candidates with
-   disc number, track layout and cover. Keep manual/Discogs lookup available.
-   Cache responses and honor MusicBrainz's proper User-Agent and one-request-per-
-   second policy. Standard public lookups do not require a user account.
-3. Let the user review works, movement boundaries, credits and set membership.
-   Preserve one extracted file per physical CD track even when a track contains
-   multiple variations or metadata work boundaries differ.
-4. Extract audio to a job-specific staging directory. Recommend
-   [FLAC](https://xiph.org/flac/) as the default lossless format, with WAV optional.
-   Bundle the selected encoder/native library after reviewing its distribution
-   requirements; users should not need a separate ripper or a PATH setup.
-5. Show track/disc progress, cancel, retry and actionable read failures. Detect
-   ejection/disconnection/disc replacement. Never continue using an old TOC after
-   the media changes. Move completed files into the existing audio library only
-   when the CD is saved; cleanup must respect drafts, Undo and existing files.
-6. Save through Store/native atomic persistence. Only metadata syncs; extracted
-   audio stays local. An offline import can use numbered tracks and be enriched
-   by a later lookup.
-
-## Backend and quality work
-
-- Add a Windows-only Rust module, narrowly scoped Tauri commands for drive/TOC
-  discovery, and a background import job with progress/cancellation. Accept an
-  enumerated device ID and validated track selections; never a caller-supplied
-  arbitrary device path, shell command or output path.
-- Bound reads to the selected audio track sectors. Reject data tracks. Validate
-  sector counts, output sizes and free space. Handle partial reads and use
-  temporary files plus atomic completion. Keep the UI responsive.
-- Pick and validate the extraction backend and FLAC encoder before presenting
-  the feature as ready. Windows raw reads alone do not establish secure-ripping
-  quality. Read-error retries, jitter/overlap handling and drive offsets need
-  explicit treatment; AccurateRip-style independent verification can follow.
-- Preserve current saved-data compatibility. No change to the collection/account
-  identity or cloud audio policy is needed. Keep operational drive/job state out
-  of synced collection metadata.
-
-## Preparation and verification
-
-For hardware validation, use a Windows computer with a working USB or internal
-CD/DVD drive that reads audio CDs, and permission to import test discs into an
-isolated library. Use ordinary multi-track and classical discs, an unmatched
-disc, a data/mixed-mode disc, and damaged media if available. Exercise multiple
-drives, no disc, ejection, USB unplugging, disc replacement, cancellation, low
-disk space, failed encoding, save failure and restart cleanup. Do not test writes
-against the owner's collection/account.
-
-Check sector-to-duration calculations, disc-ID fixtures, track mapping and cleanup
-with mocked devices first; then compare extracted PCM/checksums with a trusted
-reference on physical hardware. Exact pressing identification, reliable recovery
-of every damaged disc and independently verified secure rips are separate from
-the initial functional importer. Extraction speed varies by drive and disc and
-should be measured rather than promised.
-
-User preparation is a compatible drive, test discs and local disk space; internet
-is needed for online identification/artwork, but not raw audio extraction.
-FLAC is the proposed default; final secure-ripping guarantees depend on backend
-selection and hardware verification.
+The owner confirmed physical-drive import succeeded on 2026-11-01: roughly
+40 minutes of audio takes about 3 minutes or more in FLAC (about 13.3× real-time
+at 3 minutes). Drive model/exact timing and broader hardware validation remain
+unknown. No extraction-speed optimization is included in this simplification;
+the online recognition step has been removed. Future hardware QA should use an
+authorized isolated library and cover multiple drives, ejection/unplugging,
+disc replacement, damaged media, low disk space and restart cleanup.
