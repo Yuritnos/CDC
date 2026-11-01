@@ -936,7 +936,7 @@ async function main() {
       await save(page);assert.equal(state.doc.cds.length,11);
     }finally{await f.close();}
   });
-  await test('set profiles use standalone role/name facts and trailing work icons in every locale and narrow width',async()=>{
+  await test('set profiles use standalone role/name facts and far-right work icons with disc-style popup placement',async()=>{
     const performers=[{name:'Soloist',role:'Conductor'},{name:'Soloist',role:'Pianist'},{name:'QA Orchestra',role:'Orchestra'}];
     const cds=[1,2].map(n=>({id:'facts-'+n,title:'Disc '+n,type:'Concerto',performers,
       set:{id:'facts-set',title:'Facts album',disc:n,total:2},works:[{title:'Concerto '+n+' with a long work title',performers:[{name:'Work soloist',role:'Violinist'}],tracks:[]}]}));
@@ -953,10 +953,11 @@ async function main() {
         await page.locator('.set-disc > summary').first().click();
         const row=page.locator('.set-disc .work-title-row').first();
         assert.deepEqual(await row.evaluate(n=>Array.from(n.children).map(c=>c.tagName)),['P','BUTTON']);
-        assert.equal(await row.evaluate(n=>{const title=n.querySelector('p').getBoundingClientRect(),icon=n.querySelector('button').getBoundingClientRect();return icon.left>=title.right-1;}),true);
+        assert.equal(await row.evaluate(n=>{const r=n.closest('.pwork-heading').getBoundingClientRect(),icon=n.querySelector('button').getBoundingClientRect();return Math.abs(icon.right-r.right)<1;}),true);
         const info=row.locator('.work-info');await info.scrollIntoViewIfNeeded();await info.press('Enter');await page.locator('.work-info-popup').waitFor();
         assert.equal(await info.evaluate(n=>{const title=n.parentElement.querySelector('p').getBoundingClientRect(),p=document.getElementById(n.getAttribute('aria-describedby')).getBoundingClientRect();return p.bottom<=title.top||p.top>=title.bottom;}),true);
-        if(process.env.CDC_QA_ARTIFACTS&&width===360&&lang==='en')await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'trailing-work-info-mobile.png')});
+        assert.equal(await info.evaluate(n=>{const icon=n.getBoundingClientRect(),p=document.getElementById(n.getAttribute('aria-describedby')).getBoundingClientRect();return Math.abs(p.right-icon.right)<=20&&p.left>=0&&p.right<=innerWidth;}),true,'popup follows the right-hand icon');
+        if(process.env.CDC_QA_ARTIFACTS&&lang==='en')await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,`far-right-work-info-${width}.png`)});
         await info.press('Escape');await page.locator('.set-disc > summary').first().click();
       }
       await page.locator('.profile-main > .facts .namelink').first().click();

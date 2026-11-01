@@ -71,7 +71,7 @@ async function assertPosition(page, button, context) {
     const popup = document.getElementById(button.getAttribute('aria-describedby'));
     const p = popup.getBoundingClientRect(), b = button.getBoundingClientRect();
     const rect = r => ({left: r.left, right: r.right, top: r.top, bottom: r.bottom});
-    return {bounds: rect(bounds), title: rect(title), popup: rect(p), button: rect(b),
+    return {bounds: rect(bounds), title: rect(title), popup: rect(p), button: rect(b), profile:!!button.closest('.pwork-heading'),
       viewport: {width: innerWidth, height: innerHeight},
       scrollable: popup.scrollWidth <= popup.clientWidth + 1,
       aboveOrLeft: p.bottom <= title.top + 1 || p.right <= title.left + 1,
@@ -84,7 +84,8 @@ async function assertPosition(page, button, context) {
   assert(geometry.noOverlap, `${context}: popup overlaps work title ${JSON.stringify(geometry)}`);
   assert(geometry.scrollable, `${context}: long text creates horizontal scrolling`);
   // There is enough space above the first work in these fixtures; left/above is preferred.
-  assert(geometry.aboveOrLeft, `${context}: popup did not prefer the left or above ${JSON.stringify(geometry)}`);
+  if(geometry.profile)assert(Math.abs(p.right-geometry.button.right)<=20,`${context}: profile popup is not anchored to its right-side icon ${JSON.stringify(geometry)}`);
+  else assert(geometry.aboveOrLeft, `${context}: popup did not prefer the left or above ${JSON.stringify(geometry)}`);
 }
 async function main() {
   browser = await playwright.chromium.launch({headless: true, ...(executablePath ? {executablePath} : {})});
@@ -205,6 +206,7 @@ async function main() {
       await card(page).locator('h3').click();
       const works = page.locator('#detail-body .pwork');
       assert.equal(await works.nth(0).locator('.pwork-duration').textContent(), '12:34');
+      assert.equal(await works.nth(0).locator('.pwork-heading').evaluate(n=>{const icon=n.querySelector('.work-info').getBoundingClientRect(),r=n.getBoundingClientRect(),duration=n.querySelector('.pwork-duration').getBoundingClientRect();return Math.abs(icon.right-r.right)<1&&duration.right<=icon.left;}),true,'duration precedes the far-right icon');
       assert.equal(await works.nth(1).locator('.pwork-duration').count(), 0);
       assert.equal(await works.nth(1).locator('.ptracks .len').textContent(), '3:21');
       assert((await page.locator('#detail-body .ptotal').textContent()).includes('15:55'));
