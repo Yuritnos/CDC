@@ -46,6 +46,7 @@
         "upgradeCode": "A095093C-258B-5ED8-8E7E-48EA16A86CE9"
       },
       "nsis": {
+        "template": "windows/installer.nsi",
         "installMode": "currentUser",
         "languages": ["English", "SimpChinese", "Japanese"],
         "displayLanguageSelector": true
