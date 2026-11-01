@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "CDC",
+  "productName": "CDshelf",
   "version": "0.2.0",
   "identifier": "com.cdc.collection",
   "build": {
@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "CDC",
+        "title": "CDshelf",
         "width": 1280,
         "height": 860,
         "minWidth": 420,
@@ -33,7 +33,7 @@
     "targets": ["nsis", "msi"],
     "category": "Music",
     "shortDescription": "Catalogue the CDs on your shelf",
-    "longDescription": "CDC lets you record the CDs you own: cover, title, composer, performers, label, issuing corporation and years, sorted into favorites.",
+    "longDescription": "CDshelf lets you record the CDs you own: cover, title, composer, performers, label, issuing corporation and years, sorted into favorites.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -42,6 +42,9 @@
       "icons/icon.ico"
     ],
     "windows": {
+      "wix": {
+        "upgradeCode": "A095093C-258B-5ED8-8E7E-48EA16A86CE9"
+      },
       "nsis": {
         "installMode": "currentUser",
         "languages": ["English", "SimpChinese", "Japanese"],

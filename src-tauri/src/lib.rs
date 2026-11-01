@@ -1,4 +1,4 @@
-//! CDC desktop app. The page (src/index.html) does all the work on screen; this side keeps the
+//! CDshelf desktop app. The page (src/index.html) does all the work on screen; this side keeps the
 //! collection in a JSON file in the app's data folder and hands it to the page on request. It also
 //! keeps the audio library: copies of the audio files people add to their CDs, which the page plays
 //! through Tauri's asset protocol (allowed for the audio folder only, see tauri.conf.json).
@@ -352,7 +352,7 @@ async fn fetch_cover(url: String) -> Result<tauri::ipc::Response, String> {
         return Err("Only Discogs cover pictures can be downloaded.".into());
     }
     let client = reqwest::Client::builder()
-        .user_agent(concat!("CDC/", env!("CARGO_PKG_VERSION"), " +https://github.com/Yuritnos/CDC"))
+        .user_agent(concat!("CDshelf/", env!("CARGO_PKG_VERSION"), " +https://github.com/Yuritnos/CDC"))
         .timeout(std::time::Duration::from_secs(20))
         .build()
         .map_err(|e| e.to_string())?;
@@ -537,5 +537,5 @@ pub fn run() {
             open_releases
         ])
         .run(tauri::generate_context!())
-        .expect("error while running CDC");
+        .expect("error while running CDshelf");
 }

@@ -1,6 +1,6 @@
-# CDC
+# CDshelf
 
-CDC is an app for cataloguing the CDs on your shelf. For each CD you can record a cover image, title, composer, performers, label, issuing corporation, recording year and release year. You can group CDs into favorites, and the app is available in English, Japanese and Simplified Chinese.
+CDshelf is an app for cataloguing the CDs on your shelf. For each CD you can record a cover image, title, composer, performers, label, issuing corporation, recording year and release year. You can group CDs into favorites, and the app is available in English, Japanese and Simplified Chinese.
 
 It is built with [Tauri 2](https://tauri.app). The screens are a single web page (`src/index.html`) shown in the system's own web view. A small Rust program (`src-tauri/`) keeps the collection in a file on the computer. The same project can later be built for macOS, iPhone and Android.
 
@@ -11,9 +11,9 @@ GitHub builds the installer on its own Windows machines.
 1. Create a repository on GitHub. It can be private.
 2. Upload this whole folder to it, keeping the folder structure. The hidden `.github` folder must be included, because it holds the build instructions.
 3. Open the repository's **Actions** tab, select **Build Windows app**, then select **Run workflow**.
-4. Wait about 10–15 minutes, then open the finished run. Under **Artifacts**, download **CDC-windows**. It contains:
-   - `CDC_0.1.0_x64-setup.exe`, the installer to give people. It installs for the current user, so no administrator rights are needed.
-   - `CDC_0.1.0_x64_en-US.msi`, an alternative installer for company IT departments.
+4. Wait about 10–15 minutes, then open the finished run. Under **Artifacts**, download **CDshelf-windows**. It contains:
+   - `CDshelf_0.2.0_x64-setup.exe`, the installer to give people. It installs for the current user, so no administrator rights are needed.
+   - `CDshelf_0.2.0_x64_en-US.msi`, an alternative installer for company IT departments.
 
 ### Publishing a release for others to download
 
@@ -21,7 +21,7 @@ Push a tag that starts with `v`, for example `v0.1.0`. You can also create one o
 
 To publish a new version:
 
-1. Raise `version` in **both** `src-tauri/tauri.conf.json` and `package.json`.
+1. Raise `version` in `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `package.json`.
 2. Tag the new version, for example `v0.1.1`.
 
 ## Where the collection is saved

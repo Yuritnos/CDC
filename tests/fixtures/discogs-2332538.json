@@ -1,0 +1,233 @@
+{
+  "source": "https://api.discogs.com/releases/2332538",
+  "id": 2332538,
+  "title": "Symphonie No.3 / Haydn-Variationen",
+  "formats": [
+    {
+      "name": "CD",
+      "qty": "1",
+      "descriptions": [
+        "Album"
+      ]
+    }
+  ],
+  "artists": [
+    {
+      "name": "Johannes Brahms",
+      "anv": "Brahms",
+      "join": "-",
+      "role": "",
+      "tracks": "",
+      "id": 304975,
+      "resource_url": "https://api.discogs.com/artists/304975",
+      "thumbnail_url": "https://i.discogs.com/JhHVYQMS8MGBhR-JXzYJ93BTmE0pBD7HfHLply_O17Q/rs:fit/g:sm/q:90/h:501/w:371/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9BLTMwNDk3/NS0xNjMyNTE3OTk0/LTY3MDIuanBlZw.jpeg"
+    },
+    {
+      "name": "Wiener Philharmoniker",
+      "anv": "",
+      "join": ",",
+      "role": "",
+      "tracks": "",
+      "id": 754974,
+      "resource_url": "https://api.discogs.com/artists/754974",
+      "thumbnail_url": "https://i.discogs.com/LCFad5y92TCn1bMufSCd0W6-Tv2QrhQZRfQXjLsIuHQ/rs:fit/g:sm/q:90/h:200/w:200/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9BLTc1NDk3/NC0xNTE4Njk4NjQ3/LTMwNzQuanBlZw.jpeg"
+    },
+    {
+      "name": "Leonard Bernstein",
+      "anv": "",
+      "join": "",
+      "role": "",
+      "tracks": "",
+      "id": 299702,
+      "resource_url": "https://api.discogs.com/artists/299702",
+      "thumbnail_url": "https://i.discogs.com/orTPUiSVmL44Vg5TbIBXQnnkTcupq9Q1dvkjCqLiPfs/rs:fit/g:sm/q:90/h:600/w:477/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9BLTI5OTcw/Mi0xNzkyODAxMzg4/LTE0NzAuanBlZw.jpeg"
+    }
+  ],
+  "extraartists": [
+    {
+      "name": "Johannes Brahms",
+      "anv": "",
+      "join": "",
+      "role": "Composed By",
+      "tracks": "",
+      "id": 304975,
+      "resource_url": "https://api.discogs.com/artists/304975"
+    },
+    {
+      "name": "Leonard Bernstein",
+      "anv": "",
+      "join": "",
+      "role": "Conductor",
+      "tracks": "",
+      "id": 299702,
+      "resource_url": "https://api.discogs.com/artists/299702"
+    },
+    {
+      "name": "Christopher Alder",
+      "anv": "Christopher Adler",
+      "join": "",
+      "role": "Edited By",
+      "tracks": "",
+      "id": 834243,
+      "resource_url": "https://api.discogs.com/artists/834243"
+    },
+    {
+      "name": "Klaus Scheibe",
+      "anv": "",
+      "join": "",
+      "role": "Engineer [Recording]",
+      "tracks": "",
+      "id": 833561,
+      "resource_url": "https://api.discogs.com/artists/833561"
+    },
+    {
+      "name": "Walter Frisch",
+      "anv": "",
+      "join": "",
+      "role": "Liner Notes",
+      "tracks": "",
+      "id": 1831697,
+      "resource_url": "https://api.discogs.com/artists/1831697"
+    },
+    {
+      "name": "Wiener Philharmoniker",
+      "anv": "",
+      "join": "",
+      "role": "Orchestra",
+      "tracks": "",
+      "id": 754974,
+      "resource_url": "https://api.discogs.com/artists/754974"
+    },
+    {
+      "name": "Hanno Rinke",
+      "anv": "",
+      "join": "",
+      "role": "Producer",
+      "tracks": "",
+      "id": 532268,
+      "resource_url": "https://api.discogs.com/artists/532268"
+    },
+    {
+      "name": "Hans Weber",
+      "anv": "",
+      "join": "",
+      "role": "Recording Supervisor",
+      "tracks": "",
+      "id": 834636,
+      "resource_url": "https://api.discogs.com/artists/834636"
+    }
+  ],
+  "tracklist": [
+    {
+      "position": "",
+      "type_": "index",
+      "title": "Symphonie Nr. 3 F-dur Op. 90 = Symphony No. 3 In F Major, Op.90",
+      "duration": "",
+      "sub_tracks": [
+        {
+          "position": "1",
+          "type_": "track",
+          "title": "1. Allegro Con Brio",
+          "duration": "15:33"
+        },
+        {
+          "position": "2",
+          "type_": "track",
+          "title": "2. Andante",
+          "duration": "9:41"
+        },
+        {
+          "position": "3",
+          "type_": "track",
+          "title": "3. Poco Allegretto",
+          "duration": "7:04"
+        },
+        {
+          "position": "4",
+          "type_": "track",
+          "title": "4. Allegro",
+          "duration": "9:33"
+        }
+      ]
+    },
+    {
+      "position": "",
+      "type_": "index",
+      "title": "Variationen Über Ein Thema Von Joseph Haydn Op. 56a = Variations On A Theme By Joseph Haydn, Op. 56a",
+      "duration": "20:26",
+      "sub_tracks": [
+        {
+          "position": "5a",
+          "type_": "track",
+          "title": "Chorale St. Antoni: Andante",
+          "duration": ""
+        },
+        {
+          "position": "5b",
+          "type_": "track",
+          "title": "Variation I: Poco Più Animato",
+          "duration": ""
+        },
+        {
+          "position": "5c",
+          "type_": "track",
+          "title": "Variation II: Più Vivcace",
+          "duration": ""
+        },
+        {
+          "position": "5d",
+          "type_": "track",
+          "title": "Variation III: Con Moto",
+          "duration": ""
+        },
+        {
+          "position": "5e",
+          "type_": "track",
+          "title": "Variation IV: Andante Con Moto",
+          "duration": ""
+        },
+        {
+          "position": "5f",
+          "type_": "track",
+          "title": "Variation V: Vivace",
+          "duration": ""
+        },
+        {
+          "position": "5g",
+          "type_": "track",
+          "title": "Variation VI: Vivace",
+          "duration": ""
+        },
+        {
+          "position": "5h",
+          "type_": "track",
+          "title": "Variation VII: Grazioso",
+          "duration": ""
+        },
+        {
+          "position": "5i",
+          "type_": "track",
+          "title": "Variation VIII: Presto Non Troppo",
+          "duration": ""
+        },
+        {
+          "position": "5j",
+          "type_": "track",
+          "title": "Finale: Andante",
+          "duration": ""
+        }
+      ]
+    }
+  ],
+  "labels": [
+    {
+      "name": "Deutsche Grammophon",
+      "catno": "410 083-2",
+      "entity_type": "1",
+      "entity_type_name": "Label",
+      "id": 7703,
+      "resource_url": "https://api.discogs.com/labels/7703",
+      "thumbnail_url": "https://i.discogs.com/sZSMuxB1KdFYpyG8gmFxdRiTaJTEHXYcsvWObZtmqIY/rs:fit/g:sm/q:90/h:337/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9MLTc3MDMt/MTQ4ODkxOTEwOC05/NDk0LnBuZw.jpeg"
+    }
+  ]
+}

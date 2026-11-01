@@ -35,6 +35,34 @@ async function main() {
   await test('all inline scripts parse', () => {
     for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) new vm.Script(match[1]);
   });
+  await test('410 083-2 lettered sections form one timed work and five physical audio slots', async () => {
+    const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/discogs-2332538.json'), 'utf8').replace(/^\uFEFF/, ''));
+    const out = await lookup(fixture, '410 083-2');
+    assert.equal(out.works.length, 2);
+    assert.equal(out.works[0].tracks.length, 4);
+    assert.equal(out.works[0].type, 'Symphony');
+    assert.deepEqual(out.works[1].tracks, []);
+    assert.equal(out.works[1].duration, '20:26');
+    assert.equal(out.works[1].type, 'ThemeVariations');
+    assert.equal(out.type, undefined);
+    const discTracks = vm.runInNewContext(section('  function discTracks(', '  function audioSorted(') + '\n discTracks;');
+    assert.equal(discTracks(out).length, 5);
+    assert.equal(discTracks(out)[4].duration, '20:26');
+  });
+  await test('numbered variation tracks stay separate; only shared lettered positions collapse', async () => {
+    for (const positions of [['5', '6'], ['5a', '6a'], ['', '']]) {
+      const out = await lookup({tracklist: [{type_: 'index', title: 'Theme and Variations', duration: '6:42',
+        sub_tracks: positions.map((p,i) => track('Variation ' + (i+1), p))}]});
+      assert.equal(out.works[0].tracks.length, 2);
+      assert.equal(out.works[0].duration, undefined);
+      assert.equal(out.type, 'ThemeVariations');
+    }
+    const out = await lookup({tracklist: [{type_: 'index', title: 'Variationen',
+      sub_tracks: [track('Theme', '1-5a'), track('Variation', '1-5b', [credit('Local', 'Piano')])]}]});
+    assert.equal(out.works[0].duration, '6:42'); assert.equal(out.works[0].tracks.length, 0);
+    assert(out.performers.some(p => p.name === 'Local'));
+    for (const title of ['Theme and Variations', 'Variationen über ein Thema', '主題と変奏曲', '主题与变奏曲']) assert.equal(context.inferWorkType(title), 'ThemeVariations');
+  });
   await test('431780-2 independent Liszt pieces remain four separate works', async () => {
     const titles = ['Nuages Gris', 'La Notte', 'La lugubre gondolaII', 'Funérailles'];
     const out = await lookup({extraartists: [composer('Franz Liszt'), credit('Claudio Arrau', 'Piano')],
@@ -224,7 +252,7 @@ async function main() {
       tracks: [{title: 'Nuages Gris', duration: '1:23'}]}]};
     let doc = {cds: [structuredClone(legacy)], meta: {albums: [], playlists: [], settings: {lang: 'en'}}};
     const errors = [];
-    const source = {id: 1, title: 'Liszt lookup QA', formats: [{name: 'CD', qty: '1'}],
+    let source = {id: 1, title: 'Liszt lookup QA', formats: [{name: 'CD', qty: '1'}],
       tracklist: titles.map((title, i) => track(title, String(i + 1)))};
     try {
       const ctx = await browser.newContext({reducedMotion: 'reduce'});
@@ -239,7 +267,7 @@ async function main() {
           }
         }
         if (url.hostname === 'api.discogs.com') return route.fulfill({json: url.pathname === '/database/search'
-          ? {results: [{id: 1, title: source.title, catno: '431780-2', format: ['CD']}]}
+          ? {results: [{id: 1, title: source.title, catno: source.labels?.[0]?.catno || '431780-2', format: ['CD']}]}
           : source});
         return route.abort();
       });
@@ -260,6 +288,24 @@ async function main() {
       await page.locator('#win-detail .profile-actions > button').first().click();
       assert.equal(await page.locator('#work-list .trow').count(), 1);
       assert.deepEqual(doc.cds.find(c => c.id === legacy.id).works, legacy.works);
+      await page.locator('#close-cd').click();
+      source = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/discogs-2332538.json'), 'utf8').replace(/^\uFEFF/, ''));
+      await page.locator('#open-add').click();
+      await page.locator('#lookup-q').fill('410 083-2'); await page.locator('#lookup-go').click();
+      await page.locator('#lookup-use-0').click();
+      await page.waitForFunction(() => document.querySelectorAll('#work-list .trow').length === 4);
+      const variations = page.locator('#work-list .work').last();
+      assert.equal(await variations.locator('.w-duration').inputValue(), '20:26');
+      assert.equal(await variations.locator('.trow').count(), 0);
+      assert.equal(await variations.locator('.w-type').inputValue(), 'Theme and variations');
+      if (process.env.CDC_QA_ARTIFACTS) {
+        fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});
+        await variations.scrollIntoViewIfNeeded();
+        await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'410083-2-lookup.png')});
+      }
+      await page.locator('#submit').click();await page.locator('#win-cd').waitFor({state:'hidden'});
+      const brahms = doc.cds.find(c => c.works.some(w => w.duration === '20:26'));
+      assert.equal(brahms.works[1].type, 'ThemeVariations');assert.equal(brahms.works[1].tracks.length,0);
       assert.deepEqual(errors, []);
     } finally { await browser.close(); }
   });

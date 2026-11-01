@@ -1,4 +1,4 @@
--- CDC accounts and sync. Run this once in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
+-- CDshelf accounts and sync. Run this once in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
 -- Each signed-in user can only read and change their own rows (row-level security).
 
 -- One row per CD. `data` is the CD exactly as the app stores it (cover included).
@@ -32,8 +32,9 @@ create policy "own meta" on public.meta
   for all to authenticated
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- One row per user: the profile. `handle` is the user ID, a unique code for each person (3-20
--- letters, digits or underscores, unique regardless of upper/lower case). `nickname` is the name
+-- One row per user: the profile. New/changed handles use 7-20 ASCII letters,
+-- numbers or underscores (enforced below); existing shorter IDs are preserved.
+-- Handles are unique regardless of upper/lower case. `nickname` is the name
 -- shown to others (up to 20 characters, any language, several people may share one). `avatar` is
 -- a small round-cropped JPEG as a data URL.
 create table if not exists public.profiles (
@@ -66,6 +67,13 @@ as $$
 declare
   next_change_at timestamptz;
 begin
+  -- Only new/changed IDs use the new format. Preserve existing shorter IDs
+  -- during nickname/photo edits, and never rewrite an owner's profile.
+  if TG_OP = 'INSERT' or NEW.handle is distinct from OLD.handle then
+    if NEW.handle is not null and NEW.handle !~ '^[A-Za-z0-9_]{7,20}$' then
+      raise exception using errcode = '23514', message = 'CDSHELF_HANDLE_FORMAT';
+    end if;
+  end if;
   if TG_OP = 'INSERT' then
     -- Ignore any timestamp supplied by an API client.
     NEW.handle_changed_at := case when NEW.handle is null then null else statement_timestamp() end;
