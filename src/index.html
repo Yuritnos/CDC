@@ -352,8 +352,6 @@ legend { margin-bottom: 8px; }
 .trow .iconbtn { height: 38px; }
 .trow.with-position { grid-template-columns: 64px minmax(0, 1fr) 76px 38px; }
 .medium-badge { align-self: flex-start; margin-bottom: 5px; }
-#music-medium-control .input { width: 150px; min-width: 0; }
-#music-medium-control label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: var(--track); text-transform: uppercase; }
 @media (max-width: 480px) { .trow.with-position { grid-template-columns: 48px minmax(0, 1fr) 60px 32px; gap: 4px; } }
 .work .linkbtn { padding: 2px 0; font-size: 13.5px; }
 textarea.input { height: auto; min-height: 96px; padding: 10px 12px; line-height: 1.5; resize: vertical; font: inherit; font-size: 16px; color: inherit; }
@@ -883,6 +881,10 @@ li.drop-after { box-shadow: inset 0 -3px 0 var(--accent); }
 .pl-items { list-style: none; margin: 0; padding: 6px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
 .pl-items li { display: grid; grid-template-columns: minmax(0, 1fr) 32px 32px; gap: 4px; align-items: center; border-radius: 3px; }
 .pl-items li.current, .pl-items li.current-in { background: var(--accent-soft); }
+#pl-items li.queue-release { grid-template-columns: minmax(0, 1fr) auto 32px; }
+#pl-items li.disc-row.queue-release { grid-template-columns: minmax(0, 1fr) auto 32px 32px; }
+.queue-medium { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 5px; border: 1px solid var(--line); border-radius: 3px; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+@media (max-width: 480px) { .queue-medium { max-width: 65px; font-size: 10px; } }
 .pl-items li.sub .pl-item { padding-left: 20px; }
 .pl-items li.sub .pl-text strong { font-weight: 500; font-size: 13.5px; }
 .pl-item { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 6px 8px; background: transparent; border: 0; border-radius: 3px; text-align: left; cursor: pointer; }
@@ -992,7 +994,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 .paudio li { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; gap: 8px; align-items: center; padding: 4px 6px; border-radius: 3px; }
 .paudio li.playing { background: var(--accent-soft); }
 .paudio .pa-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.paudio select.mini { height: 30px; font-size: 13px; width: 100%; }
+.paudio select.mini { height: 30px; font-size: 13px; width: 100%; min-width: 0; max-width: 100%; }
+.paudio.audio-draft li { grid-template-columns: minmax(0, 1fr) 32px; }
+.audio-import-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 10px; }
+.audio-import-actions .linkbtn { max-width: 100%; text-align: left; white-space: normal; }
 .paudio .pa-file { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .paudio .pa-file.missing { color: var(--danger); }
 .pa-play { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--field); color: var(--accent); cursor: pointer; }
@@ -1196,10 +1201,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     <div class="tools">
       <span class="count" id="count">Loading</span>
       <input class="input" id="search" type="search" data-i18n-ph="searchPh" placeholder="Search title, composer or performer" data-i18n-aria="searchAria" aria-label="Search your collection" hidden>
-      <div class="sort" id="music-medium-control" hidden>
-        <label for="music-medium-filter" data-i18n="medium">Medium</label>
-        <select class="input" id="music-medium-filter"></select>
-      </div>
       <div class="sort" id="sort-wrap" hidden>
         <span id="sort-label" data-i18n="sort">Sort</span>
         <select class="input" id="sort">
@@ -1220,9 +1221,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       <button type="button" class="btn small quiet" id="select-btn" data-i18n="selectBtn" hidden>Select</button>
       <button type="button" class="btn small quiet" id="filter-btn" aria-expanded="false" aria-controls="filters" hidden><span data-i18n="filterBtn">Filter</span><span class="fcount" id="filter-count"></span></button>
       <div class="filters" id="filters" hidden>
+        <div class="shelf-filter-group" id="f-medium" tabindex="-1" role="group" data-i18n-aria="medium"></div>
         <div class="shelf-filter-group" id="f-composer" tabindex="-1" role="group" data-i18n-aria="composer"></div>
         <div class="shelf-filter-group" id="f-performer" tabindex="-1" role="group" data-i18n-aria="performers"></div>
-        <div class="shelf-filter-group" id="f-label" tabindex="-1" role="group" data-i18n-aria="label"></div>
         <div class="shelf-filter-group" id="f-type" tabindex="-1" role="group" data-i18n-aria="fWorkType"></div>
         <p class="hint shelf-filter-help" data-i18n="fMultiHelp"></p>
         <button type="button" class="linkbtn" id="f-clear" data-i18n="fClear">Clear filters</button>
@@ -2622,15 +2623,16 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   });
   /* Missing medium is a legacy CD. Medium never replaces musical form (type). */
   var MEDIA = ["cd", "vinyl", "cassette", "sacd", "dvd", "bluray", "other"];
+  var SHELF_MEDIA = ["cd", "vinyl", "cassette", "sacd", "dvd-bluray", "other"];
   var MEDIUM_FIELDS = { recordSize: ["vinyl"], recordSpeed: ["vinyl"], recordColour: ["vinyl"], matrixRunout: ["vinyl"], mediaCondition: ["vinyl", "cassette"], sleeveCondition: ["vinyl", "cassette"], tapeType: ["cassette"], noiseReduction: ["cassette"], sacdHybrid: ["sacd"], audioPrograms: ["sacd", "dvd", "bluray"], capacity: ["usb", "sd", "other"] };
   var MEDIA_TEXT = {
-    en: { medium: "Medium", mediumName: "Other medium name", allCds: "All media", libraryHead: "Collection", mediumOther: "Other media", mediumFilter: "Filter other media", mediumAny: "All other media", mediaEmpty: "No releases here yet. Add a release to get started.",
+    en: { medium: "Medium", mediumName: "Other medium name", allCds: "All media", libraryHead: "Collection", mediumOther: "Other media", mediumFilter: "Filter other media", mediumAny: "All other media", mediaEmpty: "No releases here yet.",
       "medium.cd": "CD", "medium.vinyl": "Vinyl", "medium.cassette": "Cassette", "medium.sacd": "SACD", "medium.dvd": "DVD", "medium.bluray": "Blu-ray", "medium.usb": "USB", "medium.sd": "SD card", "medium.other": "Other",
       add: "Add release", edit: "Edit release", profileHead: "Release profile", standalone: "Standalone", setTotal: "Physical items in set", addDisc: "Add item", discEditors: "Items", discDelete: "Remove this item", discDraftHint: "Each item has its own medium, information, works and audio.", albumOverall: "Item information", discDetails: "Item details", works: "Works on this item", worksHint: "Add works and tracks. For sided media, enter printed positions such as A1 or B2.", workInheritHint: "Works use this item’s details unless you enter different ones in Work details.", relYear: "Release year", notesPh: "Anything you want to remember about this item", lookupHead: "Find this release online", lookupNote: "Choose the matching edition and review its details. Nothing is saved until you save the release.", trackPosition: "Printed track position", trackPositionPh: "A1", recordSize: "Record size", recordSpeed: "Speed (RPM)", recordColour: "Record colour", matrixRunout: "Matrix / runout", mediaCondition: "Media condition", sleeveCondition: "Sleeve / inlay condition", tapeType: "Tape type", noiseReduction: "Noise reduction", sacdHybrid: "Hybrid / layer details", audioPrograms: "Audio programs (stereo / multichannel)", capacity: "Capacity", releaseItems: "{albums} / {items} items", mediumCount: "{albums} / {items} {medium}", saveDiscs: "Save all items", albumProgress: "{n} of {total} items catalogued", albumDeleteAsk: "Delete this release and all {n} catalogued items?", deleteBtn: "Delete release", removeAsk: "Delete this release?", statsCds: "Physical items", setErr: "Enter a set name and a whole item count from 1 to 999, covering every item number.", setDuplicate: "This set already contains item {n}.", emptyNote: "Your collection is empty. Choose Add release to catalogue your first physical release.", setTooMany: "A set can contain at most 999 physical items." },
-    ja: { medium: "メディア", mediumName: "その他のメディア名", allCds: "すべてのメディア", libraryHead: "コレクション", mediumOther: "その他のメディア", mediumFilter: "メディアで絞り込む", mediumAny: "その他すべて", mediaEmpty: "まだ登録がありません。リリースを追加してください。",
+    ja: { medium: "メディア", mediumName: "その他のメディア名", allCds: "すべてのメディア", libraryHead: "コレクション", mediumOther: "その他のメディア", mediumFilter: "メディアで絞り込む", mediumAny: "その他すべて", mediaEmpty: "まだ登録がありません。",
       "medium.cd": "CD", "medium.vinyl": "レコード", "medium.cassette": "カセット", "medium.sacd": "SACD", "medium.dvd": "DVD", "medium.bluray": "Blu-ray", "medium.usb": "USB", "medium.sd": "SDカード", "medium.other": "その他",
       add: "リリースを追加", edit: "リリースを編集", profileHead: "リリースの詳細", standalone: "単独", setTotal: "セットのメディア総数", addDisc: "メディアを追加", discEditors: "メディア一覧", discDelete: "このメディアを外す", discDraftHint: "種類、情報、作品、音声はメディアごとに編集できます。", albumOverall: "メディア情報", discDetails: "メディアの詳細", works: "収録作品", worksHint: "作品とトラックを追加します。両面メディアはA1、B2などの表記を入力できます。", workInheritHint: "各作品にはこのメディアの情報が使われます。異なる場合は「作品の詳細」で入力してください。", relYear: "発売年", notesPh: "このメディアについてのメモ", lookupHead: "オンラインでリリースを探す", lookupNote: "該当する版を選び、内容を確認してください。保存するまで登録されません。", trackPosition: "印刷された曲番号", trackPositionPh: "A1", recordSize: "レコードのサイズ", recordSpeed: "回転数（RPM）", recordColour: "レコードの色", matrixRunout: "マトリクス／ランアウト", mediaCondition: "メディアの状態", sleeveCondition: "ジャケット／インレイの状態", tapeType: "テープの種類", noiseReduction: "ノイズリダクション", sacdHybrid: "ハイブリッド／レイヤー情報", audioPrograms: "音声プログラム（ステレオ／マルチチャンネル）", capacity: "容量", releaseItems: "{albums} / メディア{items}点", mediumCount: "{albums} / {medium} {items}点", saveDiscs: "すべてのメディアを保存", albumProgress: "全{total}点中{n}点を登録済み", albumDeleteAsk: "このリリースと登録済みメディア{n}点をすべて削除しますか？", deleteBtn: "リリースを削除", removeAsk: "このリリースを削除しますか？", statsCds: "メディア", setErr: "セット名と1〜999の整数の総数を入力してください。各番号は総数以下にしてください。", setDuplicate: "このセットには番号{n}が既にあります。", emptyNote: "コレクションは空です。「リリースを追加」から登録できます。", setTooMany: "セットには最大999点のメディアを登録できます。" },
-    zh: { medium: "媒介", mediumName: "其他媒介名称", allCds: "全部媒介", libraryHead: "收藏", mediumOther: "其他媒介", mediumFilter: "筛选其他媒介", mediumAny: "全部其他媒介", mediaEmpty: "这里还没有专辑，点击添加专辑开始登记。",
+    zh: { medium: "媒介", mediumName: "其他媒介名称", allCds: "全部媒介", libraryHead: "收藏", mediumOther: "其他媒介", mediumFilter: "筛选其他媒介", mediumAny: "全部其他媒介", mediaEmpty: "这里还没有专辑。",
       "medium.cd": "CD", "medium.vinyl": "黑胶", "medium.cassette": "磁带", "medium.sacd": "SACD", "medium.dvd": "DVD", "medium.bluray": "蓝光", "medium.usb": "USB", "medium.sd": "SD卡", "medium.other": "其他",
       add: "添加专辑", edit: "编辑专辑", profileHead: "专辑详情", standalone: "独立", setTotal: "套装媒介总数", addDisc: "添加一件媒介", discEditors: "媒介列表", discDelete: "移除此件媒介", discDraftHint: "每件媒介分别保存媒介类型、信息、作品和音频。", albumOverall: "本件信息", discDetails: "媒介详情", works: "收录作品", worksHint: "添加作品和音轨；双面媒介可填写A1、B2等印刷音轨编号。", workInheritHint: "各作品默认使用本件信息；如有不同，请在「作品详情」中填写。", relYear: "发行年份", notesPh: "关于这件媒介，想记下的任何内容", lookupHead: "在线查找这张专辑", lookupNote: "选择对应版本并检查信息；保存专辑前不会写入收藏。", trackPosition: "印刷音轨编号", trackPositionPh: "A1", recordSize: "唱片尺寸", recordSpeed: "转速（RPM）", recordColour: "唱片颜色", matrixRunout: "矩阵码／刻片码", mediaCondition: "媒介品相", sleeveCondition: "封套／内页品相", tapeType: "磁带类型", noiseReduction: "降噪", sacdHybrid: "混合盘／层信息", audioPrograms: "音频节目（立体声／多声道）", capacity: "容量", releaseItems: "{albums} / {items} 件媒介", mediumCount: "{albums} / {items} 件{medium}", saveDiscs: "保存所有媒介", albumProgress: "共 {total} 件，已登记 {n} 件", albumDeleteAsk: "删除此专辑及已登记的全部 {n} 件媒介？", deleteBtn: "删除专辑", removeAsk: "删除此专辑？", statsCds: "实体媒介", setErr: "请输入套装名称及1至999的整数总数，各件编号不能超过总数。", setDuplicate: "此套装已包含第 {n} 件媒介。", emptyNote: "收藏还是空的。点击「添加专辑」开始登记第一件实体音乐。", setTooMany: "一个套装最多可包含999件实体媒介。" }
   };
@@ -2655,22 +2657,20 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   Object.assign(I18N.en, { "addMedium.cd": "Add a CD", "addMedium.vinyl": "Add a vinyl record", "addMedium.cassette": "Add a cassette", "addMedium.sacd": "Add an SACD", "addMedium.dvd": "Add a DVD", "addMedium.bluray": "Add a Blu-ray", audioAddFolder: "Add audio from a folder…", audioFolderHint: "Choose a folder on this computer, USB drive or SD card. Supported audio files in its subfolders are copied locally; the originals stay in place." });
   Object.assign(I18N.ja, { "addMedium.cd": "CDを追加", "addMedium.vinyl": "レコードを追加", "addMedium.cassette": "カセットを追加", "addMedium.sacd": "SACDを追加", "addMedium.dvd": "DVDを追加", "addMedium.bluray": "Blu-rayを追加", audioAddFolder: "フォルダーから音声を追加…", audioFolderHint: "このコンピューター、USB、SDカードのフォルダーを選びます。サブフォルダー内の対応音声ファイルをコピーします。元のファイルは保持されます。" });
   Object.assign(I18N.zh, { "addMedium.cd": "添加一张CD", "addMedium.vinyl": "添加一张黑胶", "addMedium.cassette": "添加一盒磁带", "addMedium.sacd": "添加一张SACD", "addMedium.dvd": "添加一张DVD", "addMedium.bluray": "添加一张蓝光", audioAddFolder: "从文件夹添加音频…", audioFolderHint: "选择本机、USB或SD卡中的文件夹；将复制其中及子文件夹内支持的音频文件，原文件保持不变。" });
-  var musicMediumFilter = "";
+  Object.assign(I18N.en, { "medium.dvd-bluray": "DVD / Blu-ray", "addMedium.dvd-bluray": "Add a DVD/Blu-ray", statsMedia: "Physical items by medium", audioFromMedium: "Audio from {medium}" });
+  Object.assign(I18N.ja, { "medium.dvd-bluray": "DVD / Blu-ray", "addMedium.dvd-bluray": "DVD／Blu-rayを追加", statsMedia: "メディア別の点数", audioFromMedium: "{medium}の音声" });
+  Object.assign(I18N.zh, { "medium.dvd-bluray": "DVD／蓝光", "addMedium.dvd-bluray": "添加一张DVD／蓝光", statsMedia: "各类实体媒介数量", audioFromMedium: "音频来自{medium}" });
   var mediaOpen = true;
   try { mediaOpen = localStorage.getItem("cdc.mediaopen") !== "0"; } catch (e) { /* storage unavailable */ }
   function mediumGroup(cd) { var m = mediumOf(cd); return MEDIA.indexOf(m) >= 0 ? m : "other"; }
+  function mediumCategory(cd) { var m = mediumGroup(cd); return m === "dvd" || m === "bluray" ? "dvd-bluray" : m; }
+  function mediumCategoryText(m) { return t(m === "other" ? "mediumOther" : "medium." + m); }
+  function defaultMediumForView() { var m = mediumView(); return m === "dvd-bluray" ? "dvd" : m || "cd"; }
   function addReleaseText() { var m = mediumView(); return m && m !== "other" ? t("addMedium." + m) : t("add"); }
-  function renderMusicMediumFilter() {
-    var host = $("music-medium-control"), select = $("music-medium-filter"), keep = document.activeElement === select;
-    host.hidden = currentAlbum !== "music" || !loaded;
-    var value = musicMediumFilter; select.textContent = "";
-    [""].concat(MEDIA).forEach(function (m) { var option = el("option", null, t(m ? "medium." + m : "allCds")); option.value = m; select.appendChild(option); });
-    select.value = value; if (keep) select.focus({preventScroll:true});
-  }
   function mediumOf(cd) { return cd && cd.medium || "cd"; }
   function mediumText(cd) { var m = mediumOf(cd); return m === "other" && cd.mediumName ? cd.mediumName : m === "usb" || m === "sd" ? t("medium." + m) : MEDIA.indexOf(m) < 0 ? m : t("medium." + m); }
   function mediumView() { return currentAlbum.indexOf("media:") === 0 ? currentAlbum.slice(6) : ""; }
-  function mediumMatches(cd, view) { return mediumGroup(cd) === view; }
+  function mediumMatches(cd, view) { return mediumCategory(cd) === view; }
   function mediumSummary(list) { var counts = {}; list.forEach(function (c) { var k = mediumText(c); counts[k] = (counts[k] || 0) + 1; }); return Object.keys(counts).map(function (k) { return counts[k] + " " + k; }).join(" · "); }
   function itemLabel(cd, list) {
     var items = list || (releaseSet(cd) ? setMembers(cd.set.id) : [cd]);
@@ -5395,7 +5395,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function baseList() {
     if (currentAlbum === "all") return cds;
     if (mediumView()) return cds.filter(function (c) { return mediumMatches(c, mediumView()); });
-    if (currentAlbum === "music") return musicCds().filter(function (cd) { return !musicMediumFilter || mediumMatches(cd, musicMediumFilter); });
+    if (currentAlbum === "music") return musicCds();
     var a = findAlbum(currentAlbum);
     if (!a) { currentAlbum = "all"; return cds; }
     var ids = {};
@@ -5404,10 +5404,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
 
   /* ---------- filters ----------
-     Narrow the shelf by composer (the disc's or a work's), role and performer, label or work type.
+     Narrow the shelf by medium, composer (the disc's or a work's), role/performer or work type.
      Choices are OR within each category and AND across categories. Names in a CD's profile
      set them too. */
-  var filters = { composer: [], performer: [], label: [], type: [] };
+  var filters = { medium: [], composer: [], performer: [], type: [] };
   var filterRole = "";
   var filterOpen = false;
   function cdComposers(cd) {
@@ -5423,14 +5423,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function filterMatch(cd) {
     if (filters.composer.length && !cdComposers(cd).some(function (c) { return filters.composer.indexOf(c) !== -1; })) return false;
     if (filters.performer.length && !cdPerformers(cd).some(function (p) { return filters.performer.indexOf(performerFilterKey(p)) !== -1; })) return false;
-    if (filters.label.length && filters.label.indexOf(cd.label || "") === -1) return false;
+    if (filters.medium.length && !filters.medium.some(function (m) { return mediumMatches(cd, m); })) return false;
     if (filters.type.length && filters.type.indexOf(cd.type) === -1 && !(cd.works || []).some(function (w) { return filters.type.indexOf(w.type) !== -1; })) return false;
     return true;
   }
   function performerFilterKey(p) { return JSON.stringify([p.role || "Other", p.name]); }
   function resetShelfTools() {
-    filters = { composer: [], performer: [], label: [], type: [] };
-    musicMediumFilter = "";
+    filters = { medium: [], composer: [], performer: [], type: [] };
     filterRole = "";
     filterOpen = false;
     endSelect();
@@ -5451,7 +5450,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var keep = $("filters").contains(document.activeElement) ? document.activeElement.id : "";
     var scrolls = {};
     qsa(".shelf-filter-options", $("filters")).forEach(function (node) { scrolls[node.id] = node.scrollTop; });
-    var sets = { composer: Object.create(null), performer: Object.create(null), label: Object.create(null), type: Object.create(null) };
+    var sets = { medium: Object.create(null), composer: Object.create(null), performer: Object.create(null), type: Object.create(null) };
+    SHELF_MEDIA.forEach(function (m) { sets.medium[m] = true; });
     var roles = Object.create(null);
     base.forEach(function (cd) {
       cdComposers(cd).forEach(function (c) { sets.composer[c] = true; });
@@ -5460,7 +5460,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         roles[p.role || "Other"] = true;
         sets.performer[performerFilterKey(p)] = true;
       });
-      if (cd.label) sets.label[cd.label] = true;
       if (cd.type) sets.type[cd.type] = true;
       (cd.works || []).forEach(function (w) { if (w.type) sets.type[w.type] = true; });
     });
@@ -5469,7 +5468,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     Object.keys(sets).forEach(function (k) {
       filters[k].forEach(function (v) { sets[k][v] = true; });
       var vals = Object.keys(sets[k]);
-      if (k === "composer") vals.sort(function (a, b) { return cmpText(surnameKey(a), surnameKey(b)) || cmpText(a, b); });
+      if (k === "medium") vals.sort(function (a, b) { return SHELF_MEDIA.indexOf(a) - SHELF_MEDIA.indexOf(b); });
+      else if (k === "composer") vals.sort(function (a, b) { return cmpText(surnameKey(a), surnameKey(b)) || cmpText(a, b); });
       else if (k === "performer") vals.sort(function (a, b) { return cmpText(JSON.parse(a)[1], JSON.parse(b)[1]); });
       else if (k === "type") vals.sort(function (a, b) { return WORK_TYPES.indexOf(a) - WORK_TYPES.indexOf(b); });
       else vals.sort(cmpText);
@@ -5504,7 +5504,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           renderGrid();
         });
         lab.appendChild(cb);
-        lab.appendChild(el("span", null, k === "type" ? workTypeText(v) : k === "performer" ? JSON.parse(v)[1] : v));
+        lab.appendChild(el("span", null, k === "medium" ? mediumCategoryText(v) : k === "type" ? workTypeText(v) : k === "performer" ? JSON.parse(v)[1] : v));
         options.appendChild(lab);
       });
       if (!visible.length) options.appendChild(el("p", "hint", t(k === "performer" && !filterRole ? "fChooseRole" : "statsNone")));
@@ -5545,8 +5545,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (filterOpen) $("f-composer").focus({ preventScroll: true });
   });
   $("f-clear").addEventListener("click", function () {
-    filters = { composer: [], performer: [], label: [], type: [] };
-    musicMediumFilter = "";
+    filters = { medium: [], composer: [], performer: [], type: [] };
     filterRole = "";
     renderGrid();
     $("filter-btn").focus({ preventScroll: true });
@@ -5558,7 +5557,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   });
 
   /* ---------- statistics ----------
-     Headline numbers, then ranked bars: composers and labels (names lead to filtered shelves),
+     Headline numbers, then bars for media, composers and labels (media/composers link to filtered shelves),
      release decades and CDs added each year. */
   function renderStats() {
     var box = $("stats-body");
@@ -5600,7 +5599,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         groups.appendChild(g);
         return;
       }
-      var max = Math.max.apply(null, rows.map(function (r) { return r[1]; }));
+      var max = Math.max.apply(null, [1].concat(rows.map(function (r) { return r[1]; })));
       var ul = el("ul", "bars");
       rows.forEach(function (r) {
         var name = labelOf ? labelOf(r[0]) : r[0];
@@ -5622,7 +5621,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       groups.appendChild(g);
     }
     group(t("statsComposers"), top(count(cdComposers), 8), "composer");
-    group(t("statsLabels"), top(count(function (cd) { return [cd.label]; }), 8), "label");
+    group(t("statsMedia"), SHELF_MEDIA.map(function (m) { return [m, cds.filter(function (cd) { return mediumMatches(cd, m); }).length]; }), "medium", mediumCategoryText);
+    group(t("statsLabels"), top(count(function (cd) { return [cd.label]; }), 8));
     var dec = count(function (cd) { return [cdDecade(cd)]; });
     group(t("statsDecades"), Object.keys(dec).sort().map(function (k) { return [k, dec[k]]; }), null,
       function (d) { return t("fDecadeName", { d: d }); });
@@ -5903,7 +5903,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (!loaded) return;
     /* currentAlbum: "all", a favorite's id, "music", or "pl:" + a playlist's id. */
     var plId = currentPlaylistId();
-    var valid = currentAlbum === "all" || MEDIA.indexOf(mediumView()) >= 0 || (currentAlbum === "music" && AudioLib.ready) ||
+    var valid = currentAlbum === "all" || SHELF_MEDIA.indexOf(mediumView()) >= 0 || (currentAlbum === "music" && AudioLib.ready) ||
       (plId ? AudioLib.ready && !!findPlaylist(plId) : !!findAlbum(currentAlbum));
     if (!valid) { currentAlbum = "all"; plId = null; }
 
@@ -5989,9 +5989,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     });
     bar.appendChild(all);
     var mediaGroup = el("div", "favgroup"); mediaGroup.id = "media-group"; mediaGroup.hidden = !mediaOpen;
-    MEDIA.forEach(function (m) {
+    SHELF_MEDIA.forEach(function (m) {
       var items = cds.filter(function (c) { return mediumMatches(c, m); });
-      mediaGroup.appendChild(chip("media:" + m, t(m === "other" ? "mediumOther" : "medium." + m), albumCountFor(items)));
+      mediaGroup.appendChild(chip("media:" + m, mediumCategoryText(m), albumCountFor(items)));
     });
     bar.appendChild(mediaGroup);
 
@@ -6151,7 +6151,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (!loaded || currentPlaylistId()) setFoldVisibility($("selbar"), false);
     grid.classList.remove("arranging", "as-table");
     renderFab();
-    renderMusicMediumFilter();
     if (addMusic && addMusic.plId && !$("win-addmusic").hidden) renderAddMusic();
     if (cardPl && cardPl.cdId && currentAlbum !== "music") closeCardPlMenu();
 
@@ -6185,7 +6184,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     sortWrap.hidden = false;
     var base = baseList();
     var q = query.trim().toLowerCase();
-    var narrowed = q || filterCount() || mediumView() || currentAlbum === "music" && musicMediumFilter;
+    var narrowed = q || filterCount() || mediumView();
     $("filter-btn").hidden = false;
     $("viewsw").hidden = false;
     $("view-cards").setAttribute("aria-pressed", viewMode === "cards" ? "true" : "false");
@@ -6759,9 +6758,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("lang-set").value = lang;
   }
 
-  $("music-medium-filter").addEventListener("change", function () {
-    musicMediumFilter = this.value; endSelect(); renderGrid();
-  });
   $("search").addEventListener("input", function (e) { query = e.target.value; renderGrid(); });
   $("sort").value = sortKey;
   $("sort").addEventListener("change", function (e) {
@@ -7548,7 +7544,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     finishPerformerDrag(false);
     discardFormAudio();
     $("cd-form").reset();
-    $("medium").value = mediumView() || "cd";
+    $("medium").value = defaultMediumForView();
     dupWarned = "";
     $("dup-warn").hidden = true;
     photoData = null;
@@ -7574,7 +7570,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     rememberCdForm();
   }
   function openAdd() {
-    if (!editingId && !discSession) $("medium").value = mediumView() || "cd";
+    if (!editingId && !discSession) $("medium").value = defaultMediumForView();
     $("drive-section").hidden = !IS_TAURI || $("medium").value !== "cd";
     if (!editingId) {
       var prev = readChecked();
@@ -8563,10 +8559,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     box.textContent = "";
     var tracks = discTracks({ works: formAudioWorks() });
     if (!draft.list.length) box.appendChild(el("p", "hint", t("audioNone")));
-    var ul = el("ul", "paudio");
+    var ul = el("ul", "paudio audio-draft");
     audioSorted({ audio: draft.list }).forEach(function (a, i) {
       var li = el("li"), main = el("div", "pa-main");
-      main.appendChild(el("span", "pa-file", AudioLib.present[a.file] === false ? t("audioMissing", { name: a.name }) : a.name));
+      var fileLabel = el("span", "pa-file", AudioLib.present[a.file] === false ? t("audioMissing", { name: a.name }) : a.name); fileLabel.title = a.name; main.appendChild(fileLabel);
       var sel = el("select", "mini");
       sel.id = "form-audio-track-" + i;
       sel.setAttribute("aria-label", t("audioTrackAria", { name: a.name }));
@@ -8592,11 +8588,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       li.appendChild(rm); ul.appendChild(li);
     });
     box.appendChild(ul);
+    var actions = el("div", "audio-import-actions");
     var add = el("button", "linkbtn", t("audioAdd")); add.type = "button"; add.id = "form-audio-add";
     add.disabled = draft.busy || draft.saving;
-    add.addEventListener("click", function () { addFormAudio("files"); }); box.appendChild(add);
+    add.addEventListener("click", function () { addFormAudio("files"); }); actions.appendChild(add);
     var folder = el("button", "linkbtn", t("audioAddFolder")); folder.type = "button"; folder.id = "form-audio-folder";
-    folder.disabled = draft.busy || draft.saving; folder.addEventListener("click", function () { addFormAudio("folder"); }); box.appendChild(folder);
+    folder.disabled = draft.busy || draft.saving; folder.addEventListener("click", function () { addFormAudio("folder"); }); actions.appendChild(folder); box.appendChild(actions);
     box.appendChild(el("p", "hint", t("audioFolderHint")));
     renderDiscButtons();
   }
@@ -9216,6 +9213,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       });
       return rm;
     }
+    function mediumBadge(cd) {
+      var badge = el("span", "queue-medium", mediumText(cd)); badge.title = t("audioFromMedium", { medium: mediumText(cd) }); return badge;
+    }
     /* One track: a top-level row (with cover and CD title) or, inside an unfolded disc, a short one. */
     function trackRow(i, run) {
       var inDisc = run.end - run.start > 1;
@@ -9240,7 +9240,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       go.appendChild(txt);
       go.addEventListener("click", function () { player.index = i; loadTrack(true); });
       li.appendChild(go);
-      li.appendChild(el("span"));
+      if (inDisc) li.appendChild(el("span"));
+      else { li.classList.add("queue-release"); li.appendChild(mediumBadge(info.cd)); }
       li.appendChild(removeButton("pl-remove-" + i, t("playlistRemove", { title: info.title }), i, i + 1));
       ul.appendChild(li);
     }
@@ -9249,7 +9250,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var cd = cdById(run.cdId) || {};
       var inside = player.index >= run.start && player.index < run.end;
       var key = "q:" + run.cdId;
-      var li = el("li", "disc-row" + (inside ? " current-in" : ""));
+      var li = el("li", "disc-row queue-release" + (inside ? " current-in" : ""));
       rowBlock(li, run.start, run.end, run, false);
       var go = el("button", "pl-item");
       go.type = "button";
@@ -9267,6 +9268,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         if (inside) togglePlay(); else { player.index = run.start; loadTrack(true); }
       });
       li.appendChild(go);
+      li.appendChild(mediumBadge(cd));
       li.appendChild(foldButton("pl-fold-" + run.start, key, discDisplayTitle(cd), renderPlaylist));
       li.appendChild(removeButton("pl-disc-rm-" + run.start, t("playlistRemove", { title: discDisplayTitle(cd) }), run.start, run.end));
       ul.appendChild(li);
@@ -9777,6 +9779,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 
   /* ---------- CD profile window ---------- */
   function nameLink(kind, value, label, role) {
+    if (kind === "label") return el("span", null, label || value);
     var b = el("button", "namelink", label || value);
     b.type = "button";
     b.title = t("fShowAll", { name: label || value });

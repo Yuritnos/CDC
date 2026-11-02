@@ -6,7 +6,7 @@ let playwright;
 try { playwright = require('playwright'); }
 catch { playwright = require(path.join(process.env.USERPROFILE, '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright')); }
 const html = fs.readFileSync(path.join(__dirname, '../src/index.html'), 'utf8').replace('  /* ---------- start ---------- */',
-  '  window.mediaQA = { startEdit, setLang, openDetail, discTracks, dgMedia, dgDiscLists, discogsSource, lookupDiscData, populateLookupDrafts, playId: function(id) { playAudio(cdById(id)); }, queue: function() { return clone(player.queue); }, currentEntry };\n  /* ---------- start ---------- */');
+  '  window.mediaQA = { startEdit, setLang, openDetail, discTracks, dgMedia, dgDiscLists, discogsSource, lookupDiscData, populateLookupDrafts, playId: function(id) { playAudio(cdById(id)); }, renderPlaylist, queue: function() { return clone(player.queue); }, currentEntry };\n  /* ---------- start ---------- */');
 const set = {id:'mixed', title:'Mixed anthology', total:3};
 const seed = [
   {id:'old', title:'Legacy CD', extra:{keep:true}, works:[{title:'Old work', tracks:[]}]},
@@ -17,8 +17,11 @@ const seed = [
   {id:'sacd', title:'SACD edition', medium:'sacd', sacdHybrid:'Hybrid', audioPrograms:'Stereo / 5.1'},
   {id:'usb', title:'USB edition', medium:'usb', capacity:'16 GB'}
 ];
+const optical = ['dvd','bluray'].map((medium,i)=>({id:'optical-'+i,title:'Optical edition',medium,
+  set:{id:'optical',title:'Optical edition',disc:i+1,total:2},
+  works:[{title:'Concert',duration:'1:00',tracks:[]}]}));
 let browser, passed = 0, failed = 0;
-async function test(name, fn) { try { await fn(); passed++; console.log('PASS:',name); } catch(e) { failed++; console.error('FAIL:',name,e.stack); } }
+async function test(name, fn) { if(process.env.CDC_TEST_FILTER&&!new RegExp(process.env.CDC_TEST_FILTER,'i').test(name))return; try { await fn(); passed++; console.log('PASS:',name); } catch(e) { failed++; console.error('FAIL:',name,e.stack); } }
 async function fixture({native=false, extra=[]}={}) {
   const state = {doc:{cds:structuredClone(seed.concat(extra)),meta:{albums:[{id:'fav',name:'Favorites',cdIds:['m1','m2','m3']}],playlists:[],settings:{lang:'en'}}}, errors:[], commands:[], copied:new Set()};
   const context = await browser.newContext({viewport:{width:1280,height:900}, reducedMotion:'reduce'});
@@ -61,15 +64,16 @@ async function save(page) { await page.locator('#submit').click(); await page.lo
 async function main() {
   const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe',playwright.chromium.executablePath()].find(fs.existsSync);
   browser=await playwright.chromium.launch({headless:true,...(executablePath?{executablePath}:{})});
-  await test('All media folds accessibly and the seven child views use contextual add labels',async()=>{
+  await test('All media folds accessibly and the six child views use contextual add labels',async()=>{
     const f=await fixture(),{page}=f;
     try {
       assert.equal(await page.locator('#chip-all').getAttribute('aria-expanded'),'true');
-      assert.equal(await page.locator('#media-group .achip').count(),7);
+      assert.equal(await page.locator('#media-group .achip').count(),6);
       await page.locator('#chip-all .chev').click(); assert.equal(await page.locator('#media-group').isHidden(),true);
       await page.locator('#chip-all').press('ArrowRight'); assert.equal(await page.locator('#media-group').isVisible(),true);
-      for(const [medium,label] of [['cd','Add a CD'],['vinyl','Add a vinyl record'],['cassette','Add a cassette'],['sacd','Add an SACD'],['dvd','Add a DVD'],['bluray','Add a Blu-ray'],['other','Add release']]){
+      for(const [medium,label] of [['cd','Add a CD'],['vinyl','Add a vinyl record'],['cassette','Add a cassette'],['sacd','Add an SACD'],['dvd-bluray','Add a DVD/Blu-ray'],['other','Add release']]){
         await view(page,medium); assert.equal(await page.locator('#fab-text').textContent(),label);
+        if(medium==='dvd-bluray')assert.equal(await page.locator('#grid .msg').textContent(),'No releases here yet.');
       }
       assert.equal(await page.locator('[id="chip-media:other"]').getAttribute('aria-expanded'),null);
       await page.locator('#open-add').click();
@@ -95,6 +99,99 @@ async function main() {
       await page.locator('#grid .card').click(); assert.equal(await page.locator('.set-disc').count(),3);
       assert((await page.locator('#detail-body').innerText()).includes('2 CD · 1 Vinyl'));
     } finally { await f.close(); }
+  });
+  await test('DVD/Blu-ray shares one shelf and filter category but preserves exact edition data and badges',async()=>{
+    const f=await fixture({extra:optical}),{page,state}=f;
+    try {
+      assert.equal(await page.locator('[id="chip-media:dvd"], [id="chip-media:bluray"]').count(),0);
+      await view(page,'dvd-bluray'); assert.equal(await page.locator('#grid .card').count(),1);
+      assert.equal(await page.locator('#grid .medium-badge').textContent(),'1 DVD · 1 Blu-ray');
+      assert.equal(await page.locator('#fab-text').textContent(),'Add a DVD/Blu-ray');
+      assert.equal(await page.locator('#count').textContent(),'1 album / 2 DVD / Blu-ray');
+      await page.locator('#grid .card').click(); assert.equal(await page.locator('.set-disc').count(),2);
+      await page.locator('#close-detail').click(); await page.locator('#open-add').click();
+      assert.equal(await page.locator('#medium').inputValue(),'dvd');
+      assert.equal(await page.locator('#add-h').textContent(),'Add a DVD/Blu-ray');
+      await page.locator('#medium').selectOption('bluray'); await page.locator('#title').fill('New Blu-ray'); await save(page);
+      assert.equal(state.doc.cds.find(c=>c.title==='New Blu-ray').medium,'bluray');
+      assert((await page.locator('#grid .medium-badge').allTextContents()).includes('1 Blu-ray'));
+    } finally {await f.close();}
+  });
+  await test('collection filters combine medium and composer, remove Label and clear every criterion',async()=>{
+    const f=await fixture({extra:optical}),{page,state}=f;
+    try {
+      state.doc.cds.find(c=>c.id==='optical-1').composer='Optical Composer';
+      await page.reload(); await page.locator('#filter-btn').click();
+      assert.equal(await page.locator('#f-label').count(),0);
+      assert.deepEqual(await page.locator('#f-medium label span').allTextContents(),['CD','Vinyl','Cassette','SACD','DVD / Blu-ray','Other media']);
+      await page.locator('#f-medium').getByRole('checkbox',{name:'DVD / Blu-ray',exact:true}).check();
+      assert.equal(await page.locator('#grid .card').count(),1); assert.equal(await page.locator('#filter-count').textContent(),' · 1');
+      await page.locator('#f-composer').getByRole('checkbox',{name:'Optical Composer',exact:true}).check();
+      assert.equal(await page.locator('#grid .card').count(),1); assert.equal(await page.locator('#filter-count').textContent(),' · 2');
+      await page.locator('#f-clear').click(); assert.equal(await page.locator('#grid .card').count(),6);
+      assert.equal(await page.locator('#filter-count').textContent(),'');
+      await page.locator('#f-medium').getByRole('checkbox',{name:'Other media',exact:true}).check();
+      assert.deepEqual(await page.locator('#grid .card h3').allTextContents(),['USB edition']);
+    } finally {await f.close();}
+  });
+  await test('Statistics lists physical item counts in sidebar categories and links to the combined medium filter',async()=>{
+    const f=await fixture({extra:optical}),{page}=f;
+    try {
+      await page.locator('#open-stats').click();
+      const media=page.locator('.stat-group').filter({has:page.getByRole('heading',{name:'Physical items by medium',exact:true})});
+      assert.deepEqual(await media.locator('.bl').allTextContents(),['CD','Vinyl','Cassette','SACD','DVD / Blu-ray','Other media']);
+      assert.deepEqual(await media.locator('.bv').allTextContents(),['3','1','1','1','2','1']);
+      if(process.env.CDC_QA_ARTIFACTS){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'statistics-media-desktop.png')});}
+      for(const lang of ['ja','zh','en']){await page.evaluate(lang=>mediaQA.setLang(lang,false),lang);await page.setViewportSize({width:375,height:900});assert.equal(await page.locator('#win-stats .panel').evaluate(n=>n.scrollWidth>n.clientWidth+1),false);}
+      await media.getByRole('button',{name:'DVD / Blu-ray',exact:true}).click();
+      await page.locator('#win-stats').waitFor({state:'hidden'});
+      assert.equal(await page.locator('#f-medium').getByRole('checkbox',{name:'DVD / Blu-ray',exact:true}).isChecked(),true);
+      assert.equal(await page.locator('#grid .card').count(),1);
+    } finally {await f.close();}
+  });
+  await test('queue labels the source on top-level work/release rows and never repeats it on unfolded tracks',async()=>{
+    const f=await fixture({native:true,extra:optical}),{page,state}=f;
+    try {
+      for(const id of ['old','m3','optical-0','optical-1']){
+        const cd=state.doc.cds.find(c=>c.id===id);
+        cd.audio=(id==='m3'?[1,2]:[1]).map(n=>({file:id+'/'+n+'.wav',name:n+'.wav',track:n}));
+      }
+      await page.reload(); await page.locator('#card-old').waitFor();
+      for(const id of ['old','m3','optical-0','optical-1'])await page.evaluate(id=>mediaQA.playId(id),id);
+      await page.locator('#pl-list-btn').click();
+      assert.deepEqual(await page.locator('#pl-items .queue-medium').allTextContents(),['CD','Vinyl','DVD','Blu-ray']);
+      const group=page.locator('#pl-items .disc-row');
+      assert.equal(await group.locator('.queue-medium + .fold').count(),1);
+      const single=page.locator('#pl-items > li').first(); assert.equal(await single.locator('.queue-medium + .rm').count(),1);
+      await group.locator('.fold').click();
+      assert.equal(await page.locator('#pl-items li.sub').count(),2);
+      assert.equal(await page.locator('#pl-items li.sub .queue-medium').count(),0);
+      if(process.env.CDC_QA_ARTIFACTS){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'queue-media.png')});}
+      const before=await page.evaluate(()=>mediaQA.queue());
+      await page.locator('#pl-disc-rm-1').click();
+      assert.equal((await page.evaluate(()=>mediaQA.queue())).length,before.length-2);
+    } finally {await f.close();}
+  });
+  await test('audio draft rows use the available width and import actions remain separated in every locale and theme',async()=>{
+    const f=await fixture({native:true}),{page,state}=f;
+    try {
+      const cd=state.doc.cds.find(c=>c.id==='m3');
+      cd.audio=[{file:'m3/long.wav',name:'Brahms - Symphony No. 4 - Finale - a long filename.wav',track:1}];
+      await page.reload(); await page.locator('#card-old').waitFor(); await page.evaluate(c=>mediaQA.startEdit(c),cd);
+      await page.locator('#form-audio-set').evaluate(n=>n.open=true);
+      for(const width of [1280,375])for(const lang of ['en','ja','zh'])for(const theme of ['light','dark']){
+        await page.setViewportSize({width,height:900}); await page.evaluate(({lang,theme})=>{mediaQA.setLang(lang,false);document.documentElement.dataset.theme=theme;},{lang,theme});
+        await page.locator('#form-audio').scrollIntoViewIfNeeded();
+        const geometry=await page.locator('#form-audio').evaluate(box=>{
+          const main=box.querySelector('.pa-main').getBoundingClientRect(),row=box.querySelector('li').getBoundingClientRect(),select=box.querySelector('select').getBoundingClientRect();
+          const a=box.querySelector('#form-audio-add').getBoundingClientRect(),b=box.querySelector('#form-audio-folder').getBoundingClientRect();
+          return {main:main.width,row:row.width,select:select.width,separated:b.top>=a.bottom+4||b.left>=a.right+8,overflow:box.scrollWidth>box.clientWidth+1};
+        });
+        assert(geometry.main>geometry.row/2);assert(geometry.select>150);assert(geometry.separated);assert.equal(geometry.overflow,false);
+        assert.equal(await page.locator('#form-audio select').inputValue(),'1');
+      }
+      if(process.env.CDC_QA_ARTIFACTS)await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'audio-draft-fixed-mobile.png')});
+    } finally {await f.close();}
   });
   await test('direct medium views default new items and Other has no nested filter',async()=>{
     const f=await fixture(),{page,state}=f;
@@ -240,11 +337,13 @@ async function main() {
       await page.evaluate(()=>mediaQA.playId('old'));
       const queue=await page.evaluate(()=>mediaQA.queue()), current=await page.evaluate(()=>mediaQA.currentEntry());
       const doc=structuredClone(state.doc);
-      assert.equal(await page.locator('#music-medium-control').isVisible(),true);
-      assert.equal(await page.locator('#albums #music-medium-filter').count(),0);
+      assert.equal(await page.locator('#music-medium-control, #music-medium-filter, #f-label').count(),0);
+      await page.locator('#filter-btn').click();
+      assert.equal(await page.locator('#f-medium').isVisible(),true);
       if(process.env.CDC_QA_ARTIFACTS){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'music-medium-desktop.png')});}
-      for(const [medium,count] of [['vinyl',1],['cd',2],['sacd',1],['other',1],['dvd',0],['',5]]){
-        await page.locator('#music-medium-filter').selectOption(medium);
+      for(const [medium,count] of [['vinyl',1],['cd',2],['sacd',1],['other',1],['dvd-bluray',0],['',5]]){
+        if(await page.locator('#f-clear').isVisible())await page.locator('#f-clear').click();
+        if(medium)await page.locator('#f-medium input').nth(['cd','vinyl','cassette','sacd','dvd-bluray','other'].indexOf(medium)).check();
         assert.equal(await page.locator('#grid .card').count(),count);
         assert.deepEqual(await page.evaluate(()=>mediaQA.queue()),queue);
         assert.deepEqual(await page.evaluate(()=>mediaQA.currentEntry()),current);
@@ -252,10 +351,10 @@ async function main() {
       assert.deepEqual(state.doc,doc);
       for(const lang of ['en','ja','zh']){
         await page.evaluate(lang=>mediaQA.setLang(lang,false),lang); await page.setViewportSize({width:375,height:900});
-        assert.equal(await page.locator('#music-medium-filter').evaluate(n=>n.getBoundingClientRect().right<=innerWidth),true);
+        assert.equal(await page.locator('#f-medium').evaluate(n=>n.getBoundingClientRect().right<=innerWidth),true);
       }
       if(process.env.CDC_QA_ARTIFACTS)await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'music-medium-mobile.png')});
-      await view(page,'cd'); assert.equal(await page.locator('#music-medium-control').isHidden(),true);
+      await view(page,'cd'); assert.equal(await page.locator('#music-medium-control').count(),0);
     } finally {await f.close();}
   });
   await test('folder imports sort naturally into a non-CD draft and discard removes only the new copies',async()=>{
