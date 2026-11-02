@@ -1,18 +1,18 @@
 # PMCO
 
-PMCO is an app for cataloguing physical music. The current development preview supports CD, vinyl, cassette, SACD, DVD, Blu-ray, USB, SD card and other media, including mixed-media sets with one shared cover. You can record works, performers and edition details, group releases into favorites, and use English, Japanese or Simplified Chinese. The current Windows installers remain the earlier CD edition.
+PMCO is an app for cataloguing physical music. It supports CD, vinyl, cassette, SACD, DVD, Blu-ray and Other media with free text (including USB/SD), plus mixed-media sets with one shared cover. You can record works, performers and edition details, group releases into favorites, and use English, Japanese or Simplified Chinese. The current Windows installers are PMCO 0.3.0 build 41.
 
 ### Try the physical-media preview
 
 Run `npm run preview:media`, then open [the local trial](http://127.0.0.1:4173).
 It starts with sample releases, including a set containing two CDs and one vinyl record.
 Try opening that set through both CD and Vinyl, adding items with different media, and
-editing printed track positions such as A1/B1. Other media has a format filter.
+editing printed track positions such as A1/B1. All media folds its seven medium views; Other media is a single view with no submenu. The add button follows the selected medium.
 
 Trial changes are saved only in `installers/media-trial/collection.json`, separate from
 the installed app. **Reset samples** restores the examples. Account sync is disabled
 in this trial. Native audio-file import and CD-drive extraction require the Windows
-desktop app; the browser preview covers cataloguing. Stop the server with Ctrl+C.
+desktop app; the browser preview covers cataloguing. In the desktop editor, Add audio from a folder copies supported local/USB/SD audio, including subfolders, into the current item draft. All music has its own medium filter in the main toolbar; filtering keeps the queue and current track intact. Stop the server with Ctrl+C.
 No installer build, version change or database migration is needed to run this preview.
 
 It is built with [Tauri 2](https://tauri.app). The screens are a single web page (`src/index.html`) shown in the system's own web view. A small Rust program (`src-tauri/`) keeps the collection in a file on the computer. The same project can later be built for macOS, iPhone and Android.
