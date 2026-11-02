@@ -2,12 +2,13 @@
   "name": "pmco",
   "private": true,
   "version": "0.3.0",
-  "description": "PMCO: catalogue the CDs on your shelf.",
+  "description": "PMCO: catalogue your physical music collection.",
   "scripts": {
     "prepare:windows": "powershell -NoProfile -File scripts/prepare-flac.ps1",
     "tauri": "tauri",
     "dev": "tauri dev",
-    "build": "tauri build"
+    "build": "tauri build",
+    "preview:media": "node scripts/preview-media.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.14",

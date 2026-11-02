@@ -203,12 +203,12 @@ async function main() {
     try {
       for (const theme of ['light', 'dark']) {
         await page.locator('html').evaluate((n, theme) => n.dataset.theme = theme, theme);
-        assert.deepEqual(await card(page).locator('.card-body').evaluate(n => Array.from(n.children).slice(0, 4)
-          .map(n => n.textContent)), ['Inheritance QA', 'Album Composer', 'Symphony', 'Conductor / PianistAlbum PersonOrchestraAlbum Orchestra']);
+        assert.deepEqual(await card(page).locator('.card-body').evaluate(n => Array.from(n.children).filter(n => !n.classList.contains('medium-badge')).slice(0, 4)
+          .map(n => n.textContent)), ['Inheritance QA', 'Album Composer', 'FORMSymphony', 'Conductor / PianistAlbum PersonOrchestraAlbum Orchestra']);
         await card(page).locator('h3').click();
-        assert.deepEqual(await page.locator('.profile-main').evaluate(n => Array.from(n.children).slice(0, 4)
-          .map(n => n.tagName + ':' + n.className)), ['H2:', 'P:composer', 'P:album-work-type', 'DL:facts']);
-        assert.deepEqual(await page.locator('.profile-main > .facts').first().locator('dd').allTextContents(), ['Album Person', 'Album Orchestra']);
+        assert.deepEqual(await page.locator('.profile-main').evaluate(n => Array.from(n.children).filter(n => !n.classList.contains('medium-badge')).slice(0, 3)
+          .map(n => n.tagName + ':' + n.className)), ['H2:', 'P:composer', 'DL:facts']);
+        assert.deepEqual(await page.locator('.profile-main > .facts').first().locator('dd').allTextContents(), ['Symphony', 'Album Person', 'Album Orchestra']);
         await page.locator('#close-detail').click();
       }
     } finally { await f.close(); }

@@ -446,40 +446,173 @@ async fn audio_root_dir(app: AppHandle) -> Result<String, String> {
     Ok(audio_root(&app)?.to_string_lossy().into_owned())
 }
 
-/// Let the person choose audio files for a CD and copy them into the library. Returns the copies,
-/// or an empty list if they cancelled.
-#[tauri::command]
-async fn add_audio(app: AppHandle, cd_id: String) -> Result<Vec<AudioFile>, String> {
-    check_cd_id(&cd_id)?;
-    let picked = app.dialog().file().add_filter("Audio", &AUDIO_TYPES).blocking_pick_files();
-    let Some(picked) = picked else { return Ok(Vec::new()) };
-    let dir = audio_root(&app)?.join(&cd_id);
-    fs::create_dir_all(&dir).map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
+const MAX_FOLDER_AUDIO_FILES: usize = 5000;
+const MAX_FOLDER_ENTRIES: usize = 50_000;
+
+fn supported_audio(path: &Path) -> bool {
+    path.extension().and_then(|e| e.to_str())
+        .map(|e| AUDIO_TYPES.iter().any(|kind| e.eq_ignore_ascii_case(kind))).unwrap_or(false)
+}
+
+fn linked_entry(meta: &fs::Metadata) -> bool {
+    if meta.file_type().is_symlink() { return true; }
+    #[cfg(windows)] {
+        use std::os::windows::fs::MetadataExt;
+        if meta.is_dir() && meta.file_attributes() & 0x400 != 0 { return true; }
+    }
+    false
+}
+
+/// Read only the chosen tree, never following links/junctions or traversing the app audio library.
+fn folder_audio_sources(root: &Path, excluded: &Path) -> Result<Vec<(PathBuf, String)>, String> {
+    let root_meta = fs::symlink_metadata(root).map_err(|e| e.to_string())?;
+    if linked_entry(&root_meta) || !root_meta.is_dir() { return Err("Choose a regular audio folder.".into()); }
+    let root = root.canonicalize().map_err(|e| e.to_string())?;
+    let excluded = excluded.canonicalize().map_err(|e| e.to_string())?;
+    if root.starts_with(&excluded) { return Err("Choose an original audio folder outside the PMCO library.".into()); }
+    let mut pending = vec![(root.clone(), 0usize)];
+    let mut files = Vec::new();
+    let mut visited = 0usize;
+    while let Some((dir, depth)) = pending.pop() {
+        for item in fs::read_dir(&dir).map_err(|e| format!("Could not read the audio folder: {e}"))? {
+            let entry = item.map_err(|e| e.to_string())?;
+            visited += 1;
+            if visited > MAX_FOLDER_ENTRIES { return Err("Choose a smaller folder (at most 50,000 entries).".into()); }
+            let path = entry.path();
+            let meta = fs::symlink_metadata(&path).map_err(|e| e.to_string())?;
+            if linked_entry(&meta) { continue; }
+            let resolved = path.canonicalize().map_err(|e| e.to_string())?;
+            if !resolved.starts_with(&root) || resolved.starts_with(&excluded) { continue; }
+            if meta.is_dir() {
+                if depth >= 16 { return Err("Choose a folder with fewer nested folders.".into()); }
+                pending.push((path, depth + 1));
+            } else if meta.is_file() && supported_audio(&path) {
+                let name = path.strip_prefix(&root).map_err(|e| e.to_string())?.to_string_lossy().replace('\\', "/");
+                files.push((path, name));
+                if files.len() > MAX_FOLDER_AUDIO_FILES { return Err("Choose at most 5,000 audio files at a time.".into()); }
+            }
+        }
+    }
+    files.sort_by(|a, b| a.1.cmp(&b.1));
+    Ok(files)
+}
+
+/// A batch owns only newly-created copies. Never overwrite library files, even on failure.
+fn copy_audio_sources(sources: &[(PathBuf, String)], dir: &Path, cd_id: &str) -> Result<Vec<AudioFile>, String> {
+    check_cd_id(cd_id)?;
+    if sources.len() > MAX_FOLDER_AUDIO_FILES { return Err("Choose at most 5,000 audio files at a time.".into()); }
+    fs::create_dir_all(dir).map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
     let mut added = Vec::new();
     let mut copied = Vec::new();
-    let result: Result<(), String> = async {
-      for chosen in picked {
-        let source = chosen.into_path().map_err(|e| format!("Could not read that file: {e}"))?;
-        let name = source.file_name().and_then(|n| n.to_str()).unwrap_or("audio").to_string();
-        let target = free_name(&dir, &name);
-        let dest = dir.join(&target);
-        copied.push(dest.clone());
-        let (from, to) = (source.clone(), dest.clone());
-        tauri::async_runtime::spawn_blocking(move || fs::copy(&from, &to))
-            .await
-            .map_err(|e| e.to_string())?
-            .map_err(|e| format!("Could not copy {name}: {e}"))?;
-        let size = fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
-        added.push(AudioFile { file: format!("{cd_id}/{target}"), name, size });
-      }
-      Ok(())
-    }.await;
+    let result = (|| -> Result<(), String> {
+        for (source, name) in sources {
+            let meta = fs::symlink_metadata(source).map_err(|e| format!("Could not read {name}: {e}"))?;
+            if linked_entry(&meta) || !meta.is_file() || !supported_audio(source) { return Err("Choose supported regular audio files.".into()); }
+            let original = source.file_name().and_then(|n| n.to_str()).unwrap_or("audio");
+            let (target, mut output) = loop {
+                let target = free_name(dir, original);
+                match fs::OpenOptions::new().write(true).create_new(true).open(dir.join(&target)) {
+                    Ok(output) => break (target, output),
+                    Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                    Err(e) => return Err(format!("Could not create audio copy: {e}")),
+                }
+            };
+            copied.push(dir.join(&target));
+            let mut input = fs::File::open(source).map_err(|e| format!("Could not read {name}: {e}"))?;
+            let size = std::io::copy(&mut input, &mut output).map_err(|e| format!("Could not copy {name}: {e}"))?;
+            output.sync_all().map_err(|e| format!("Could not finish audio copy: {e}"))?;
+            added.push(AudioFile { file: format!("{cd_id}/{target}"), name: name.clone(), size });
+        }
+        Ok(())
+    })();
     if let Err(error) = result {
-        // A failed multi-file import must not strand earlier copies outside the form draft.
         for file in copied { let _ = fs::remove_file(file); }
         return Err(error);
     }
     Ok(added)
+}
+
+/// Copy chosen audio files into any physical item's draft.
+#[tauri::command]
+async fn add_audio(app: AppHandle, cd_id: String) -> Result<Vec<AudioFile>, String> {
+    check_cd_id(&cd_id)?;
+    let Some(picked) = app.dialog().file().add_filter("Audio", &AUDIO_TYPES).blocking_pick_files() else { return Ok(Vec::new()) };
+    let sources = picked.into_iter().map(|chosen| {
+        let source = chosen.into_path().map_err(|e| format!("Could not read that file: {e}"))?;
+        let name = source.file_name().and_then(|n| n.to_str()).unwrap_or("audio").to_string();
+        Ok((source, name))
+    }).collect::<Result<Vec<_>, String>>()?;
+    let dir = audio_root(&app)?.join(&cd_id);
+    tauri::async_runtime::spawn_blocking(move || copy_audio_sources(&sources, &dir, &cd_id)).await.map_err(|e| e.to_string())?
+}
+
+/// USB/SD and other folder imports use the same isolated draft lifecycle as individual files.
+#[tauri::command]
+async fn add_audio_folder(app: AppHandle, cd_id: String) -> Result<Vec<AudioFile>, String> {
+    check_cd_id(&cd_id)?;
+    let Some(picked) = app.dialog().file().blocking_pick_folder() else { return Ok(Vec::new()) };
+    let source = picked.into_path().map_err(|e| e.to_string())?;
+    let root = audio_root(&app)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let files = folder_audio_sources(&source, &root)?;
+        copy_audio_sources(&files, &root.join(&cd_id), &cd_id)
+    }).await.map_err(|e| e.to_string())?
+}
+
+#[cfg(test)]
+mod audio_import_tests {
+    use super::*;
+    struct Fixture(PathBuf);
+    impl Fixture {
+        fn new() -> Self {
+            let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+            let root = std::env::temp_dir().join(format!("pmco-audio-fixture-{}-{stamp}", std::process::id()));
+            fs::create_dir_all(&root).unwrap(); Self(root)
+        }
+    }
+    impl Drop for Fixture { fn drop(&mut self) { let _ = fs::remove_dir_all(&self.0); } }
+    #[test]
+    fn folder_import_finds_nested_audio_and_excludes_the_library() {
+        let f = Fixture::new(); let library = f.0.join("library"); let album = f.0.join("Album");
+        fs::create_dir_all(&library).unwrap(); fs::create_dir_all(&album).unwrap();
+        fs::write(album.join("01.FLAC"), b"audio").unwrap(); fs::write(album.join("cover.jpg"), b"picture").unwrap();
+        fs::write(library.join("saved.wav"), b"keep").unwrap();
+        let sources = folder_audio_sources(&f.0, &library).unwrap();
+        assert_eq!(sources.len(), 1); assert_eq!(sources[0].1, "Album/01.FLAC");
+        assert!(folder_audio_sources(&library, &library).is_err());
+    }
+    #[test]
+    fn copy_batch_preserves_originals_and_assigns_unique_local_names() {
+        let f = Fixture::new(); let output = f.0.join("library"); fs::create_dir_all(&output).unwrap();
+        let source = f.0.join("track.wav"); fs::write(&source, b"new audio").unwrap();
+        fs::write(output.join("track.wav"), b"saved audio").unwrap();
+        let added = copy_audio_sources(&[(source.clone(), "Side A/track.wav".into()), (source.clone(), "Side B/track.wav".into())], &output, "fixture").unwrap();
+        assert_eq!(added.len(), 2); assert_ne!(added[0].file, added[1].file);
+        assert_eq!(added[0].name, "Side A/track.wav"); assert_eq!(added[0].size, 9);
+        assert_eq!(fs::read(output.join("track.wav")).unwrap(), b"saved audio");
+        assert_eq!(fs::read(source).unwrap(), b"new audio");
+    }
+    #[test]
+    fn failed_batch_removes_only_new_copies() {
+        let f = Fixture::new(); let output = f.0.join("library"); fs::create_dir_all(&output).unwrap();
+        let source = f.0.join("track.wav"); fs::write(&source, b"source").unwrap();
+        fs::write(output.join("saved.flac"), b"keep").unwrap();
+        let sources = vec![(source.clone(), "track.wav".into()), (f.0.join("missing.wav"), "missing.wav".into())];
+        assert!(copy_audio_sources(&sources, &output, "fixture").is_err());
+        assert_eq!(fs::read_dir(&output).unwrap().count(), 1);
+        assert_eq!(fs::read(output.join("saved.flac")).unwrap(), b"keep"); assert!(source.exists());
+    }
+    #[test]
+    fn invalid_sources_and_excessive_nesting_are_rejected() {
+        let f = Fixture::new(); let library = f.0.join("library"); fs::create_dir_all(&library).unwrap();
+        let invalid = f.0.join("picture.png"); fs::write(&invalid, b"picture").unwrap();
+        assert!(copy_audio_sources(&[(invalid.clone(), "picture.png".into())], &library, "fixture").is_err());
+        assert!(copy_audio_sources(&[], &library, "../escape").is_err());
+        assert!(copy_audio_sources(&vec![(invalid, "picture.png".into()); MAX_FOLDER_AUDIO_FILES+1], &library, "fixture").is_err());
+        let mut nested = f.0.join("deep");
+        for _ in 0..18 { nested = nested.join("a"); } fs::create_dir_all(&nested).unwrap();
+        assert!(folder_audio_sources(&f.0.join("deep"), &library).is_err());
+    }
 }
 
 /// Which of these library files are on this computer (audio is not synced between computers).
@@ -528,6 +661,7 @@ pub fn run() {
             fetch_cover,
             audio_root_dir,
             add_audio,
+            add_audio_folder,
             audio_present,
             remove_audio,
             remove_cd_audio,

@@ -1,6 +1,19 @@
 # PMCO
 
-PMCO is an app for cataloguing the CDs on your shelf. For each CD you can record a cover image, title, composer, performers, label, issuing corporation, recording year and release year. You can group CDs into favorites, and the app is available in English, Japanese and Simplified Chinese.
+PMCO is an app for cataloguing physical music. The current development preview supports CD, vinyl, cassette, SACD, DVD, Blu-ray, USB, SD card and other media, including mixed-media sets with one shared cover. You can record works, performers and edition details, group releases into favorites, and use English, Japanese or Simplified Chinese. The current Windows installers remain the earlier CD edition.
+
+### Try the physical-media preview
+
+Run `npm run preview:media`, then open [the local trial](http://127.0.0.1:4173).
+It starts with sample releases, including a set containing two CDs and one vinyl record.
+Try opening that set through both CD and Vinyl, adding items with different media, and
+editing printed track positions such as A1/B1. Other media has a format filter.
+
+Trial changes are saved only in `installers/media-trial/collection.json`, separate from
+the installed app. **Reset samples** restores the examples. Account sync is disabled
+in this trial. Native audio-file import and CD-drive extraction require the Windows
+desktop app; the browser preview covers cataloguing. Stop the server with Ctrl+C.
+No installer build, version change or database migration is needed to run this preview.
 
 It is built with [Tauri 2](https://tauri.app). The screens are a single web page (`src/index.html`) shown in the system's own web view. A small Rust program (`src-tauri/`) keeps the collection in a file on the computer. The same project can later be built for macOS, iPhone and Android.
 

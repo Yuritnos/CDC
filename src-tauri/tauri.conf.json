@@ -33,8 +33,8 @@
     "targets": ["nsis", "msi"],
     "category": "Music",
     "resources": { "resources/flac/": "flac/" },
-    "shortDescription": "Catalogue the CDs on your shelf",
-    "longDescription": "PMCO lets you record the CDs you own: cover, title, composer, performers, label, issuing corporation and years, sorted into favorites.",
+    "shortDescription": "Catalogue your physical music collection",
+    "longDescription": "PMCO catalogues physical music across CD, vinyl, cassette and other media, with mixed-media sets, works, performers, favorites and local audio.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

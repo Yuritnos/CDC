@@ -27,7 +27,7 @@ async function test(name, fn) {
   catch (error) { results.push({name, pass: false}); console.error('FAIL:', name, error.stack); }
 }
 const multi = {
-  id: 101, title: 'Symphony · Volume = One', formats: [{name: 'CD', qty: '2'}, {name: 'DVD', qty: '1'}],
+  id: 101, title: 'Symphony · Volume = One', formats: [{name: 'CD', qty: '2'}] /* mixed-format lookup is covered by physical-media.cjs */,
   labels: [{name: 'QA Records', catno: 'QA001'}],
   extraartists: [{name: 'Composer (2)', role: 'Composed By'}],
   tracklist: [
@@ -407,7 +407,7 @@ async function main() {
       await page.locator('#more-details').evaluate(n=>n.open=true);await page.locator('#notes').fill('Notes one');
       await page.locator('#form-add-disc').click();
       assert.equal(await page.locator('#set-disc, #set-subtitle').count(),0);
-      assert.deepEqual(await page.locator('#form-disc-tabs button').allTextContents(),['Disc 1','Disc 2']);
+      assert.deepEqual(await page.locator('#form-disc-tabs button').allTextContents(),['CD 1','CD 2']);
       assert.equal(await page.locator('#composer').inputValue(),'');
       await prepareEditor(page);await page.locator('#composer').fill('Composer two');await page.locator('.w-title').fill('Work two');
       await page.locator('.t-title').fill('Movement two');await page.locator('.t-len').fill('bad');
@@ -416,7 +416,7 @@ async function main() {
       assert.equal(await page.locator('#composer').inputValue(),'Composer one');assert.equal(await page.locator('.t-title').inputValue(),'Movement one');
       assert.equal(await page.locator('#notes').inputValue(),'Notes one');
       await page.locator('#submit').click();
-      assert.equal(state.doc.cds.length,0);assert.equal(await page.locator('#form-disc-tabs button[aria-pressed="true"]').innerText(),'Disc 2');
+      assert.equal(state.doc.cds.length,0);assert.equal(await page.locator('#form-disc-tabs button[aria-pressed="true"]').innerText(),'CD 2');
       assert.equal(await page.locator('.t-len').getAttribute('aria-invalid'),'true');
       await page.locator('.t-len').fill('2:22');
       state.saveFail=true;await page.locator('#submit').click();await page.locator('#submit:not(:disabled)').waitFor();
@@ -531,7 +531,7 @@ async function main() {
     try {
       await openAdd(page); await search(page); await page.locator('#lookup-use-0').click();
       await page.locator('#lookup-multiple').check();
-      assert((await page.locator('#lookup-disc-preview').innerText()).includes('2 discs selected'));
+      assert((await page.locator('#lookup-disc-preview').innerText()).includes('2 items selected'));
       await page.locator('#lookup-disc').selectOption('2');
       await page.locator('#lookup-disc').selectOption('1');
       state.saveFail = true; await page.locator('#submit').click();
@@ -577,9 +577,9 @@ async function main() {
     try {
       assert.equal(await page.locator('#group-discs').count(),0);
       assert.equal(await page.locator('#grid .card').count(),2);
-      assert.equal(await page.locator('#count').textContent(),'2 albums / 3 discs');
+      assert.equal(await page.locator('#count').textContent(),'2 albums / 3 items');
       await page.locator('#open-stats').click();
-      assert.deepEqual(await page.locator('.stat-tile').allTextContents(),['2Albums','3CDs','0Works','—Total playing time']);
+      assert.deepEqual(await page.locator('.stat-tile').allTextContents(),['2Albums','3Physical items','0Works','—Total playing time']);
       if(process.env.CDC_QA_ARTIFACTS){fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'album-statistics.png')});}
       await page.locator('#close-stats').click();
       await page.locator('#select-btn').click(); await page.locator('#grid .card').filter({hasText:'Selection album'}).click();
@@ -587,11 +587,11 @@ async function main() {
       await page.locator('#sel-done').click();
       await page.locator('#search').fill('Selection album');
       assert.equal(await page.locator('#grid .card').count(),1);
-      assert.equal(await page.locator('#count').textContent(),'1 album / 2 discs');
+      assert.equal(await page.locator('#count').textContent(),'1 album / 2 items');
       await page.locator('#search').fill('Disc 2');
       assert.equal(await page.locator('#grid .card').count(),1);
-      assert.equal(await page.locator('#count').textContent(),'1 album / 1 disc');
-      await page.locator('#search').fill('Missing');assert.equal(await page.locator('#count').textContent(),'0 albums / 0 discs');
+      assert.equal(await page.locator('#count').textContent(),'1 album / 1 item');
+      await page.locator('#search').fill('Missing');assert.equal(await page.locator('#count').textContent(),'0 albums / 0 items');
       await page.reload();assert.equal(await page.locator('#grid .card').count(),2);
       assert.equal(state.doc.meta.settings.groupDiscs,false,'obsolete preference is harmless and need not rewrite saved settings');
     } finally { await f.close(); }
@@ -637,7 +637,7 @@ async function main() {
       order:{all:['delete-2','delete-1'],music:[]}}), {page,state}=f;
     try {
       await openCard(page,'Delete album'); await page.locator('#set-delete-all').click();
-      assert((await page.locator('#detail-body').innerText()).includes('Delete all 2 catalogued CDs'));
+      assert((await page.locator('#detail-body').innerText()).includes('Delete this release and all 2 catalogued items'));
       await page.locator('#set-remove-confirm').click();
       await page.locator('#toast-action').waitFor();
       await until(()=>state.doc.cds.length===0);
@@ -700,12 +700,12 @@ async function main() {
   await test('new set artwork and cropping belong to the album; removal is shared, atomic and never creates disc artwork',async()=>{
     const f=await fixture({nativeAudio:true}),{page,state}=f;
     try{
-      assert.equal(await page.locator('#count').textContent(),'0 albums / 0 discs');
+      assert.equal(await page.locator('#count').textContent(),'0 albums / 0 items');
       await openAdd(page);await page.locator('#title').fill('Shared cover');await page.locator('#set-choice').selectOption('+new');
       assert.equal(await page.locator('#set-choice-label').textContent(),'Standalone or set');
       assert.equal(await page.locator('label[for="set-choice"]').count(),0);
       await page.locator('#form-add-disc').click();
-      assert.equal(await page.locator('#form-remove-disc').textContent(),'Delete this disc');
+      assert.equal(await page.locator('#form-remove-disc').textContent(),'Remove this item');
       assert.equal(await page.locator('#form-add-disc').getAttribute('class'),await page.locator('#form-remove-disc').getAttribute('class'));
       const image=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=16;c.height=8;const x=c.getContext('2d');x.fillStyle='red';x.fillRect(0,0,8,8);x.fillStyle='blue';x.fillRect(8,0,8,8);return c.toDataURL();});
       await page.locator('#photo').setInputFiles({name:'album.png',mimeType:'image/png',buffer:Buffer.from(image.split(',')[1],'base64')});
@@ -772,7 +772,7 @@ async function main() {
     const f=await fixture({cds}),{page}=f;
     try{
       await openCard(page,'Preview album');assert.equal(await page.locator('#set-add, [id^="set-edit-preview"], [id^="set-detach-"], [id^="set-delete-preview"], [id^="set-open-"]').count(),0);
-      assert.deepEqual(await page.locator('#detail-body .profile-main > .profile-actions > button').allTextContents(),['Edit','Add to favorites','Delete']);
+      assert.deepEqual(await page.locator('#detail-body .profile-main > .profile-actions > button').allTextContents(),['Edit','Add to favorites','Delete release']);
       for(const width of [1280,360])for(const lang of ['en','ja','zh'])for(const theme of ['light','dark']){
         await page.setViewportSize({width,height:860});await setLanguage(page,lang);await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
         const icon=page.locator('#disc-info-preview-2');await icon.scrollIntoViewIfNeeded();await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
@@ -799,11 +799,11 @@ async function main() {
       assert.deepEqual(state.doc.meta.order.all,['order-b1','order-b2','order-a']);
       await openCard(page,'B album');await page.locator('#set-edit').click();await page.locator('#form-add-disc').click();
       assert.equal(await page.locator('#set-disc, #set-subtitle').count(),0);
-      assert.equal(await page.locator('#form-disc-tabs button[aria-pressed="true"]').innerText(),'Disc 3');
+      assert.equal(await page.locator('#form-disc-tabs button[aria-pressed="true"]').innerText(),'CD 3');
       await page.locator('#set-total').fill('2');await page.locator('#submit').click();
       assert((await page.locator('#set-err').innerText()).length>0);
       await page.locator('#close-cd').click();await page.locator('#cd-unsaved-keep').click();
-      assert.equal(await page.locator('#form-disc-tabs button[aria-pressed="true"]').innerText(),'Disc 3');
+      assert.equal(await page.locator('#form-disc-tabs button[aria-pressed="true"]').innerText(),'CD 3');
       await page.locator('#close-cd').click();await page.locator('#cd-unsaved-discard').click();
       assert.equal(state.doc.cds.length,3);
     }finally{await f.close();}
@@ -1096,7 +1096,7 @@ async function main() {
       await page.waitForFunction(() => document.getElementById('title').value === 'Uniform symphonies');
       await save(page);
       assert.equal(state.doc.cds[0].type, 'Symphony');
-      assert((await page.locator('#grid .card .meta').allTextContents()).includes('Symphony'));
+      assert((await page.locator('#grid .card .card-form dd').allTextContents()).includes('Symphony'));
     } finally { await f.close(); }
   });
   await test('late details cannot replace a newer release or resurrect its disc selector', async () => {
@@ -1147,7 +1147,7 @@ async function main() {
         await page.setViewportSize({width, height: 800});
         for (const lang of ['en', 'ja', 'zh']) {
           await setLanguage(page, lang);
-          const expected = {en: 'Disc 2 of 2', ja: '全2枚中のディスク2', zh: '第 2 碟，共 2 碟'}[lang];
+          const expected = {en: 'Item 2 of 2', ja: '全2点中の2', zh: '第 2 件，共 2 件'}[lang];
           assert.equal(await page.locator('#lookup-disc').inputValue(), '2');
           assert.equal(await page.locator('#lookup-disc option:checked').textContent(), expected);
           const overflow = await page.locator('#cd-form .input, #cd-form button, #cd-form fieldset').evaluateAll(ns =>

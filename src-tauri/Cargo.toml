@@ -1,7 +1,7 @@
 [package]
 name = "cdc"
 version = "0.3.0"
-description = "PMCO: catalogue the CDs on your shelf"
+description = "PMCO: catalogue your physical music collection"
 edition = "2021"
 
 [lib]
