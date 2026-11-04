@@ -1148,14 +1148,28 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   .acct-btn .lbl-name { display: none; }
   .acct-btn { padding-right: 4px; }
 }
-  #vinyl-sides { margin-bottom:14px; }
-  .side-controls { display:flex; align-items:end; gap:10px; margin-top:10px; }
-  .side-controls .field { flex:1; min-width:0; margin:0; }
-  .side-controls > button { flex-shrink:0; margin-bottom:0; }
-  .set-media-choices { display:flex; flex-wrap:wrap; gap:8px 18px; }
-  .program-side { margin:14px 0 8px; color:var(--muted); }
-  #vinyl-sides .disc-editor-tabs { align-items:center; }
-  #vinyl-remove-side, #vinyl-add-side { margin-left:auto; }
+#vinyl-sides { margin-bottom:14px; }
+.side-tabs { display:flex; gap:8px; width:100%; }
+.side-tab, .item-tab { display:flex; align-items:stretch; border:1px solid var(--line); border-radius:4px; min-width:0; overflow:hidden; background:var(--field); }
+.side-tab { flex:1 1 0; }
+.side-tab.is-active, .item-tab.is-active { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+.segment-select, .segment-action { border:0; background:transparent; color:inherit; font:inherit; cursor:pointer; min-width:0; }
+.segment-select { flex:1; text-align:left; font-weight:600; padding:10px; overflow-wrap:anywhere; }
+.segment-action { flex:0 0 28px; padding:4px; font-size:19px; border-left:1px solid color-mix(in srgb, currentColor 18%, transparent); }
+.segment-action:hover { background:color-mix(in srgb, currentColor 12%, transparent); }
+.segment-action.side-remove:hover { color:var(--danger); }
+.segment-select:focus-visible, .segment-action:focus-visible { outline:2px solid currentColor; outline-offset:-3px; }
+.segment-action:disabled { cursor:default; opacity:.4; }
+.side-controls { display:flex; align-items:center; gap:8px; margin-top:10px; }
+.side-controls .input { flex:1; min-width:0; }
+.item-tab { flex:0 1 auto; max-width:100%; }
+.item-medium-badge { display:block; font-size:11px; font-weight:400; opacity:.85; }
+.item-editor { border:1px solid var(--line); border-radius:4px; padding:12px; margin:10px 0; background:var(--field); }
+.item-editor > .field { margin-bottom:10px; }
+.program-side { margin:14px 0 8px; color:var(--muted); }
+.work-position { font:12px var(--font-mono); color:var(--muted); margin-right:10px; }
+.work-head.with-position { grid-template-columns:64px minmax(0,1fr) 76px 38px; }
+@media(max-width:480px) { .work-head.with-position { grid-template-columns:48px minmax(0,1fr) 60px 32px; gap:4px; } .side-tab .segment-select { padding:8px 6px; } }
 </style>
 </head>
 <body>
@@ -1330,7 +1344,6 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         <legend id="set-choice-label" data-i18n="discSet">Standalone or set</legend>
         <div class="field"><select class="input" id="set-choice" aria-labelledby="set-choice-label"></select></div>
         <div id="set-editor" hidden>
-          <div class="field"><label class="lbl" for="set-title" data-i18n="setTitle">Set name</label><input class="input" id="set-title" autocomplete="off" maxlength="200"></div>
           <div class="field"><label class="lbl" for="set-total" data-i18n="setTotal">Discs in set</label><input class="input" id="set-total" type="number" min="1" max="999" value="2"></div>
         </div>
         <p class="err" id="set-err" role="alert"></p>
@@ -1338,6 +1351,10 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 
       <div class="disc-editor-tools" id="form-disc-tools" hidden>
         <div id="form-disc-tabs" class="disc-editor-tabs" role="group" data-i18n-aria="discEditors" aria-label="Discs"></div>
+        <div id="item-editor" class="item-editor" hidden>
+          <div class="field"><label class="lbl" for="item-name" data-i18n="itemName">Item name</label><input class="input" id="item-name" maxlength="200" autocomplete="off" data-i18n-ph="itemNamePh"></div>
+          <button type="button" class="btn small quiet" id="item-editor-done" data-i18n="done">Done</button>
+        </div>
         <div class="favrow">
           <button type="button" class="linkbtn" id="form-add-disc" data-i18n="addDisc">Add a disc</button>
           <button type="button" class="linkbtn" id="form-remove-disc" data-i18n="removeDraftDisc" hidden>Remove this added disc</button>
@@ -2669,9 +2686,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   Object.assign(I18N.en, { "medium.dvd-bluray": "DVD / Blu-ray", "addMedium.dvd-bluray": "Add a DVD/Blu-ray", statsMedia: "Physical items by medium", audioFromMedium: "Audio from {medium}" });
   Object.assign(I18N.ja, { "medium.dvd-bluray": "DVD / Blu-ray", "addMedium.dvd-bluray": "DVD／Blu-rayを追加", statsMedia: "メディア別の点数", audioFromMedium: "{medium}の音声" });
   Object.assign(I18N.zh, { "medium.dvd-bluray": "DVD／蓝光", "addMedium.dvd-bluray": "添加一张DVD／蓝光", statsMedia: "各类实体媒介数量", audioFromMedium: "音频来自{medium}" });
-  Object.assign(I18N.en, { catalogNo: "Catalogue number", catalogNoPh: "e.g. 410 084-2", matrixRunout: "Matrix number", vinylMatrix: "Matrix / runout", spars: "Audio technology", audioPrograms: "Audio channels", worksHint: "Add works and tracks.", mediumInformation: "{medium} information", mediumDetails: "{medium} details", itemMedium: "This item’s medium", setMediaHint: "Choose the media in this set, then add and edit each item below.", mediumInUse: "Change or remove the items using this medium first.", sideA: "Side A", sideB: "Side B", sideName: "Side name", removeSide: "Remove this side", addSide: "Add second side", removeSideAsk: "Remove this side and its works? Its audio files will stay available for reassignment.", blackVinyl: "Black vinyl", colouredVinyl: "Coloured vinyl", clearVinyl: "Clear", redVinyl: "Red", blueVinyl: "Blue", noNoiseReduction: "None" });
-  Object.assign(I18N.ja, { catalogNo: "規格品番", catalogNoPh: "例：410 084-2", matrixRunout: "マトリクス番号", vinylMatrix: "マトリクス／ランアウト", spars: "音声技術", audioPrograms: "音声チャンネル", worksHint: "作品とトラックを追加します。", mediumInformation: "{medium}の情報", mediumDetails: "{medium}の詳細", itemMedium: "このメディアの種類", setMediaHint: "セットに含まれる種類を選び、下で各メディアを追加・編集します。", mediumInUse: "先にこの種類のメディアを変更または削除してください。", sideA: "A面", sideB: "B面", sideName: "面の名前", removeSide: "この面を削除", addSide: "2面目を追加", removeSideAsk: "この面と収録作品を削除しますか？音声ファイルは再割り当てできます。", blackVinyl: "黒盤", colouredVinyl: "カラーヴァイナル", clearVinyl: "クリア", redVinyl: "赤", blueVinyl: "青", noNoiseReduction: "なし" });
-  Object.assign(I18N.zh, { catalogNo: "目录编号", catalogNoPh: "例如：410 084-2", matrixRunout: "矩阵码", vinylMatrix: "矩阵码／刻片码", spars: "音频技术", audioPrograms: "音频声道", worksHint: "添加作品和音轨。", mediumInformation: "{medium}信息", mediumDetails: "{medium}详情", itemMedium: "本件媒介", setMediaHint: "选择套装包含的媒介，再在下方逐件添加并编辑。", mediumInUse: "请先修改或移除使用此媒介的项目。", sideA: "A面", sideB: "B面", sideName: "面的名称", removeSide: "删除此面", addSide: "添加第二面", removeSideAsk: "删除此面及其收录作品？音频文件将保留，可重新分配。", blackVinyl: "黑胶", colouredVinyl: "彩胶", clearVinyl: "透明", redVinyl: "红色", blueVinyl: "蓝色", noNoiseReduction: "无" });
+  Object.assign(I18N.en, { catalogNo: "Catalogue number", catalogNoPh: "e.g. UCCS-50032/3", matrixRunout: "Matrix number", vinylMatrix: "Matrix / runout", spars: "Audio technology", audioPrograms: "Audio channels", worksHint: "Add works and tracks.", mediumInformation: "{medium} information", mediumDetails: "{medium} details", itemMedium: "This item’s medium", setMediaHint: "Choose the media in this set, then add and edit each item below.", mediumInUse: "Change or remove the items using this medium first.", sideA: "Side A", sideB: "Side B", sideName: "Side name", removeSide: "Remove this side", addSide: "Add second side", removeSideAsk: "Remove this side and its works? Its audio files will stay available for reassignment.", blackVinyl: "Black vinyl", colouredVinyl: "Coloured vinyl", clearVinyl: "Clear vinyl", redVinyl: "Red vinyl", blueVinyl: "Blue vinyl", noNoiseReduction: "None" });
+  Object.assign(I18N.ja, { catalogNo: "規格品番", catalogNoPh: "例：UCCS-50032/3", matrixRunout: "マトリクス番号", vinylMatrix: "マトリクス／ランアウト", spars: "音声技術", audioPrograms: "音声チャンネル", worksHint: "作品とトラックを追加します。", mediumInformation: "{medium}の情報", mediumDetails: "{medium}の詳細", itemMedium: "このメディアの種類", setMediaHint: "セットに含まれる種類を選び、下で各メディアを追加・編集します。", mediumInUse: "先にこの種類のメディアを変更または削除してください。", sideA: "A面", sideB: "B面", sideName: "面の名前", removeSide: "この面を削除", addSide: "2面目を追加", removeSideAsk: "この面と収録作品を削除しますか？音声ファイルは再割り当てできます。", blackVinyl: "黒盤", colouredVinyl: "カラーヴァイナル", clearVinyl: "クリア盤", redVinyl: "赤盤", blueVinyl: "青盤", noNoiseReduction: "なし" });
+  Object.assign(I18N.zh, { catalogNo: "目录编号", catalogNoPh: "例如：UCCS-50032/3", matrixRunout: "矩阵码", vinylMatrix: "矩阵码／刻片码", spars: "音频技术", audioPrograms: "音频声道", worksHint: "添加作品和音轨。", mediumInformation: "{medium}信息", mediumDetails: "{medium}详情", itemMedium: "本件媒介", setMediaHint: "选择套装包含的媒介，再在下方逐件添加并编辑。", mediumInUse: "请先修改或移除使用此媒介的项目。", sideA: "A面", sideB: "B面", sideName: "面的名称", removeSide: "删除此面", addSide: "添加第二面", removeSideAsk: "删除此面及其收录作品？音频文件将保留，可重新分配。", blackVinyl: "黑胶", colouredVinyl: "彩胶", clearVinyl: "透明胶", redVinyl: "红胶", blueVinyl: "蓝胶", noNoiseReduction: "无" });
+  Object.assign(I18N.en, { editSide: "Edit side name", editItem: "Edit item", itemName: "Item name", itemNamePh: "e.g. Bonus disc", mediumNamePh: "e.g. Reel-to-reel", matrixRunoutPh: "e.g. 410 084-2", recordSizePh: 'e.g. 12″', recordSpeedPh: "e.g. 33⅓", recordColourPh: "e.g. Black vinyl", tapeTypePh: "e.g. Type II (Chrome)", noiseReductionPh: "e.g. Dolby B", sacdHybridPh: "e.g. Hybrid, dual layer", audioProgramsPh: "e.g. Stereo / 5.1", sparsNone: "e.g. DDD", setErr: "Enter a title and a whole item count from 1 to 999, covering every item number." });
+  Object.assign(I18N.ja, { editSide: "面の名前を編集", editItem: "メディアを編集", itemName: "メディア名", itemNamePh: "例：ボーナスディスク", mediumNamePh: "例：オープンリール", matrixRunoutPh: "例：410 084-2", recordSizePh: '例：12″', recordSpeedPh: "例：33⅓", recordColourPh: "例：黒盤", tapeTypePh: "例：Type II (Chrome)", noiseReductionPh: "例：Dolby B", sacdHybridPh: "例：ハイブリッド、2層", audioProgramsPh: "例：ステレオ / 5.1", sparsNone: "例：DDD", setErr: "タイトルと1〜999の整数の総数を入力してください。各番号は総数以下にしてください。" });
+  Object.assign(I18N.zh, { editSide: "编辑面的名称", editItem: "编辑本件媒介", itemName: "本件名称", itemNamePh: "例如：附赠碟", mediumNamePh: "例如：开盘带", matrixRunoutPh: "例如：410 084-2", recordSizePh: '例如：12″', recordSpeedPh: "例如：33⅓", recordColourPh: "例如：黑胶", tapeTypePh: "例如：Type II (Chrome)", noiseReductionPh: "例如：Dolby B", sacdHybridPh: "例如：混合盘、双层", audioProgramsPh: "例如：立体声 / 5.1", sparsNone: "例如：DDD", setErr: "请输入标题及1至999的整数总数，各件编号不能超过总数。" });
   var mediaOpen = true;
   try { mediaOpen = localStorage.getItem("cdc.mediaopen") !== "0"; } catch (e) { /* storage unavailable */ }
   function mediumGroup(cd) { var m = mediumOf(cd); return MEDIA.indexOf(m) >= 0 ? m : "other"; }
@@ -2697,14 +2717,17 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     MEDIA.forEach(function (m) { var o = el("option", null, t("medium." + m)); o.value = m; select.appendChild(o); });
     select.value = MEDIA.indexOf(value) >= 0 ? value : "other";
     var box = $("medium-details");
-    if (!box.children.length) Object.keys(MEDIUM_FIELDS).forEach(function (f) { var field = el("div", "field"), label = el("label", "lbl", t(f)); label.htmlFor = f; label.setAttribute("data-i18n", f); var input = textInput("input", ""); input.id = f; field.appendChild(label); field.appendChild(input); box.appendChild(field); });
+    if (!box.children.length) Object.keys(MEDIUM_FIELDS).forEach(function (f) { var field = el("div", "field"), label = el("label", "lbl", t(f)); label.htmlFor = f; label.setAttribute("data-i18n", f); var input = textInput("input", ""); input.id = f; i18nAttrs(input, f + "Ph"); field.appendChild(label); field.appendChild(input); box.appendChild(field); });
     var barcode = $("barcode").closest(".field"), technology = $("spars").closest(".field"), pair = barcode.parentElement;
     if (!$("barcode-matrix")) {
       pair.id = "barcode-matrix"; pair.insertBefore(barcode, technology); pair.appendChild($("matrixRunout").parentElement);
       pair.parentElement.insertBefore(technology, pair); technology.classList.add("audio-technology");
-      technology.appendChild(document.querySelector('[data-i18n="sparsHint"]'));
+      var note = document.querySelector('[data-i18n="sparsHint"]'); if (note) note.remove();
+      var venue = $("recordingVenue").closest(".field"), row = el("div", "two"); row.id = "venue-technology";
+      venue.parentElement.insertBefore(row, venue); row.appendChild(venue); row.appendChild(technology);
+      pair.parentElement.insertBefore($("catalogNo").closest(".field"), pair);
     }
-    setupMediumSuggestions();
+    i18nAttrs($("mediumName"), "mediumNamePh"); setupMediumSuggestions();
   }
   function setupMediumSuggestions() {
     var values = { recordSize: ['12″', '10″', '7″'], recordSpeed: ['33⅓', '45', '78'], recordColour: [t("blackVinyl"), t("colouredVinyl"), t("clearVinyl"), t("redVinyl"), t("blueVinyl")], tapeType: ['Type I (Normal)', 'Type II (Chrome)', 'Type IV (Metal)'], noiseReduction: [t("noNoiseReduction"), 'Dolby B', 'Dolby C', 'Dolby S', 'dbx'] };
@@ -3682,7 +3705,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var counts = {}, vinyl = $("medium").value === "vinyl";
     qsa("#work-list .work").forEach(function (box) {
       var key = vinyl ? box.dataset.side || "a" : "all", rows = qsa(".trow", box); counts[key] = counts[key] || 0;
-      if (!rows.length && (box.querySelector(".w-title").value.trim() || box.querySelector(".w-duration").value.trim() || box.querySelector(".w-composer").value.trim() || box.querySelector(".w-type").value.trim() || readPerformers(box.querySelector(".w-perf-rows")).length)) counts[key]++;
+      if (!rows.length && (box.querySelector(".w-title").value.trim() || box.querySelector(".w-position").value.trim() || box.querySelector(".w-duration").value.trim() || box.querySelector(".w-composer").value.trim() || box.querySelector(".w-type").value.trim() || readPerformers(box.querySelector(".w-perf-rows")).length)) counts[key]++;
       rows.forEach(function (row) { row.querySelector(".no").textContent = String(++counts[key]); });
     });
     qsa("#work-list .trow").forEach(function (row) {
@@ -3695,6 +3718,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var rows = qsa(".trow", box), workLen = box.querySelector(".w-duration");
     if (!workLen) return;
     workLen.hidden = rows.length !== 0;
+    var position = box.querySelector(".w-position"), m = $("medium").value || "cd";
+    if (position) { position.hidden = rows.length !== 0 || ["cd", "sacd", "vinyl"].indexOf(m) >= 0; box.querySelector(".work-head").classList.toggle("with-position", !position.hidden); }
     rows.forEach(function (row) { row.querySelector(".t-len").hidden = false; });
   }
   function addTrack(work, title, duration, position) {
@@ -3712,7 +3737,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     rm.type = "button";
     i18nAttrs(rm, null, "removeTrack");
     rm.addEventListener("click", function () {
-      if (qsa(".trow", work).length === 1) work.querySelector(".w-duration").value = len.value;
+      if (qsa(".trow", work).length === 1) { work.querySelector(".w-duration").value = len.value; work.querySelector(".w-position").value = pos.value; }
       row.remove(); renumberTracks();
     });
     row.appendChild(nm); row.appendChild(len); row.appendChild(rm);
@@ -3727,6 +3752,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     box.dataset.side = w.side || activeVinylSide || "a";
     if (w.performersMode === "additional") box.dataset.performersMode = "additional";
     var head = el("div", "work-head");
+    var workPosition = textInput("input w-position", w.position || "", "trackPositionPh", "trackPosition"); workPosition.maxLength = 24; head.appendChild(workPosition);
     var title = textInput("input w-title", w.title, "workTitlePh", "workTitleAria");
     title.id = "work-title-" + n;
     var workLen = textInput("input w-duration", w.duration || "", "durationPh", "workDuration");
@@ -3776,7 +3802,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     more.setAttribute("data-i18n", "addTrack");
     more.addEventListener("click", function () {
       var previous = qsa(".trow", box).length ? "" : workLen.value;
-      addTrack(box, "", previous).focus();
+      var position = qsa(".trow", box).length ? "" : workPosition.value;
+      addTrack(box, "", previous, position).focus(); workPosition.value = "";
       workLen.value = "";
     });
     box.appendChild(more);
@@ -3818,52 +3845,65 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var vinyl = $("medium").value === "vinyl";
     qsa("#work-list .work").forEach(function (box) { box.hidden = vinyl && box.dataset.side !== activeVinylSide; });
   }
+  var sideRenameOpen = "";
+  function removeVinylSide(current) {
+    if (discEditorBusy() || formSides.length < 2) return;
+    var host = $("vinyl-sides"), rows = qsa("#work-list .work").filter(function (box) { return box.dataset.side === current.id; });
+    var content = rows.some(function (box) { return qsa("input:not([type=checkbox])",box).some(function (input) { return input.value.trim(); }); });
+    function remove() {
+      var slots = function () { return [].concat.apply([],qsa("#work-list .work").map(function (box) {
+        var tracks = qsa(".trow",box).filter(function (row) { return qsa("input",row).some(function (input) { return input.value.trim(); }); });
+        return tracks.length ? tracks : qsa(".work-head input, .w-composer, .w-type",box).some(function (input) { return input.value.trim(); }) || readPerformers(box.querySelector(".w-perf-rows")).length ? [box] : [];
+      })); }, old = slots();
+      rows.forEach(function (box) { box.remove(); });
+      var next = slots(); if (formAudio) formAudio.list.forEach(function (a) { if (a.track) a.track = Math.max(0,next.indexOf(old[a.track-1])+1); });
+      formSides = formSides.filter(function (s) { return s !== current; });
+      if (activeVinylSide === current.id) activeVinylSide = formSides[0].id;
+      sideRenameOpen = ""; updateSideEditor(); renumberTracks(); renderFormAudio();
+      qsa("button[data-side]",host).find(function (b) { return b.dataset.side === activeVinylSide; }).focus();
+    }
+    if (!content) { remove(); return; }
+    var previous = $("vinyl-side-ask"); if (previous) previous.remove();
+    var ask = el("div", "ask-box"); ask.id = "vinyl-side-ask"; ask.appendChild(el("p", "hint", sideText(current) + " · " + t("removeSideAsk")));
+    var yes = el("button", "btn small danger", t("remove")); yes.type = "button"; yes.addEventListener("click", remove); ask.appendChild(yes);
+    var no = el("button", "btn small quiet", t("keep")); no.type = "button"; no.addEventListener("click", function () { ask.remove(); $("vinyl-remove-side-" + current.id).focus(); }); ask.appendChild(no); host.appendChild(ask); yes.focus();
+  }
   function updateSideEditor() {
     var host = $("vinyl-sides"), vinyl = $("medium").value === "vinyl"; host.hidden = !vinyl;
     if (!vinyl) { updateSideVisibility(); return; }
     if (!formSides.length) formSides = [{id:"a",name:"",letter:"A"},{id:"b",name:"",letter:"B"}];
     if (!formSides.some(function (s) { return s.id === activeVinylSide; })) activeVinylSide = formSides[0].id;
     host.textContent = "";
-    var tabs = el("div", "disc-editor-tabs"); tabs.setAttribute("role", "group"); tabs.setAttribute("aria-label", t("sideName"));
+    var tabs = el("div", "side-tabs"); tabs.setAttribute("role", "group"); tabs.setAttribute("aria-label", t("sideName"));
     formSides.forEach(function (s, i) {
-      var b = el("button", "btn small quiet", sideText(s)); b.type = "button"; b.dataset.side = s.id;
-      b.setAttribute("aria-pressed", String(s.id === activeVinylSide)); b.setAttribute("aria-controls", "work-list");
-      b.addEventListener("click", function () { activeVinylSide = s.id; updateSideEditor(); qsa("button[data-side]",host).find(function (n) { return n.dataset.side === s.id; }).focus({preventScroll:true}); });
-      b.addEventListener("keydown", function (e) { if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return; e.preventDefault(); activeVinylSide = formSides[(i + (e.key === "ArrowLeft" ? -1 : 1) + formSides.length) % formSides.length].id; updateSideEditor(); qsa("button[data-side]",host).find(function (n) { return n.dataset.side === activeVinylSide; }).focus(); }); tabs.appendChild(b);
-    });
-    host.appendChild(tabs);
-    var controls = el("div", "side-controls"), current = formSides.find(function (s) { return s.id === activeVinylSide; });
-    var label = el("label", "field"); label.appendChild(el("span", "lbl", t("sideName")));
-    var name = textInput("input", current.name || ""); name.maxLength = 80; name.placeholder = sideText(current); name.id = "vinyl-side-name";
-    name.addEventListener("input", function () { current.name = name.value; tabs.querySelector('[aria-pressed="true"]').textContent = sideText(current); renderFormAudio(); }); label.appendChild(name); controls.appendChild(label);
-    if (formSides.length > 1) {
-      var rm = el("button", "iconbtn", "×"); rm.type = "button"; rm.id = "vinyl-remove-side"; rm.title = t("removeSide"); rm.setAttribute("aria-label",t("removeSide"));
-      rm.addEventListener("click", function () {
-        var rows = qsa("#work-list .work").filter(function (box) { return box.dataset.side === current.id; });
-        var content = rows.some(function (box) { return qsa("input:not([type=checkbox])",box).some(function (input) { return input.value.trim(); }); });
-        function remove() {
-          var slots = function () { return [].concat.apply([],qsa("#work-list .work").map(function (box) {
-            var tracks = qsa(".trow",box).filter(function (row) { return qsa("input",row).some(function (input) { return input.value.trim(); }); });
-            return tracks.length ? tracks : qsa(".work-head input, .w-composer, .w-type",box).some(function (input) { return input.value.trim(); }) || readPerformers(box.querySelector(".w-perf-rows")).length ? [box] : [];
-          })); }, old = slots();
-          rows.forEach(function (box) { box.remove(); });
-          var next = slots(); if (formAudio) formAudio.list.forEach(function (a) { if (a.track) a.track = Math.max(0,next.indexOf(old[a.track-1])+1); });
-          formSides = formSides.filter(function (s) { return s !== current; }); activeVinylSide = formSides[0].id; updateSideEditor(); renumberTracks(); renderFormAudio();
-        }
-        if (!content) { remove(); return; }
-        var previous = $("vinyl-side-ask"); if (previous) { previous.querySelector("button").focus(); return; }
-        var ask = el("div", "ask-box"); ask.id = "vinyl-side-ask"; ask.appendChild(el("p", "hint", t("removeSideAsk")));
-        var yes = el("button", "btn small danger", t("remove")); yes.type = "button"; yes.addEventListener("click", remove); ask.appendChild(yes);
-        var no = el("button", "btn small quiet", t("keep")); no.type = "button"; no.addEventListener("click", function () { ask.remove(); rm.focus(); }); ask.appendChild(no); host.appendChild(ask); yes.focus();
-      }); tabs.appendChild(rm);
-    } else {
-      var add = el("button", "linkbtn", t("addSide")); add.type = "button"; add.id = "vinyl-add-side";
-      add.addEventListener("click", function () { var id = current.id === "b" ? "a" : "b"; formSides.push({id:id,name:"",letter:id.toUpperCase()}); activeVinylSide = id; updateSideEditor(); }); tabs.appendChild(add);
+      var group = el("div", "side-tab"); group.classList.toggle("is-active", s.id === activeVinylSide);
+      var b = el("button", "segment-select", sideText(s)); b.type = "button"; b.dataset.side = s.id;
+      b.setAttribute("aria-pressed", String(s.id === activeVinylSide)); b.setAttribute("aria-controls", "work-list"); b.disabled = discEditorBusy();
+      function select() { activeVinylSide = s.id; sideRenameOpen = ""; updateSideEditor(); qsa("button[data-side]",host).find(function (n) { return n.dataset.side === s.id; }).focus({preventScroll:true}); }
+      b.addEventListener("click", select);
+      b.addEventListener("keydown", function (e) { if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return; e.preventDefault(); activeVinylSide = formSides[(i + (e.key === "ArrowLeft" ? -1 : 1) + formSides.length) % formSides.length].id; sideRenameOpen = ""; updateSideEditor(); qsa("button[data-side]",host).find(function (n) { return n.dataset.side === activeVinylSide; }).focus(); }); group.appendChild(b);
+      var edit = el("button", "segment-action side-edit", "✎"); edit.type = "button"; edit.dataset.editSide = s.id; edit.id = "vinyl-edit-side-" + s.id; edit.title = t("editSide"); edit.setAttribute("aria-label",t("editSide") + ": " + sideText(s)); edit.setAttribute("aria-expanded",String(sideRenameOpen === s.id)); edit.disabled = discEditorBusy();
+      edit.addEventListener("click", function () { activeVinylSide = s.id; sideRenameOpen = sideRenameOpen === s.id ? "" : s.id; updateSideEditor(); if ($("vinyl-side-name")) $("vinyl-side-name").focus(); else $("vinyl-edit-side-" + s.id).focus(); }); group.appendChild(edit);
+      var rm = el("button", "segment-action side-remove", "×"); rm.type = "button"; rm.id = "vinyl-remove-side-" + s.id; rm.dataset.removeSide = s.id; rm.title = t("removeSide"); rm.setAttribute("aria-label",t("removeSide") + ": " + sideText(s)); rm.disabled = formSides.length < 2 || discEditorBusy(); rm.addEventListener("click", function () { removeVinylSide(s); }); group.appendChild(rm); tabs.appendChild(group);
+    }); host.appendChild(tabs);
+    var current = formSides.find(function (s) { return s.id === sideRenameOpen; });
+    if (current) {
+      var controls = el("div", "side-controls"); var name = textInput("input", current.name || "", null, "sideName"), oldName = current.name;
+      name.maxLength = 80; name.placeholder = sideText(current); name.id = "vinyl-side-name";
+      name.addEventListener("input", function () { current.name = name.value; qsa("button[data-side]",tabs).find(function (b) { return b.dataset.side === current.id; }).textContent = sideText(current); renderFormAudio(); }); controls.appendChild(name);
+      var done = el("button", "btn small quiet", t("done")); done.type = "button";
+      function finish() { sideRenameOpen = ""; updateSideEditor(); $("vinyl-edit-side-" + current.id).focus(); }
+      done.addEventListener("click",finish); controls.appendChild(done);
+      name.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === "Escape") { e.preventDefault(); e.stopPropagation(); if (e.key === "Escape") current.name = oldName; finish(); renderFormAudio(); } }); host.appendChild(controls);
     }
-    host.appendChild(controls); updateSideVisibility();
+    if (formSides.length === 1) {
+      var add = el("button", "linkbtn", t("addSide")); add.type = "button"; add.id = "vinyl-add-side"; add.disabled = discEditorBusy();
+      add.addEventListener("click", function () { var id = formSides[0].id === "b" ? "a" : "b"; formSides.push({id:id,name:"",letter:id.toUpperCase()}); activeVinylSide = id; sideRenameOpen = ""; updateSideEditor(); }); host.appendChild(add);
+    }
+    updateSideVisibility();
   }
   function resetWorks(list, sides) {
-    $("work-list").textContent = "";
+    $("work-list").textContent = ""; sideRenameOpen = "";
     var layout = vinylLayout(list, sides); formSides = layout.sides; activeVinylSide = formSides[0].id;
     if ($("medium").value === "vinyl") list = layout.works;
     (list && list.length ? list : [{}]).forEach(addWork);
@@ -3907,16 +3947,18 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       /* Store only this work's own credits; blank fields inherit the album at read time. */
       var performers = readPerformers(box.querySelector(".w-perf-rows"));
       var workDuration = !qsa(".trow", box).length ? visibleLen.value.trim().replace(/[：.']/g, ":") : "";
+      var workPosition = box.querySelector(".w-position").value.trim();
       if (workDuration && !DURATION.test(workDuration)) {
         visibleLen.setAttribute("aria-invalid", "true"); bad = bad || visibleLen;
       }
-      if (title || composer || type || performers.length || tracks.length || workDuration) {
+      if (title || composer || type || performers.length || tracks.length || workDuration || workPosition) {
         var work = { title: title, composer: composer, tracks: tracks };
         if ($("medium").value === "vinyl") work.side = box.dataset.side;
         if (type) work.type = type;
         if (performers.length) work.performers = performers;
         if (performers.length && box.dataset.performersMode === "additional") work.performersMode = "additional";
         if (workDuration) work.duration = workDuration;
+        if (workPosition) work.position = workPosition;
         out.push(work);
       }
     });
@@ -4064,7 +4106,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function workTitleRow(cd, work, titleClass) {
     var row = el("div", "work-title-row"), info = workInfoButton(cd, work);
     if (info && titleClass !== "pwork-title") row.appendChild(info);
-    var title = el("p", titleClass, work.title || "—"); row.appendChild(title);
+    var title = el("p", titleClass);
+    if (work.position && !(work.tracks || []).length && ["cd", "sacd", "vinyl"].indexOf(mediumOf(cd)) < 0) title.appendChild(el("span", "work-position", work.position));
+    title.appendChild(document.createTextNode(work.title || "—")); row.appendChild(title);
     if (info && titleClass === "pwork-title") row.appendChild(info);
     if (titleClass === "pwork-title" && !(work.tracks || []).length && work.duration) {
       row.appendChild(el("span", "pwork-duration", work.duration));
@@ -5542,7 +5586,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function filterMatch(cd) {
     if (filters.composer.length && !cdComposers(cd).some(function (c) { return filters.composer.indexOf(c) !== -1; })) return false;
     if (filters.performer.length && !cdPerformers(cd).some(function (p) { return filters.performer.indexOf(performerFilterKey(p)) !== -1; })) return false;
-    if (filters.medium.length && !filters.medium.some(function (m) { return mediumMatches(cd, m); })) return false;
+    if (currentAlbum === "music" && filters.medium.length && !filters.medium.some(function (m) { return mediumMatches(cd, m); })) return false;
     if (filters.type.length && filters.type.indexOf(cd.type) === -1 && !(cd.works || []).some(function (w) { return filters.type.indexOf(w.type) !== -1; })) return false;
     return true;
   }
@@ -5556,10 +5600,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     setFoldVisibility($("selbar"), false);
   }
   function filterCount() {
-    return Object.keys(filters).reduce(function (n, k) { return n + filters[k].length; }, 0);
+    return Object.keys(filters).reduce(function (n, k) { return n + (k === "medium" && currentAlbum !== "music" ? 0 : filters[k].length); }, 0);
   }
   /* The menus offer the values found in the current view; a chosen value stays listed. */
   function renderFilters(base) {
+    $("f-medium").hidden = currentAlbum !== "music";
+    $("filters").classList.toggle("music-filters", currentAlbum === "music");
     var n = filterCount();
     $("filter-btn").setAttribute("aria-expanded", filterOpen ? "true" : "false");
     $("filter-btn").setAttribute("aria-pressed", filterOpen || n > 0 ? "true" : "false");
@@ -5585,6 +5631,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     filters.performer.forEach(function (v) { roles[JSON.parse(v)[0]] = true; });
     if (filterRole) roles[filterRole] = true;
     Object.keys(sets).forEach(function (k) {
+      if (k === "medium" && currentAlbum !== "music") { $("f-medium").textContent = ""; return; }
       filters[k].forEach(function (v) { sets[k][v] = true; });
       var vals = Object.keys(sets[k]);
       if (k === "medium") vals.sort(function (a, b) { return SHELF_MEDIA.indexOf(a) - SHELF_MEDIA.indexOf(b); });
@@ -5640,6 +5687,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function showFiltered(kind, value, role) {
     resetShelfTools();
     if (!Object.prototype.hasOwnProperty.call(filters, kind)) return;
+    if (kind === "medium") {
+      query = ""; $("search").value = ""; currentAlbum = "media:" + value; mediaOpen = true;
+      if (!$("win-detail").hidden) closeWin("detail"); if (!$("win-stats").hidden) closeWin("stats");
+      renderAlbums(); renderGrid(); $("chip-media:" + value).focus({preventScroll:true}); return;
+    }
     if (kind === "performer") {
       cds.forEach(function (cd) { cdPerformers(cd).forEach(function (p) {
         var key = performerFilterKey(p);
@@ -7442,6 +7494,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (CdDrive) CdDrive.reset();
     var entry = discSession.entries.find(function (d) { return d.id === id; }); if (!entry) return;
     finishPerformerDrag(false);
+    var sharedTitle = formSetId ? $("title").value : null;
     captureDiscEntry();
     // The visible cover belongs to the whole set and stays in place across disc tabs.
     var setCover = formSetId ? activeDiscEntry().snapshot : null;
@@ -7478,12 +7531,15 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     ["title", "recordingYear", "releaseYear", "works"].forEach(function (f) { setErr(f, ""); });
     $("set-err").textContent = ""; $("dup-warn").hidden = true; dupWarned = "";
     if (entry.lookupDisc && lookupDiscRelease) $("lookup-disc").value = entry.lookupDisc;
+    if (sharedTitle !== null) $("title").value = sharedTitle;
+    sideRenameOpen = "";
     applyMode(); captureDiscEntry();
     if (focus && $("disc-tab-" + id)) $("disc-tab-" + id).focus({ preventScroll: true });
   }
   function renderDiscButtons() {
     var tabs = $("form-disc-tabs"); if (!tabs) return;
     $("form-disc-tools").hidden = !formSetId || !$("set-choice").value;
+    var keep = tabs.contains(document.activeElement) ? document.activeElement.id : "";
     tabs.textContent = "";
     var entries = discSession ? discSession.entries.filter(function (e) { return e.include; }).slice().sort(function (a,b) { return a.number-b.number; }) : [{ id: "initial", number: formDiscNumber }];
     var draftItems = entries.map(function (e) {
@@ -7493,14 +7549,19 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     });
     entries.forEach(function (entry, i) {
       var draftItem = draftItems[i];
-      var b = el("button", "btn small quiet", itemLabel(draftItem, draftItems)); b.type = "button"; b.id = "disc-tab-" + entry.id;
+      var group = el("div", "item-tab"), name = draftItemName(entry);
+      group.classList.toggle("is-active", !!discSession && discSession.active === entry.id);
+      var b = el("button", "segment-select", name || itemLabel(draftItem, draftItems)); b.type = "button"; b.id = "disc-tab-" + entry.id;
       b.setAttribute("aria-pressed", !discSession || discSession.active === entry.id ? "true" : "false");
       b.setAttribute("aria-controls", "albumOverall works-set more-details form-audio-set"); b.disabled = discEditorBusy();
-      b.addEventListener("click", function () { activateDiscEntry(entry.id, true); });
+      if (name) b.appendChild(el("small", "item-medium-badge", mediumText(draftItem)));
+      b.addEventListener("click", function () { itemEditorOpen = ""; activateDiscEntry(entry.id, true); renderDiscButtons(); });
       b.addEventListener("keydown", function (e) {
         var step = e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0;
         if (step) { e.preventDefault(); activateDiscEntry(entries[(i + step + entries.length) % entries.length].id, true); }
-      }); tabs.appendChild(b);
+      }); group.appendChild(b);
+      var edit = el("button", "segment-action item-edit", "✎"); edit.type = "button"; edit.id = "disc-edit-" + entry.id; edit.title = t("editItem"); edit.setAttribute("aria-label", t("editItem") + ": " + (name || itemLabel(draftItem, draftItems))); edit.setAttribute("aria-expanded", String(itemEditorOpen === entry.id)); edit.setAttribute("aria-controls", "item-editor"); edit.disabled = discEditorBusy();
+      edit.addEventListener("click", function () { itemEditorOpen = itemEditorOpen === entry.id ? "" : entry.id; activateDiscEntry(entry.id, false); renderDiscButtons(); if (itemEditorOpen) $("medium").focus(); else $(edit.id).focus(); }); group.appendChild(edit); tabs.appendChild(group);
     });
     $("form-add-disc").disabled = discEditorBusy();
     ["lookup-disc", "lookup-multiple", "set-choice", "medium"].forEach(function (id) { $(id).disabled = discEditorBusy(); });
@@ -7509,55 +7570,42 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("form-remove-disc").hidden = !current || entries.length < 2;
     $("form-remove-disc").textContent = t("discDelete");
     $("form-remove-disc").disabled = discEditorBusy();
-    qsa("#vinyl-sides input, #vinyl-sides button").forEach(function (node) { node.disabled = discEditorBusy(); });
+    qsa("#vinyl-sides input, #vinyl-sides button").forEach(function (node) { node.disabled = discEditorBusy() || node.classList.contains("side-remove") && formSides.length < 2; });
+    $("item-name").disabled = discEditorBusy(); $("item-editor-done").disabled = discEditorBusy();
     renderSetMedia();
+    if (keep && $(keep)) $(keep).focus({preventScroll:true});
   }
-  function editorMedia() {
-    var found = [];
-    (discSession ? discSession.entries.filter(function (e) { return e.include; }) : []).forEach(function (e) {
-      var m = e.id === discSession.active ? $("medium").value : e.snapshot ? e.snapshot.fields.medium.value : mediumGroup(e.data);
-      if (found.indexOf(m) < 0) found.push(m);
-    });
-    return found.length ? found : [$("medium").value || "cd"];
+  var itemEditorOpen = "";
+  function draftItemName(entry) {
+    if (typeof entry.itemName === "string") return entry.itemName;
+    var cd = entry.data || {}, set = releaseSet(cd);
+    return set ? set.subtitle || (cd.title !== set.title ? cd.title || "" : "") : "";
   }
   function renderSetMedia() {
-    var grouped = !!$("set-choice").value, fields = $("medium-fields"), editor = $("set-editor"), host = $("set-media");
-    // Standalone: choose a single medium after membership. Set: choose the format palette after its name.
-    if (grouped) $("form-disc-tools").insertAdjacentElement("afterend", fields);
+    var grouped = !!$("set-choice").value, fields = $("medium-fields"), panel = $("item-editor"), entry = activeDiscEntry();
+    if (grouped) panel.insertBefore(fields, panel.firstChild);
     else $("set-fields").insertAdjacentElement("afterend", fields);
-    fields.querySelector('label[for="medium"]').textContent = t(grouped ? "itemMedium" : "medium");
-    if (!host) { host = el("fieldset"); host.id = "set-media"; editor.insertBefore(host, $("set-total").parentElement); }
-    host.textContent = ""; host.hidden = !grouped;
-    if (!grouped) return;
-    var used = editorMedia(), chosen = discSession && discSession.media || [];
-    chosen = MEDIA.filter(function (m) { return used.indexOf(m) >= 0 || chosen.indexOf(m) >= 0; });
-    if (discSession) discSession.media = chosen;
-    var legend = el("legend",null,t("medium")); host.appendChild(legend);
-    var choices = el("div", "set-media-choices");
-    MEDIA.forEach(function (m) {
-      var label = el("label", "check"), input = el("input"); input.type = "checkbox"; input.value = m; input.checked = chosen.indexOf(m) >= 0; input.disabled = discEditorBusy();
-      input.addEventListener("change", function () {
-        if (!input.checked && used.indexOf(m) >= 0) { input.checked = true; toast(t("mediumInUse")); return; }
-        discSession.media = input.checked ? chosen.concat(m) : chosen.filter(function (x) { return x !== m; }); renderSetMedia();
-        qsa("input",host).find(function (n) { return n.value === m; }).focus({preventScroll:true});
-      }); label.appendChild(input); label.appendChild(el("span",null,t("medium."+m))); choices.appendChild(label);
-    }); host.appendChild(choices); host.appendChild(el("p","hint",t("setMediaHint")));
+    fields.querySelector('label[for="medium"]').textContent = t("medium");
+    panel.hidden = !grouped || !entry || itemEditorOpen !== entry.id;
+    if (entry && document.activeElement !== $("item-name")) $("item-name").value = draftItemName(entry);
   }
+  $("item-name").addEventListener("input", function () { var entry = activeDiscEntry(); if (!entry) return; entry.itemName = this.value; captureDiscEntry(); renderDiscButtons(); });
+  $("item-editor-done").addEventListener("click", function () { var id = itemEditorOpen; itemEditorOpen = ""; renderDiscButtons(); if ($("disc-edit-" + id)) $("disc-edit-" + id).focus(); });
+  $("item-editor").addEventListener("keydown", function (e) { if (e.key === "Escape" || e.key === "Enter" && e.target === $("item-name")) { e.preventDefault(); e.stopPropagation(); $("item-editor-done").click(); } });
   function addEditorDisc() {
     if (discEditorBusy() || !formSetId) return;
     ensureDiscSession(); captureDiscEntry();
     var used = setMembers(formSetId).map(function (c) { return +c.set.disc; }).concat(discSession.entries.map(function (e) { return e.number; }));
     var number = 1; while (used.indexOf(number) >= 0) number++;
     if (number > 999) { toast(t("setTooMany")); return; }
-    var usedMedia = editorMedia(), chosen = discSession.media || usedMedia;
-    var nextMedium = chosen.find(function (m) { return usedMedia.indexOf(m) < 0; }) || $("medium").value || "cd";
-    var data = { id: newDiscDraftId(), title: $("set-title").value || $("title").value, medium: nextMedium, mediumName: nextMedium === "other" ? $("mediumName").value : "", performers: [], works: [] };
+    var nextMedium = $("medium").value || "cd";
+    var data = { id: newDiscDraftId(), title: $("title").value, medium: nextMedium, mediumName: nextMedium === "other" ? $("mediumName").value : "", performers: [], works: [] };
     var source = setSource(formSetId);
-    data.set = { id: formSetId, title: $("set-title").value, disc: number, total: Math.max(number, +$("set-total").value),
+    data.set = { id: formSetId, title: $("title").value, disc: number, total: Math.max(number, +$("set-total").value),
       overrides: source ? setOverrides(data, setDefaults(source), setCoverSource(source)) : SET_SHARED.slice() };
     var entry = { id: data.id, number: number, data: data, existing: false, include: true };
     discSession.entries.push(entry); $("set-total").value = Math.max(number, +$("set-total").value);
-    activateDiscEntry(entry.id, true);
+    itemEditorOpen = entry.id; activateDiscEntry(entry.id, true); $("medium").focus();
   }
   $("form-add-disc").addEventListener("click", addEditorDisc);
   $("form-remove-disc").addEventListener("click", function () {
@@ -7592,7 +7640,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var option = el("option", null, x[1]); option.value = x[0]; choice.appendChild(option);
     });
     choice.value = set ? "+new" : "";
-    $("set-title").value = set ? (setSource(set.id) || cd).set.title : "";
+    if (set) $("title").value = (setSource(set.id) || cd).set.title;
     formDiscNumber = set ? +set.disc : 1;
     $("set-total").value = set ? setTotal(setMembers(set.id)) : 2;
     $("set-err").textContent = ""; $("set-editor").hidden = !set;
@@ -7602,14 +7650,14 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     ensureDiscSession(); captureDiscEntry();
     var current = activeDiscEntry();
     if (!this.value) {
-      discSession.groupMode = { id: formSetId, title: $("set-title").value, total: $("set-total").value };
+      discSession.groupMode = { id: formSetId, title: $("title").value, total: $("set-total").value };
       discSession.entries.forEach(function (entry) { entry.modeInclude = entry.include; entry.include = entry === current; entry.remove = false; });
       formSetId = ""; $("set-editor").hidden = true;
       $("lookup-multiple").checked = false;
     } else {
       var remembered = discSession.groupMode;
       formSetId = remembered && remembered.id || (formSetOriginal && formSetOriginal.id) || "s" + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
-      $("set-title").value = remembered ? remembered.title : $("title").value;
+      $("title").value = remembered ? remembered.title : $("title").value;
       $("set-total").value = remembered ? remembered.total : Math.max(2, current.number);
       discSession.entries.forEach(function (entry) { if (!entry.remove) entry.include = entry.modeInclude === undefined ? entry.include : entry.modeInclude; });
       $("set-editor").hidden = false;
@@ -7619,12 +7667,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function readSetDraft() {
     $("set-err").textContent = "";
     if (!$("set-choice").value) return null;
-    var disc = formDiscNumber, total = +$("set-total").value, title = $("set-title").value.trim();
+    var disc = formDiscNumber, total = +$("set-total").value, title = $("title").value.trim();
     var error = !title || !Number.isInteger(disc) || !Number.isInteger(total) || disc < 1 || disc > total || total > 999 ? t("setErr") : "";
     var members = setMembers(formSetId).filter(function (c) { return c.id !== editingId && !discSession.entries.some(function (e) { return e.id === c.id && e.remove; }); });
     if (!error && members.some(function (c) { return +c.set.disc === disc; })) error = t("setDuplicate", { n: disc });
     if (!error && members.some(function (c) { return +c.set.disc > total; })) error = t("setErr");
-    if (error) { $("set-err").textContent = error; focusCdError(!title ? $("set-title") : $("set-total")); return false; }
+    if (error) { $("set-err").textContent = error; focusCdError(!title ? $("title") : $("set-total")); return false; }
     return { id: formSetId, title: title, disc: disc, total: total };
   }
   function prepareSetChanges(cd, draft) {
@@ -7635,11 +7683,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     // Preserve legacy disc artwork without editing or duplicating it. New artwork belongs to set.cover.
     copySetCover(cd, before || {});
     cd.set = Object.assign({}, original, draft, { overrides: SET_SHARED.slice(), cover: cover });
+    var entry = activeDiscEntry(), name = entry ? draftItemName(entry).trim() : original.subtitle || "";
+    if (name) cd.set.subtitle = name; else delete cd.set.subtitle;
     if (!cd.set.shared) cd.set.shared = source ? clone(source.set.shared || sharedValues(source)) : sharedValues(cd);
     var changes = setMembers(draft.id).filter(function (c) {
       return c.id !== cd.id && !discSession.entries.some(function (entry) { return entry.id === c.id && entry.remove; }) &&
-        (c.set.title !== draft.title || +c.set.total !== draft.total || JSON.stringify(coverValue(setCoverSource(source || c))) !== JSON.stringify(cover));
-    }).map(function (c) { var next = clone(c); next.set.title = draft.title; next.set.total = draft.total; next.set.cover = clone(cover); return next; });
+        (c.title !== draft.title || c.set.title !== draft.title || +c.set.total !== draft.total || JSON.stringify(coverValue(setCoverSource(source || c))) !== JSON.stringify(cover));
+    }).map(function (c) { var next = clone(c); if (!next.set.subtitle && c.title !== c.set.title) next.set.subtitle = c.title; next.title = draft.title; next.set.title = draft.title; next.set.total = draft.total; next.set.cover = clone(cover); return next; });
     changes.push(cd); return changes;
   }
   function singleDiscSnapshot() {
@@ -7654,24 +7704,23 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
     var fields = {};
     ["title", "composer", "type", "label", "issuer", "recordingYear", "releaseYear", "notes"].concat(DETAIL_FIELDS).forEach(function (id) {
-      if ($(id)) fields[id] = $(id).value;
+      if ($(id) && (id !== "title" || !formSetId)) fields[id] = $(id).value;
     });
     var works = qsa("#work-list .work").map(function (box) {
       return { side: $("medium").value === "vinyl" ? box.dataset.side : "", title: box.querySelector(".w-title").value, composer: box.querySelector(".w-composer").value,
-        type: box.querySelector(".w-type").value,
+        type: box.querySelector(".w-type").value, position: box.querySelector(".w-position").value,
         duration: qsa(".trow", box).length ? "" : box.querySelector(".w-duration").value,
         tracks: qsa(".trow", box).map(function (row) { return [row.querySelector(".t-title").value, row.querySelector(".t-len").value, row.querySelector(".t-position").value]; }),
         performers: people(box.querySelector(".w-perf-rows")) };
     });
     var crop = coverCrop.changed ? [coverCrop.zoom, coverCrop.x, coverCrop.y] : null;
     var photo = editCover.file && !editCover.touched && !crop ? { file: editCover.file } : { data: photoData, crop: crop };
-    return JSON.stringify({ fields: fields, sides: $("medium").value === "vinyl" ? formSides : [], works: works, performers: people($("perf-rows")), photo: photo,
+    return JSON.stringify({ fields: fields, itemName: formSetId && activeDiscEntry() ? draftItemName(activeDiscEntry()) : "", sides: $("medium").value === "vinyl" ? formSides : [], works: works, performers: people($("perf-rows")), photo: photo,
       cardFields: formCard.own, favorites: readChecked().sort(), audio: formAudio ? formAudio.list : [] });
   }
   function cdFormSnapshot() {
     captureDiscEntry();
-    return JSON.stringify({ set: [$("set-choice").value, formSetId, $("set-title").value, $("set-total").value],
-      media: discSession && $("set-choice").value ? discSession.media : [],
+    return JSON.stringify({ set: [$("set-choice").value, formSetId, $("title").value, $("set-total").value],
       discs: discSession ? discSession.entries.map(function (e) {
         return [e.id, e.number, e.include, e.fingerprint !== e.initialFingerprint ? e.fingerprint : null];
       }) : singleDiscSnapshot() });
@@ -7708,7 +7757,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     if (CdDrive) CdDrive.reset();
     finishPerformerDrag(false);
     discardFormAudio();
-    formSides = []; activeVinylSide = "a";
+    formSides = []; activeVinylSide = "a"; sideRenameOpen = ""; itemEditorOpen = "";
     $("cd-form").reset();
     $("medium").value = defaultMediumForView();
     dupWarned = "";
@@ -8406,7 +8455,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
     if (!formSetId) {
       $("set-choice").value = "+new"; $("set-choice").dispatchEvent(new Event("change"));
-      $("set-title").value = release.title || $("title").value; discSession.lookupSet = true;
+      $("title").value = release.title || $("title").value; discSession.lookupSet = true;
     }
     var numbers = release.lookupDiscs.map(function (d) { return d.disc; });
     discSession.entries.forEach(function (e) { if (e.lookupDisc && !e.existing && numbers.indexOf(e.lookupDisc) < 0) e.include = false; });
@@ -8473,7 +8522,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   $("lookup-multiple").addEventListener("change", function () {
     if (this.checked && lookupDiscRelease) {
-      if (!formSetId) { $("set-choice").value = "+new"; $("set-choice").dispatchEvent(new Event("change")); if (!$("set-title").value) $("set-title").value = lookupDiscRelease.title; }
+      if (!formSetId) { $("set-choice").value = "+new"; $("set-choice").dispatchEvent(new Event("change")); if (!$("title").value) $("title").value = lookupDiscRelease.title; }
       if (!discSession || !discSession.entries.some(function (e) { return e.lookupDisc; })) populateLookupDrafts(lookupDiscRelease);
     }
     updateLookupDiscSelection();
@@ -8648,7 +8697,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function discTracks(cd) {
     var out = [], counts = {}, sides = cd.sides || [], vinyl = cd.medium === "vinyl";
     (cd.works || []).forEach(function (w) {
-      ((w.tracks || []).length ? w.tracks : [{ title: w.title, duration: w.duration }]).forEach(function (tr) {
+      ((w.tracks || []).length ? w.tracks : [{ title: w.title, duration: w.duration, position: w.position }]).forEach(function (tr) {
         var side = sides.find(function (s) { return s.id === w.side; });
         var key = w.side || "a"; counts[key] = (counts[key] || 0) + 1;
         var position = vinyl && side ? (side.name || side.letter || side.id.toUpperCase()) + " · " + counts[key] : tr.position || "";
@@ -8791,7 +8840,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   }
   $("work-list").addEventListener("input", function (e) {
     renumberTracks();
-    if (e.target.matches(".w-title, .w-duration, .t-title, .t-len")) renderFormAudio();
+    if (e.target.matches(".w-title, .w-position, .w-duration, .t-title, .t-len, .t-position")) renderFormAudio();
   });
   // Input already updates track text. A blur/change must not replace the audio button
   // between its pointerdown and click; performer controls do not change audio slots.
@@ -10461,7 +10510,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       } });
     }
     var hadExisting = candidates.some(function (c) { return c.existing; });
-    var title = formSetId ? $("set-title").value : candidates[0].cd.title;
+    var title = formSetId ? $("title").value : candidates[0].cd.title;
     var btn = $("submit");
     btn.disabled = true;
     btn.textContent = t("saving");

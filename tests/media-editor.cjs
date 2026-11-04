@@ -64,21 +64,23 @@ async function save(page) { await page.locator('#submit').click(); await page.lo
 async function main() {
   const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe',playwright.chromium.executablePath()].find(fs.existsSync);
   browser=await playwright.chromium.launch({headless:true,...(executablePath?{executablePath}:{})});
-  await test('standalone membership precedes its single medium; sets offer multiple formats after the name',async()=>{
+  await test('standalone has one medium; set item buttons contain their own name and medium editor',async()=>{
     const f=await fixture(),{page,state}=f;
     try {
-      await page.locator('#open-add').click(); await page.locator('#title').fill('Palette set');
+      await page.locator('#open-add').click(); await page.locator('#title').fill('Shared title');
       assert.equal(await page.locator('#set-fields').evaluate(n=>!!(n.compareDocumentPosition(document.querySelector('#medium-fields'))&Node.DOCUMENT_POSITION_FOLLOWING)),true);
       assert.equal(await page.locator('#medium').getAttribute('multiple'),null);
       await page.locator('#set-choice').selectOption('+new');
-      assert.equal(await page.locator('#set-media').evaluate(n=>n.previousElementSibling.contains(document.querySelector('#set-title'))),true);
-      await page.locator('#set-media input[value=vinyl]').check(); await page.locator('#form-add-disc').click();
-      assert.equal(await page.locator('#medium').inputValue(),'vinyl');
-      assert.deepEqual(await page.locator('#form-disc-tabs button').allTextContents(),['CD 1','Vinyl 1']);
-      await page.locator('#form-disc-tabs button').first().click(); await save(page);
-      assert.deepEqual(state.doc.cds.filter(c=>c.set?.title==='Palette set').map(c=>c.medium),['cd','vinyl']);
-      await page.reload(); await page.evaluate(c=>mediaQA.startEdit(c),state.doc.cds.find(c=>c.set?.title==='Palette set'));
-      assert.deepEqual(await page.locator('#set-media input:checked').evaluateAll(ns=>ns.map(n=>n.value)),['cd','vinyl']);
+      assert.equal(await page.locator('#set-media,#set-title').count(),0); assert.equal(await page.locator('#medium').isHidden(),true);
+      await page.locator('#form-add-disc').click(); await page.locator('#medium').selectOption('vinyl'); await page.locator('#item-name').fill('Bonus record');
+      await page.locator('#item-editor-done').click();
+      assert.equal(await page.locator('#form-disc-tabs .item-tab').count(),2);
+      assert.equal(await page.locator('#form-disc-tabs .item-edit').count(),2);
+      assert.equal(await page.locator('#form-disc-tabs .segment-select').last().innerText(),'Bonus record\nVinyl');
+      await page.locator('#form-disc-tabs .segment-select').first().click(); assert.equal(await page.locator('#title').inputValue(),'Shared title'); await save(page);
+      const saved=state.doc.cds.filter(c=>c.set?.title==='Shared title'); assert.deepEqual(saved.map(c=>c.medium),['cd','vinyl']); assert(saved.every(c=>c.title==='Shared title')); assert.equal(saved[1].set.subtitle,'Bonus record');
+      await page.reload(); await page.evaluate(c=>mediaQA.startEdit(c),saved[0]); await page.locator('#form-disc-tabs .item-edit').last().click(); assert.equal(await page.locator('#medium').inputValue(),'vinyl'); assert.equal(await page.locator('#item-name').inputValue(),'Bonus record');
+      assert.equal(await page.evaluate(()=>mediaQA.cdFormDirty()),false);
     } finally {await f.close();}
   });
   await test('matrix and catalogue stay distinct; removed condition/capacity fields survive unseen edits',async()=>{
@@ -190,9 +192,9 @@ async function main() {
       await page.locator('.work:visible .w-duration').fill('1:00');
       await page.locator('#add-work').click(); await page.locator('.work:visible').last().locator('.w-title').fill('A divided'); await page.locator('.work:visible .t-title').fill('A movement');
       assert.equal(await page.locator('.work:visible .trow .no').textContent(),'2');
-      await page.locator('#vinyl-side-name').fill('Front'); await page.locator('#vinyl-sides button[data-side=b]').click(); await page.locator('#add-work').click();
+      await page.locator('[data-edit-side=a]').click(); await page.locator('#vinyl-side-name').fill('Front'); await page.locator('#vinyl-sides button[data-side=b]').click(); await page.locator('#add-work').click();
       await page.locator('.work:visible .w-title').fill('B work'); await page.locator('.work:visible .t-title').fill('B movement'); assert.equal(await page.locator('.work:visible .trow .no').textContent(),'1');
-      await page.locator('#vinyl-side-name').fill('Back'); await save(page);
+      await page.locator('[data-edit-side=b]').click(); await page.locator('#vinyl-side-name').fill('Back'); await save(page);
       const saved=state.doc.cds.find(c=>c.title==='Sides'); assert.deepEqual(saved.sides.map(s=>s.name),['Front','Back']); assert.deepEqual(saved.works.map(w=>w.side),['a','a','b']);
       await page.reload(); await page.evaluate(c=>mediaQA.startEdit(c),saved); await page.locator('#vinyl-sides button[data-side=b]').click();
       assert.equal(await page.locator('.work:visible .w-title').inputValue(),'B work'); assert.equal(await page.evaluate(()=>mediaQA.cdFormDirty()),false);
@@ -204,7 +206,7 @@ async function main() {
     const cd={id:'sides-audio',title:'Audio sides',medium:'vinyl',sides:[{id:'a',letter:'A',name:''},{id:'b',letter:'B',name:''}],works:[{title:'A',side:'a',tracks:[]},{title:'B',side:'b',tracks:[{title:'B1'}]}],audio:[{track:1,name:'A.wav',file:'sides-audio/A.wav'},{track:2,name:'B.wav',file:'sides-audio/B.wav'}]};
     const f=await fixture({native:true,extra:[cd]}),{page,state}=f;
     try {
-      await page.evaluate(c=>mediaQA.startEdit(c),cd); await page.locator('#vinyl-remove-side').click(); await page.locator('#vinyl-side-ask button').first().click();
+      await page.evaluate(c=>mediaQA.startEdit(c),cd); await page.locator('[data-remove-side=a]').click(); await page.locator('#vinyl-side-ask button').first().click();
       assert.equal(await page.locator('#vinyl-sides button[data-side]').count(),1); assert.equal(await page.locator('#vinyl-add-side').isVisible(),true);
       await save(page); const saved=state.doc.cds.find(c=>c.id===cd.id); assert.deepEqual(saved.works.map(w=>w.title),['B']); assert.deepEqual(saved.audio.map(a=>a.track),[0,1]);
       assert.equal(state.commands.some(c=>c.command==='remove_audio'),false);
@@ -245,6 +247,99 @@ async function main() {
       const groups=await page.evaluate(()=>mediaQA.dgDiscLists([{position:'A1'},{position:'B1'},{position:'CD1'},{position:'CD2'}],[{medium:'vinyl'},{medium:'cd'}])); assert.equal(groups['1'].length,2); assert.equal(groups['2'].length,2);
       await page.locator('#open-add').click(); await page.evaluate(p=>mediaQA.populateLookupDrafts(p),result); await save(page);
       const imported=state.doc.cds.filter(c=>c.set?.title===result.title); assert.deepEqual(imported.map(c=>c.medium),['vinyl','cd']); assert.equal(imported[1].works.length,2);
+    } finally {await f.close();}
+  });
+  await test('side buttons fill their row and each owns edit/delete; rename opens only on demand and cancels cleanly',async()=>{
+    const f=await fixture({native:true}),{page}=f;
+    try {
+      await page.evaluate(c=>mediaQA.startEdit(c),seed[3]);
+      assert.equal(await page.locator('#vinyl-side-name').count(),0);
+      for(const width of [1280,375]){
+        await page.setViewportSize({width,height:900});
+        assert.equal(await page.locator('.side-tabs').evaluate(row=>{
+          const sides=Array.from(row.querySelectorAll('.side-tab')).map(n=>n.getBoundingClientRect());
+          return Math.abs(sides[0].width-sides[1].width)<1&&Math.abs(sides[0].left-row.getBoundingClientRect().left)<1&&Math.abs(sides[1].right-row.getBoundingClientRect().right)<1;
+        }),true);
+      }
+      assert.equal(await page.locator('.side-tab .side-edit').count(),2); assert.equal(await page.locator('.side-tab .side-remove').count(),2);
+      await page.locator('[data-edit-side=b]').click(); await page.locator('#vinyl-side-name').fill('Temporary'); await page.locator('#vinyl-side-name').press('Escape');
+      assert.equal(await page.locator('#vinyl-side-name').count(),0); assert.equal(await page.locator('button[data-side=b]').textContent(),'Side B'); assert.equal(await page.evaluate(()=>mediaQA.cdFormDirty()),false);
+      await page.locator('[data-edit-side=a]').click(); await page.locator('#vinyl-side-name').fill('Front'); await page.locator('#vinyl-side-name').press('Enter'); assert.equal(await page.locator('button[data-side=a]').textContent(),'Front');
+      assert.equal(await page.locator('#vinyl-side-name').count(),0); assert.equal(await page.evaluate(()=>mediaQA.cdFormDirty()),true);
+      await page.locator('[data-remove-side=b]').click(); await page.locator('#vinyl-side-ask button').first().click();
+      assert.equal(await page.locator('button[data-side=a]').count(),1); assert.equal(await page.locator('[data-remove-side=a]').isDisabled(),true);
+      assert.equal(await page.locator('.work .t-title').inputValue(),'First');
+    } finally {await f.close();}
+  });
+  await test('set titles save once across every item while old distinct titles become editable item names',async()=>{
+    const discs=[1,2,3].map(n=>({id:'legacy-name-'+n,title:'Old item '+n,medium:n===2?'cassette':'cd',set:{id:'legacy-names',title:'Common release',disc:n,total:3,extra:{keep:n}},works:[{title:'Work '+n,tracks:[]}],notes:'Keep '+n}));
+    const f=await fixture({extra:discs}),{page,state}=f;
+    try {
+      await page.evaluate(c=>mediaQA.startEdit(c),discs[0]); assert.equal(await page.locator('#title').inputValue(),'Common release');
+      await page.locator('#form-disc-tabs .segment-select').last().click(); assert.equal(await page.evaluate(()=>mediaQA.cdFormDirty()),false); assert.deepEqual(state.doc.cds.filter(c=>c.set?.id==='legacy-names'),discs);
+      await page.locator('#title').fill('Renamed release'); await page.locator('#form-disc-tabs .item-edit').nth(1).click();
+      assert.equal(await page.locator('#title').inputValue(),'Renamed release'); assert.equal(await page.locator('#item-name').inputValue(),'Old item 2');
+      await page.locator('#item-name').fill('Bonus tape'); await page.locator('#medium').selectOption('dvd'); await save(page);
+      const saved=state.doc.cds.filter(c=>c.set?.id==='legacy-names').sort((a,b)=>a.set.disc-b.set.disc);
+      assert(saved.every(c=>c.title==='Renamed release'&&c.set.title==='Renamed release')); assert.deepEqual(saved.map(c=>c.set.subtitle),['Old item 1','Bonus tape','Old item 3']); assert.deepEqual(saved.map(c=>c.medium),['cd','dvd','cd']);
+      saved.forEach((c,i)=>{assert.deepEqual(c.set.extra,{keep:i+1});assert.equal(c.notes,'Keep '+(i+1));assert.equal(c.works[0].title,discs[i].works[0].title);assert.deepEqual(c.works[0].tracks,[]);assert.equal(c.works[0].composer||'','');});
+      await page.reload(); await page.evaluate(c=>mediaQA.startEdit(c),saved[1]); assert.equal(await page.locator('#title').inputValue(),'Renamed release'); await page.locator('#form-disc-tabs .item-edit').nth(1).click(); assert.equal(await page.locator('#item-name').inputValue(),'Bonus tape');
+      await page.locator('#item-name').fill('Discarded'); await page.locator('#close-cd').click(); await page.locator('#cd-unsaved-discard').click(); assert.equal(state.doc.cds.find(c=>c.id===saved[1].id).set.subtitle,'Bonus tape');
+    } finally {await f.close();}
+  });
+  await test('undivided cassette/DVD/Blu-ray/Other works have printed positions that survive track transfers and audio mapping',async()=>{
+    const originals=['cassette','dvd','bluray','other'].map(m=>({id:'position-'+m,title:'Positions '+m,medium:m,works:[{title:'Unbroken work',duration:'2:00',tracks:[]}],audio:[{file:'position-'+m+'/1.wav',name:'One.wav',track:1}]}));
+    const f=await fixture({native:true,extra:originals}),{page,state}=f;
+    try {
+      for(const cd of originals){
+        await page.evaluate(c=>mediaQA.startEdit(c),cd);
+        assert.equal(await page.locator('.w-position').isVisible(),true); assert.equal(await page.locator('.w-position').getAttribute('placeholder'),'A1');
+        await page.locator('.w-position').fill('B2'); await page.locator('.work > [data-i18n=addTrack]').click();
+        assert.equal(await page.locator('.w-position').isHidden(),true); assert.equal(await page.locator('.t-position').inputValue(),'B2'); assert.equal(await page.locator('.t-len').inputValue(),'2:00');
+        await page.locator('.trow .iconbtn').click(); assert.equal(await page.locator('.w-position').inputValue(),'B2'); assert.equal(await page.locator('.w-duration').inputValue(),'2:00');
+        await save(page); const saved=state.doc.cds.find(c=>c.id===cd.id); assert.equal(saved.works[0].position,'B2'); assert.deepEqual(saved.works[0].tracks,[]); assert.deepEqual(saved.audio,cd.audio);
+        assert.equal((await page.evaluate(c=>mediaQA.discTracks(c),saved))[0].position,'B2'); await page.evaluate(id=>mediaQA.openDetail(id),cd.id); assert.equal(await page.locator('.work-position').textContent(),'B2'); await page.locator('#close-detail').click();
+      }
+      for(const medium of ['cd','sacd','vinyl']) { await page.evaluate(c=>mediaQA.startEdit(c),{...originals[0],medium}); assert.equal(await page.locator('.w-position').isHidden(),true); await page.locator('#close-cd').click(); }
+    } finally {await f.close();}
+  });
+  await test('edition details use catalogue above barcode/matrix, venue beside technology and complete localized examples',async()=>{
+    const f=await fixture(),{page}=f;
+    try {
+      await page.locator('#open-add').click(); await page.locator('#more-details').evaluate(n=>n.open=true);
+      for(const lang of ['en','ja','zh']){
+        await page.evaluate(l=>mediaQA.setLang(l,false),lang);
+        assert.match(await page.locator('#catalogNo').getAttribute('placeholder'),/UCCS-50032\/3/); assert.match(await page.locator('#matrixRunout').getAttribute('placeholder'),/410 084-2/);
+        assert.equal(await page.locator('[data-i18n=sparsHint]').count(),0);
+        assert.equal(await page.locator('#barcode-matrix').evaluate(n=>n.previousElementSibling.contains(document.querySelector('#catalogNo'))),true);
+        assert.equal(await page.locator('#venue-technology').evaluate(n=>n.contains(document.querySelector('#recordingVenue'))&&n.contains(document.querySelector('#spars'))),true);
+        for(const medium of ['cd','vinyl','cassette','sacd','dvd','bluray','other']){
+          await page.locator('#medium').selectOption(medium);
+          assert.deepEqual(await page.locator('#more-details input:visible').evaluateAll(ns=>ns.filter(n=>!n.placeholder.trim()).map(n=>n.id)),[]);
+        }
+      }
+      await page.evaluate(()=>mediaQA.setLang('en',false)); await page.locator('#medium').selectOption('vinyl');
+      assert.deepEqual(await page.locator('#recordColour-options option').evaluateAll(ns=>ns.map(n=>n.value)),['Black vinyl','Coloured vinyl','Clear vinyl','Red vinyl','Blue vinyl']);
+    } finally {await f.close();}
+  });
+  await test('item editors and undivided work positions fit all locales/themes at desktop and narrow widths',async()=>{
+    const f=await fixture(),{page}=f;
+    try {
+      for(const lang of ['en','ja','zh'])for(const theme of ['light','dark'])for(const width of [1280,375]){
+        await page.setViewportSize({width,height:900}); await page.evaluate(({lang,theme})=>{mediaQA.setLang(lang,false);document.documentElement.dataset.theme=theme;},{lang,theme});
+        await page.evaluate(c=>mediaQA.startEdit(c),seed[3]); await page.locator('#form-disc-tabs .item-edit').last().click(); await page.locator('#item-name').fill('Bonus record / 附赠黑胶');
+        assert.equal(await page.locator('#medium').isVisible(),true); assert.equal(await page.locator('#win-cd .panel').evaluate(n=>n.scrollWidth<=n.clientWidth+1),true);
+        if(process.env.CDC_QA_ARTIFACTS&&lang==='zh'&&theme==='dark'){
+          fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true}); await page.locator('#item-editor').scrollIntoViewIfNeeded(); await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,`item-editor-${width}.png`)});
+        }
+        await page.evaluate(()=>mediaQA.startEdit({id:'layout-work',title:'Unbroken tape',medium:'cassette',works:[{title:'Long work title for an undivided piece',duration:'2:00',position:'A1',tracks:[]}]}));
+        await page.locator('#more-details').evaluate(n=>n.open=true);
+        assert.equal(await page.locator('.w-position').isVisible(),true); assert.equal(await page.locator('#win-cd .panel').evaluate(n=>n.scrollWidth<=n.clientWidth+1),true);
+        assert.equal(await page.locator('#recordingVenue').evaluate(n=>Math.abs(n.getBoundingClientRect().top-document.querySelector('#spars').getBoundingClientRect().top)<1),true);
+        if(process.env.CDC_QA_ARTIFACTS&&lang==='zh'&&theme==='dark'){
+          await page.locator('#works-set').scrollIntoViewIfNeeded(); await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,`work-position-${width}.png`)});
+        }
+      }
     } finally {await f.close();}
   });
   await test('vinyl side and medium controls fit desktop/mobile in every locale and theme',async()=>{

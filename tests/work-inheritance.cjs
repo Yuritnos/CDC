@@ -296,13 +296,13 @@ async function main() {
       assert((await page.locator('#detail-body').innerText()).includes('Legacy box QA'));
       await page.locator('.set-disc summary').click();
       await page.locator('#set-edit').click();
-      assert.equal(await page.locator('#set-title, #set-total').count(), 2);
+      assert.equal(await page.locator('#title, #set-total').count(), 2);
       assert.equal(await page.locator('#set-disc, #set-subtitle').count(), 0);
       await page.locator('#title').fill('Edited legacy QA');
       await save(page, state);
-      for (const [key,value] of Object.entries(legacy.set)) assert.deepEqual(state.doc.cds[0].set[key], value);
+      for (const [key,value] of Object.entries(legacy.set)) assert.deepEqual(state.doc.cds[0].set[key], key==='title'?'Edited legacy QA':value); assert.equal(state.doc.cds[0].set.subtitle,legacy.title);
       await page.reload();
-      for (const [key,value] of Object.entries(legacy.set)) assert.deepEqual(state.doc.cds[0].set[key], value);
+      for (const [key,value] of Object.entries(legacy.set)) assert.deepEqual(state.doc.cds[0].set[key], key==='title'?'Edited legacy QA':value); assert.equal(state.doc.cds[0].set.subtitle,legacy.title);
     } finally { await f.close(); }
   });
   if (!process.env.CDC_QA_SKIP_AUDIO) await test('native profile without audio omits the empty section but edit form keeps Add audio', async () => {

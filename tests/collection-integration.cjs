@@ -407,16 +407,16 @@ async function main() {
       await page.locator('#more-details').evaluate(n=>n.open=true);await page.locator('#notes').fill('Notes one');
       await page.locator('#form-add-disc').click();
       assert.equal(await page.locator('#set-disc, #set-subtitle').count(),0);
-      assert.deepEqual(await page.locator('#form-disc-tabs button').allTextContents(),['CD 1','CD 2']);
+      assert.deepEqual(await page.locator('#form-disc-tabs .segment-select').allTextContents(),['CD 1','CD 2']);
       assert.equal(await page.locator('#composer').inputValue(),'');
       await prepareEditor(page);await page.locator('#composer').fill('Composer two');await page.locator('.w-title').fill('Work two');
       await page.locator('.t-title').fill('Movement two');await page.locator('.t-len').fill('bad');
       await page.locator('#more-details').evaluate(n=>n.open=true);await page.locator('#notes').fill('Notes two');
-      await page.locator('#form-disc-tabs button').first().click();
+      await page.locator('#form-disc-tabs .segment-select').first().click();
       assert.equal(await page.locator('#composer').inputValue(),'Composer one');assert.equal(await page.locator('.t-title').inputValue(),'Movement one');
       assert.equal(await page.locator('#notes').inputValue(),'Notes one');
       await page.locator('#submit').click();
-      assert.equal(state.doc.cds.length,0);assert.equal(await page.locator('#form-disc-tabs button[aria-pressed="true"]').innerText(),'CD 2');
+      assert.equal(state.doc.cds.length,0);assert.equal(await page.locator('#form-disc-tabs .segment-select[aria-pressed="true"]').innerText(),'CD 2');
       assert.equal(await page.locator('.t-len').getAttribute('aria-invalid'),'true');
       await page.locator('.t-len').fill('2:22');
       state.saveFail=true;await page.locator('#submit').click();await page.locator('#submit:not(:disabled)').waitFor();
@@ -426,7 +426,7 @@ async function main() {
         [1,'Composer one','Notes one','Movement one'],[2,'Composer two','Notes two','Movement two']]);
       assert.equal(new Set(discs.map(c=>c.set.id)).size,1);
       await openCard(page,'Draft album');await page.locator('#set-edit').click();
-      await page.locator('#form-disc-tabs button').last().click();
+      await page.locator('#form-disc-tabs .segment-select').last().click();
       assert.equal(await page.locator('#composer').inputValue(),'Composer two');
       await page.locator('#composer').fill('Revised two');await save(page);
       assert.equal(state.doc.cds.find(c=>c.set.disc===1).composer,'Composer one');
@@ -437,16 +437,16 @@ async function main() {
     const f=await fixture({nativeAudio:true}),{page,state}=f;
     try{
       await openAdd(page);await search(page);await page.locator('#lookup-use-0').click();
-      await page.locator('#form-disc-tabs button').nth(1).waitFor();
-      assert.equal(await page.locator('#form-disc-tabs button').count(),2);
+      await page.locator('#form-disc-tabs .segment-select').nth(1).waitFor();
+      assert.equal(await page.locator('#form-disc-tabs .segment-select').count(),2);
       assert.equal(await page.locator('#type').inputValue(),'Symphony','disc-level defaults are promoted independently');
       await page.locator('#composer').fill('Edited composer one');await page.locator('.w-title').fill('Edited work one');
       await page.locator('#form-audio-add').click();await page.locator('#form-audio-add:not(:disabled)').waitFor();
-      await page.locator('#form-disc-tabs button').last().click();await prepareEditor(page);
+      await page.locator('#form-disc-tabs .segment-select').last().click();await prepareEditor(page);
       assert.equal(await page.locator('#type').inputValue(),'');
       await page.locator('#composer').fill('Edited composer two');await page.locator('.w-title').first().fill('Edited work two');
       await page.locator('#form-audio-add').click();await page.locator('#form-audio-add:not(:disabled)').waitFor();
-      await page.locator('#form-disc-tabs button').first().click();
+      await page.locator('#form-disc-tabs .segment-select').first().click();
       assert.equal(await page.locator('#composer').inputValue(),'Edited composer one');assert.equal(await page.locator('.w-title').inputValue(),'Edited work one');
       assert.equal(await page.locator('#form-audio li').count(),1);
       if(process.env.CDC_QA_ARTIFACTS){
@@ -473,7 +473,7 @@ async function main() {
       await page.locator('#form-add-disc').click();await prepareEditor(page);
       await page.locator('#form-audio-add').click();await page.locator('#form-audio-add:not(:disabled)').waitFor();
       assert.equal(state.copiedFiles.size,2);
-      await page.locator('#form-disc-tabs button').first().click();
+      await page.locator('#form-disc-tabs .segment-select').first().click();
       await page.locator('#close-cd').click();await page.locator('#cd-unsaved-discard').click();
       await until(()=>state.copiedFiles.size===0);
       assert.deepEqual(state.doc.cds,[original]);
@@ -490,7 +490,7 @@ async function main() {
     const f=await fixture({cds,nativeAudio:true}),{page,state}=f;let releaseAudio;
     try{
       await openCard(page,'Safe album');await page.locator('#set-edit').click();
-      await page.locator('#form-disc-tabs button').last().click();await page.locator('#form-disc-tabs button').first().click();
+      await page.locator('#form-disc-tabs .segment-select').last().click();await page.locator('#form-disc-tabs .segment-select').first().click();
       await page.locator('#close-cd').click();assert.equal(await page.locator('#win-cd-unsaved').isVisible(),false);
       assert.deepEqual(state.doc.cds,cds);
       await openCard(page,'Safe album');await page.locator('#set-edit').click();await prepareEditor(page);
@@ -498,9 +498,9 @@ async function main() {
       state.audioHold=new Promise(resolve=>releaseAudio=resolve);await page.locator('#form-audio-add').click();
       await page.locator('#form-audio-add:disabled').waitFor();
       assert.equal(await page.locator('#form-add-disc').isDisabled(),true);
-      assert.equal(await page.locator('#form-disc-tabs button:disabled').count(),2);
+      assert.equal(await page.locator('#form-disc-tabs .segment-select:disabled').count(),2);
       await releaseHeld(page,state,101);
-      assert.equal(await page.locator('#title').inputValue(),'Safe 1');
+      assert.equal(await page.locator('#title').inputValue(),'Safe album');
       assert((await page.locator('#lookup-status').innerText()).includes('Finish importing audio'));
       releaseAudio();await page.locator('#form-audio-add:not(:disabled)').waitFor();
       await page.locator('#close-cd').click();await page.locator('#cd-unsaved-discard').click();await until(()=>state.copiedFiles.size===0);
@@ -565,7 +565,7 @@ async function main() {
       assert.equal(linked.set.disc,2); assert.equal(linked.label,'Own label'); assert.equal(linked.manufacturer,'Own pressing');
       assert.deepEqual(linked.extra,{keep:true}); assert(linked.set.overrides.includes('label'));
       await page.locator('.set-disc').nth(1).locator('summary').click();
-      await page.locator('#set-edit').click();await page.locator('#form-disc-tabs button').last().click();await page.locator('#set-choice').selectOption('');await save(page);
+      await page.locator('#set-edit').click();await page.locator('#form-disc-tabs .segment-select').last().click();await page.locator('#set-choice').selectOption('');await save(page);
       await until(()=>!state.doc.cds.find(c=>c.id==='link-two').set);
       assert.equal(state.doc.cds.find(c=>c.id==='link-two').set,undefined);
       assert.equal(state.doc.cds.find(c=>c.id==='link-one').set.id,'link-set');
@@ -661,7 +661,9 @@ async function main() {
       await page.locator('#label').fill('Changed label');state.saveFail=true;await page.locator('#submit').click();await page.locator('#submit:not(:disabled)').waitFor();
       assert.deepEqual(state.doc.cds,cds);state.saveFail=false;await save(page);
       const first=state.doc.cds.find(c=>c.id==='cover-1'),second=state.doc.cds.find(c=>c.id==='cover-2');
-      assert.equal(first.composer,'Changed one');assert.equal(first.label,'Changed label');assert.deepEqual(second,cds[1]);
+      assert.equal(first.composer,'Changed one');assert.equal(first.label,'Changed label');
+      const ownFields=c=>Object.fromEntries(Object.entries(c).filter(([key])=>!['set','title','updatedAt'].includes(key)));
+      assert.deepEqual(ownFields(second),ownFields(cds[1])); assert.equal(second.title,'Cover album'); assert.equal(second.set.subtitle,'Cover 2'); assert.deepEqual(second.set.extra,cds[1].set.extra);
       assert.equal(first.manufacturer,'Pressing 1');assert.equal(first.photoFile,'shared.png');assert.deepEqual(first.set.extra,{preserve:1});
       assert.equal(state.commands.filter(c=>c.command==='save_cover').length,0);
     }finally{await f.close();}
@@ -679,7 +681,7 @@ async function main() {
       await page.locator('#photo').setInputFiles({name:'new-main.png',mimeType:'image/png',buffer:Buffer.from(image.split(',')[1],'base64')});
       await page.waitForFunction(()=>!document.querySelector('#cover-canvas').hidden);
       const preview=await page.locator('#cover-canvas').evaluate(c=>c.toDataURL());
-      await page.locator('#form-disc-tabs button').last().click();
+      await page.locator('#form-disc-tabs .segment-select').last().click();
       assert.equal(await page.locator('#cover-canvas').evaluate(c=>c.toDataURL()),preview);
       assert.equal(await page.locator('#photo-title').innerText(),'Album / set cover');
       await save(page);
@@ -712,7 +714,7 @@ async function main() {
       await page.waitForFunction(()=>!document.querySelector('#cover-canvas').hidden);
       await page.locator('#cover-zoom').fill('1.4');await page.locator('#cover-zoom').dispatchEvent('input');
       const crop=await page.locator('#cover-canvas').evaluate(c=>c.toDataURL());
-      await page.locator('#form-disc-tabs button').first().click();
+      await page.locator('#form-disc-tabs .segment-select').first().click();
       assert.equal(await page.locator('#cover-zoom').inputValue(),'1.4');assert.equal(await page.locator('#cover-canvas').evaluate(c=>c.toDataURL()),crop);
       if(process.env.CDC_QA_ARTIFACTS){
         fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});await page.setViewportSize({width:360,height:860});
@@ -723,7 +725,7 @@ async function main() {
       assert.equal(state.doc.cds.length,2);assert(state.doc.cds.every(c=>c.set.cover.photoFile==='saved-cover.png'&&!c.photo&&!c.photoFile));
       assert.equal(state.commands.filter(c=>c.command==='save_cover').length,1);
       await openCard(page,'Shared cover');await page.locator('#set-edit').click();await page.locator('#photo-actions').waitFor();
-      const before=structuredClone(state.doc.cds);await page.locator('#photo-remove').click();await page.locator('#form-disc-tabs button').last().click();
+      const before=structuredClone(state.doc.cds);await page.locator('#photo-remove').click();await page.locator('#form-disc-tabs .segment-select').last().click();
       assert.equal(await page.locator('#cover-canvas').isHidden(),true);
       state.saveFail=true;await page.locator('#submit').click();await page.locator('#submit:not(:disabled)').waitFor();assert.deepEqual(state.doc.cds,before);
       state.saveFail=false;await save(page);assert(state.doc.cds.every(c=>Object.keys(c.set.cover).length===0&&!c.photo&&!c.photoFile));
@@ -738,12 +740,12 @@ async function main() {
         state.coverBytes=Array.from(Buffer.from(image.split(',')[1],'base64'));state.releases[101].images=[{type:'primary',uri:'https://fixture-cover.test/album.png'}];
         const held=deferred();state.coverHold=held.promise;
         await openAdd(page);await search(page);await page.locator('#lookup-use-0').click();await until(()=>state.commands.some(c=>c.command==='fetch_cover'));
-        await page.locator('#form-disc-tabs button').last().click();if(remove){
+        await page.locator('#form-disc-tabs .segment-select').last().click();if(remove){
           await page.locator('#photo').setInputFiles({name:'manual.png',mimeType:'image/png',buffer:Buffer.from(image.split(',')[1],'base64')});
           await page.locator('#photo-actions').waitFor();await page.locator('#photo-remove').click();
         }
         held.resolve();await page.waitForFunction(()=>!document.querySelector('#lookup-status').textContent.includes('Looking for a cover'));
-        if(!remove){await page.waitForFunction(()=>!document.querySelector('#cover-canvas').hidden);await page.locator('#form-disc-tabs button').first().click();}
+        if(!remove){await page.waitForFunction(()=>!document.querySelector('#cover-canvas').hidden);await page.locator('#form-disc-tabs .segment-select').first().click();}
         else assert.equal(await page.locator('#cover-canvas').isHidden(),true);
         await save(page);assert(state.doc.cds.every(c=>!c.photo&&!c.photoFile));
         assert(state.doc.cds.every(c=>remove?Object.keys(c.set.cover).length===0:c.set.cover.photoFile==='saved-cover.png'));
@@ -756,7 +758,7 @@ async function main() {
     const f=await fixture({cds,nativeAudio:true,albums:[{id:'remove-fav',name:'Favorite',cdIds:cds.map(c=>c.id)}],
       playlists:[{id:'remove-pl',name:'Playlist',items:[{cdId:'remove-2',file:'remove-2/original.wav'}]}]}),{page,state}=f;
     try{
-      await openCard(page,'Remove album');await page.locator('#set-edit').click();await page.locator('#form-disc-tabs button').last().click();
+      await openCard(page,'Remove album');await page.locator('#set-edit').click();await page.locator('#form-disc-tabs .segment-select').last().click();
       await page.locator('#form-remove-disc').click();assert.deepEqual(state.doc.cds,cds);
       state.saveFail=true;await page.locator('#submit').click();await page.locator('#submit:not(:disabled)').waitFor();assert.deepEqual(state.doc.cds,cds);
       assert(!state.doc.sync||!state.doc.sync.deleted||!state.doc.sync.deleted['remove-2']);state.saveFail=false;await save(page);
@@ -799,11 +801,11 @@ async function main() {
       assert.deepEqual(state.doc.meta.order.all,['order-b1','order-b2','order-a']);
       await openCard(page,'B album');await page.locator('#set-edit').click();await page.locator('#form-add-disc').click();
       assert.equal(await page.locator('#set-disc, #set-subtitle').count(),0);
-      assert.equal(await page.locator('#form-disc-tabs button[aria-pressed="true"]').innerText(),'CD 3');
+      assert.equal(await page.locator('#form-disc-tabs .segment-select[aria-pressed="true"]').innerText(),'CD 3');
       await page.locator('#set-total').fill('2');await page.locator('#submit').click();
       assert((await page.locator('#set-err').innerText()).length>0);
       await page.locator('#close-cd').click();await page.locator('#cd-unsaved-keep').click();
-      assert.equal(await page.locator('#form-disc-tabs button[aria-pressed="true"]').innerText(),'CD 3');
+      assert.equal(await page.locator('#form-disc-tabs .segment-select[aria-pressed="true"]').innerText(),'CD 3');
       await page.locator('#close-cd').click();await page.locator('#cd-unsaved-discard').click();
       assert.equal(state.doc.cds.length,3);
     }finally{await f.close();}
@@ -856,7 +858,7 @@ async function main() {
       assert.equal((await page.locator('#win-settings').innerText()).includes('Album or box set'), false);
       await page.locator('#close-settings').click();
       await openAdd(page);
-      assert.equal(await page.locator('#set-fields, #set-title').count(), 2);
+      assert.equal(await page.locator('#set-fields, #title').count(), 2);
       assert.equal(await page.locator('#ff-set, #ff-workTypes').count(), 0);
       await page.locator('#title').fill('Standalone CD');
       await page.locator('#more-details').evaluate(n => n.open = true);
@@ -874,8 +876,9 @@ async function main() {
       await page.locator('#hub').fill('Partial silver hub'); await save(page);
       assert.deepEqual(state.doc.cds.find(c => c.id === 'legacy-one').set.extra, membership.extra);
       assert.equal(state.doc.cds.find(c => c.id === 'legacy-one').set.id, membership.id);
-      assert.deepEqual(state.doc.cds.find(c => c.id === sibling.id), sibling);
-      await page.reload(); await openCard(page, 'Box QA');
+      const preserved = state.doc.cds.find(c => c.id === sibling.id);
+      assert.equal(preserved.set.subtitle,sibling.title); assert.deepEqual(preserved.set.extra,sibling.set.extra); assert.deepEqual(preserved.cardFields,sibling.cardFields);
+      await page.reload(); await openCard(page, 'Edited disc one');
       await page.locator('#disc-info-legacy-one').press('Enter');
       assert((await page.locator('#disc-info-popup').innerText()).includes('Partial silver hub'));
       await page.locator('#disc-info-legacy-one').press('Escape');
@@ -886,7 +889,8 @@ async function main() {
       await page.locator('#lookup-disc-choices input[value="2"]').uncheck(); await save(page);
       assert.deepEqual(state.doc.cds.find(c => c.id === 'legacy-one').set.extra, membership.extra);
       assert.equal(state.doc.cds.find(c => c.id === 'legacy-one').set.disc, membership.disc);
-      assert.deepEqual(state.doc.cds.find(c => c.id === sibling.id), sibling);
+      const afterLookup = state.doc.cds.find(c => c.id === sibling.id);
+      assert.equal(afterLookup.set.id,sibling.set.id); assert.equal(afterLookup.set.subtitle,sibling.title); assert.deepEqual(afterLookup.set.extra,sibling.set.extra); assert.deepEqual(afterLookup.cardFields,sibling.cardFields);
     } finally { await f.close(); }
   });
   await test('028944443028 imports all 11 disc defaults and 17 work credits precisely and retains them through save/reload/edit',async()=>{
@@ -896,7 +900,7 @@ async function main() {
     const fixtureRelease=require('./fixtures/discogs-4600502.json');state.releases[101]={...fixtureRelease,id:101};
     async function checkEditors(){
       for(let i=0;i<11;i++){
-        await page.locator('#form-disc-tabs button').nth(i).click();
+        await page.locator('#form-disc-tabs .segment-select').nth(i).click();
         const common=expected[i].every(name=>name===expected[i][0])?[expected[i][0]]:[];
         const global=await page.locator('#perf-rows .prow').evaluateAll(rows=>rows.filter(r=>Array.from(r.querySelectorAll('.perf-role-option input:checked')).some(b=>b.value==='Orchestra')).map(r=>r.querySelector('.perf-name').value));
         assert.deepEqual(global,common,'disc '+(i+1)+' defaults');
@@ -908,10 +912,10 @@ async function main() {
       }
     }
     try{
-      await openAdd(page);assert.equal(await page.locator('#set-title').getAttribute('autocomplete'),'off');
+      await openAdd(page);assert.equal(await page.locator('#title').getAttribute('autocomplete'),'off');
       assert.equal(await page.locator('#cd-form').getAttribute('autocomplete'),'off');
       await page.locator('#lookup-q').fill('028944443028');await page.locator('#lookup-go').click();await page.locator('#lookup-use-0').click();
-      await page.waitForFunction(()=>document.querySelectorAll('#form-disc-tabs button').length===11);
+      await page.waitForFunction(()=>document.querySelectorAll('#form-disc-tabs .segment-select').length===11);
       await checkEditors();assert.equal(state.doc.cds.length,0,'lookup never saves without confirmation');await save(page);
       assert.equal(state.doc.cds.length,11);
       state.doc.cds.forEach(cd=>{
@@ -928,7 +932,7 @@ async function main() {
       if(process.env.CDC_QA_ARTIFACTS){
         fs.mkdirSync(process.env.CDC_QA_ARTIFACTS,{recursive:true});
         fs.writeFileSync(path.join(process.env.CDC_QA_ARTIFACTS,'028944443028-credit-audit.json'),JSON.stringify(state.doc.cds.map(cd=>({disc:cd.set.disc,performers:cd.performers,works:cd.works.map(w=>({title:w.title,performers:w.performers||[],mode:w.performersMode||'inherit'}))})),null,2));
-        await page.locator('#form-disc-tabs button').nth(3).click();await page.locator('#works-set').evaluate(n=>n.open=true);
+        await page.locator('#form-disc-tabs .segment-select').nth(3).click();await page.locator('#works-set').evaluate(n=>n.open=true);
         await page.locator('#work-list .w-details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));
         await page.locator('#work-list .work').first().evaluate(n=>n.scrollIntoView({block:'start'}));
         await page.screenshot({path:path.join(process.env.CDC_QA_ARTIFACTS,'disc-4-work-credits.png')});
@@ -998,11 +1002,11 @@ async function main() {
     const f=await fixture({cds}),{page,state}=f;
     try{
       await openCard(page,'Fold album');await page.locator('#set-edit').click();assert.equal(await page.locator('#works-set').evaluate(n=>n.open),true);
-      await page.locator('#works-set > summary').click();await page.locator('#form-disc-tabs button').last().click();assert.equal(await page.locator('#works-set').evaluate(n=>n.open),false);
-      await page.locator('#form-disc-tabs button').first().click();assert.equal(await page.locator('#works-set').evaluate(n=>n.open),false,'manual fold is retained');
+      await page.locator('#works-set > summary').click();await page.locator('#form-disc-tabs .segment-select').last().click();assert.equal(await page.locator('#works-set').evaluate(n=>n.open),false);
+      await page.locator('#form-disc-tabs .segment-select').first().click();assert.equal(await page.locator('#works-set').evaluate(n=>n.open),false,'manual fold is retained');
       await page.locator('#close-cd').click();assert.equal(await page.locator('#win-cd-unsaved').isVisible(),false,'folding does not change saved data');
-      await openAdd(page);await search(page);await page.locator('#lookup-use-0').click();await page.waitForFunction(()=>document.querySelectorAll('#form-disc-tabs button').length===2);
-      assert.equal(await page.locator('#works-set').evaluate(n=>n.open),true);await page.locator('#form-disc-tabs button').last().click();assert.equal(await page.locator('#works-set').evaluate(n=>n.open),true);
+      await openAdd(page);await search(page);await page.locator('#lookup-use-0').click();await page.waitForFunction(()=>document.querySelectorAll('#form-disc-tabs .segment-select').length===2);
+      assert.equal(await page.locator('#works-set').evaluate(n=>n.open),true);await page.locator('#form-disc-tabs .segment-select').last().click();assert.equal(await page.locator('#works-set').evaluate(n=>n.open),true);
       assert.deepEqual(state.doc.cds,cds);
     }finally{await f.close();}
   });
