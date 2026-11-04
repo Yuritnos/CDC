@@ -11,8 +11,9 @@ function cover(title, subtitle, color) {
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 function makeTrialDoc() {
+  const now=Date.now(), added=(i)=>now-i*86400000;
   const setCover={photo:cover('Studio Anthology','2 CD + 1 VINYL','#263f50')};
-  const members=['cd','cd','vinyl'].map((medium,i)=>({id:'trial-mixed-'+(i+1),title:'Studio Anthology',medium,addedAt:10-i,
+  const members=['cd','cd','vinyl'].map((medium,i)=>({id:'trial-mixed-'+(i+1),title:'Studio Anthology',medium,addedAt:added(i),
     set:{id:'trial-anthology',title:'Studio Anthology',disc:i+1,total:3,cover:setCover,shared:{label:'PMCO Sample Editions'}},
     label:'PMCO Sample Editions',releaseYear:'2026',performers:[{role:'Orchestra',name:'PMCO Ensemble'}],
     ...(medium==='vinyl'?{recordSize:'12 inch',recordSpeed:'33⅓',recordColour:'Black'}:{}),
@@ -21,11 +22,11 @@ function makeTrialDoc() {
       {title:'II. Returning',duration:'6:18',...(medium==='vinyl'?{position:'B1'}:{})}
     ]}]}));
   return {cds:[...members,
-    {id:'trial-cd',title:'Piano Sketches',photo:cover('Piano Sketches','COMPACT DISC','#5a687f'),addedAt:6,performers:[{role:'Pianist',name:'Sample Pianist'}],works:[{title:'Three sketches',duration:'12:40',tracks:[]}]},
-    {id:'trial-vinyl',title:'Blue Hour',medium:'vinyl',photo:cover('Blue Hour','VINYL · 45 RPM','#466d70'),recordSize:'12 inch',recordSpeed:'45',addedAt:5,works:[{title:'Blue Hour',tracks:[{title:'First Light',position:'A1',duration:'5:20'},{title:'Nightfall',position:'B1',duration:'7:12'}]}]},
-    {id:'trial-tape',title:'Summer Tape',medium:'cassette',photo:cover('Summer Tape','CASSETTE · SIDE A / B','#95684f'),tapeType:'Type II',noiseReduction:'Dolby B',addedAt:4,works:[{title:'Summer Tape',tracks:[{title:'Side A',position:'A1',duration:'18:00'},{title:'Side B',position:'B1',duration:'19:00'}]}]},
-    {id:'trial-sacd',title:'Surround Sessions',medium:'sacd',photo:cover('Surround Sessions','HYBRID SACD','#645b78'),sacdHybrid:'Hybrid: CD + SACD',audioPrograms:'Stereo / 5.1 surround',addedAt:3,works:[{title:'Surround Sessions',duration:'32:15',tracks:[]}]},
-    {id:'trial-usb',title:'Archive Edition',medium:'usb',photo:cover('Archive Edition','USB · 16 GB','#526654'),capacity:'16 GB',addedAt:2,notes:'Sample USB release. Audio files can be attached in the desktop app.'}
+    {id:'trial-cd',title:'Piano Sketches',photo:cover('Piano Sketches','COMPACT DISC','#5a687f'),addedAt:added(3),performers:[{role:'Pianist',name:'Sample Pianist'}],works:[{title:'Three sketches',duration:'12:40',tracks:[]}]},
+    {id:'trial-vinyl',title:'Blue Hour',medium:'vinyl',photo:cover('Blue Hour','VINYL · 45 RPM','#466d70'),recordSize:'12 inch',recordSpeed:'45',addedAt:added(4),works:[{title:'Blue Hour',tracks:[{title:'First Light',position:'A1',duration:'5:20'},{title:'Nightfall',position:'B1',duration:'7:12'}]}]},
+    {id:'trial-tape',title:'Summer Tape',medium:'cassette',photo:cover('Summer Tape','CASSETTE · SIDE A / B','#95684f'),tapeType:'Type II',noiseReduction:'Dolby B',addedAt:added(5),works:[{title:'Summer Tape',tracks:[{title:'Side A',position:'A1',duration:'18:00'},{title:'Side B',position:'B1',duration:'19:00'}]}]},
+    {id:'trial-sacd',title:'Surround Sessions',medium:'sacd',photo:cover('Surround Sessions','HYBRID SACD','#645b78'),sacdHybrid:'Hybrid: CD + SACD',audioPrograms:'Stereo / 5.1 surround',addedAt:added(6),works:[{title:'Surround Sessions',duration:'32:15',tracks:[]}]},
+    {id:'trial-usb',title:'Archive Edition',medium:'usb',photo:cover('Archive Edition','USB · 16 GB','#526654'),capacity:'16 GB',addedAt:added(7),notes:'Sample USB release. Audio files can be attached in the desktop app.'}
   ],meta:{albums:[{id:'trial-favorite',name:'Sample favorites',cdIds:['trial-mixed-1','trial-mixed-2','trial-mixed-3','trial-vinyl']}],playlists:[],order:{all:[],music:[]},settings:{lang:'en'}},sync:{metaAt:0,deleted:{}}};
 }
 function writeDoc(doc) {
@@ -52,6 +53,11 @@ function start(port=Number(process.env.PMCO_TRIAL_PORT)||4173) {
       const url=new URL(req.url,origin);
       if(req.method==='GET'&&(url.pathname==='/'||url.pathname==='/index.html'))return send(200,'text/html; charset=utf-8',trialHtml());
       if(req.method==='GET'&&url.pathname==='/build.js')return send(200,'text/javascript','/* local trial; installer metadata unchanged */');
+      if(req.method==='GET'&&url.pathname==='/api/ping')return send(204,'text/plain','');
+      if(req.method==='GET'&&url.pathname==='/favicon.ico')return send(204,'image/x-icon','');
+      if(req.method==='GET'&&/^\/fonts\/[a-z0-9-]+\.(css|woff2)$/.test(url.pathname)) {
+        return send(200,url.pathname.endsWith('.css')?'text/css; charset=utf-8':'font/woff2',fs.readFileSync(path.join(root,'src',url.pathname)));
+      }
       if(url.pathname==='/api/data') {
         if(req.method==='GET')return send(200,'application/json',fs.readFileSync(trialFile));
         if(req.method==='PUT'){writeDoc(await body(req));return send(200,'application/json','{"ok":true}');}

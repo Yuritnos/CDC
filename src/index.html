@@ -8,9 +8,8 @@
 <!-- Written by the GitHub build (build number and date for Settings → About); absent elsewhere. -->
 <script src="build.js"></script>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+JP:wght@600&family=Noto+Serif+SC:wght@600&display=swap">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2215%22 fill=%22%232b3990%22/%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%225%22 fill=%22white%22/%3E%3C/svg%3E">
 <style>
 /* Layout: header with language and account, an albums bar, then a grid of square cover cards.
    Adding, editing, albums and settings all open as floating windows over the shelf.
@@ -261,6 +260,7 @@ label.lbl, legend, .sect h3 {
 .input[aria-invalid="true"] { border-color: var(--danger); }
 .err { margin: 0; color: var(--danger); font-size: 13px; }
 .err:empty { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .dup-warn { margin: 0 0 12px; padding: 10px 12px; font-size: 13.5px; color: var(--ink); background: var(--accent-soft); border-left: 3px solid var(--danger); border-radius: 3px; }
 .dup-warn[hidden] { display: none; }
 .restore { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
@@ -634,7 +634,11 @@ details.more[open] > summary { margin-bottom: 14px; }
 .panel.stats-panel { width: min(720px, 100%); }
 .stat-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(110px, 100%), 1fr)); gap: 10px; margin-bottom: 22px; }
 .stat-tile { padding: 12px 14px; background: var(--field); border: 1px solid var(--line); border-radius: 4px; }
-.stat-tile b { display: block; font-family: var(--font-display); font-size: 28px; font-weight: 600; line-height: 1.1; }
+.stat-tile b { display: block; font-family: var(--font-display); font-size: 28px; font-weight: 600; line-height: 1.1; white-space: nowrap; }
+.stat-tile.time b { font-size: 21px; }
+.stat-tile.time { grid-column: 1 / -1; }
+.storage-notice { padding: 12px 20px; background: var(--surface); color: var(--danger); border-bottom: 1px solid var(--danger); display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; }
+.cd-save-actions { position: sticky; bottom: -24px; z-index: 4; background: var(--surface); padding: 12px 0; border-top: 1px solid var(--line); }
 .stat-tile span { font-size: 12.5px; color: var(--muted); }
 .stat-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 22px 28px; }
 .stat-group h3 { margin: 0 0 10px; font-family: var(--font-mono); font-size: 11px; font-weight: 400; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); }
@@ -676,6 +680,7 @@ details.more[open] > summary { margin-bottom: 14px; }
   display: grid;
   grid-template-columns: repeat(auto-fill, min(var(--card-w), 100%));
   gap: clamp(12px, calc(var(--card-w) * 0.095), 20px);
+  justify-content: center;
 }
 .card {
   min-width: 0;
@@ -1173,6 +1178,31 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 </style>
 </head>
 <body>
+<div id="storage-notice" class="storage-notice" role="alert" hidden>
+  <span data-i18n="storagePending">Changes are not saved. Keep PMCO open and retry.</span>
+  <button type="button" class="btn small" id="storage-retry" data-i18n="retrySave">Retry save</button>
+</div>
+<div class="overlay" id="win-recovery" hidden>
+  <section class="panel narrow" role="dialog" aria-modal="true" aria-labelledby="recovery-h">
+    <h2 id="recovery-h" data-i18n="recoveryHead">Your collection could not be opened</h2>
+    <p class="hint" data-i18n="recoveryHint">No changes will be saved or synced until your collection is recovered. Retry opening it, or restore a backup. The unreadable file will be preserved before replacement.</p>
+    <div id="recovery-backups" hidden>
+      <label for="recovery-list" data-i18n="backupsHead">Go back to a backup</label>
+      <select class="input" id="recovery-list"></select>
+      <button type="button" class="btn" id="recovery-restore" data-i18n="backupRestoreYes">Restore this backup</button>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn quiet" id="recovery-retry" data-autofocus data-i18n="retryOpen">Retry opening</button>
+      <button type="button" class="linkbtn" id="recovery-new" data-i18n="recoveryNew">Start a new collection…</button>
+    </div>
+    <div class="ask-box" id="recovery-new-ask" hidden>
+      <p class="hint" data-i18n="recoveryNewAsk">Start with an empty collection? The current file will be kept separately for recovery.</p>
+      <button type="button" class="btn danger" id="recovery-new-yes" data-i18n="recoveryNewYes">Preserve file and start new</button>
+      <button type="button" class="btn quiet" id="recovery-new-no" data-i18n="cancel">Cancel</button>
+    </div>
+    <p class="err" id="recovery-error" role="alert"></p>
+  </section>
+</div>
 <div class="shell">
   <header class="top">
     <div class="disc" style="--s:46px" aria-hidden="true"></div>
@@ -1222,7 +1252,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     <p class="local-note" id="local-note" hidden data-i18n="localNote">Saving is not available in this view, so CDs are kept in this browser only.</p>
     <div class="tools">
       <span class="count" id="count">Loading</span>
-      <input class="input" id="search" type="search" data-i18n-ph="searchPh" placeholder="Search title, composer or performer" data-i18n-aria="searchAria" aria-label="Search your collection" hidden>
+      <input class="input" id="search" type="search" data-i18n-ph="searchPh" placeholder="Search your collection" data-i18n-aria="searchAria" aria-label="Search your collection" hidden>
       <div class="sort" id="sort-wrap" hidden>
         <span id="sort-label" data-i18n="sort">Sort</span>
         <select class="input" id="sort">
@@ -1514,7 +1544,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       </fieldset>
 
       <p class="dup-warn" id="dup-warn" role="alert" hidden></p>
-      <div class="actions">
+      <p class="err" id="form-save-error" role="alert" hidden data-i18n="formSaveFailed">Could not save. Your draft is still open. Choose Save to retry.</p>
+      <div class="actions cd-save-actions">
         <button class="btn" id="submit" type="submit">Add to collection</button>
         <button class="btn quiet" id="cancel-edit" type="button" hidden data-i18n="cancel">Cancel</button>
       </div>
@@ -1570,6 +1601,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       <p class="hint" data-i18n="cardDefaultHint">New CDs use this. Each CD can choose its own when you edit it.</p>
     </div>
 
+    <div class="sect" id="audio-location-sect" hidden>
+      <h3 data-i18n="audioLocation">Audio storage folder</h3>
+      <p class="hint" id="audio-location-path" style="overflow-wrap:anywhere"></p>
+      <p class="hint" data-i18n="audioLocationHint">Choose a folder on this computer. PMCO creates a PMCO Audio subfolder, copies and verifies your existing audio, then uses it for imports and CD extraction. Previous copies stay in the old folder. This setting is not synced.</p>
+      <button type="button" class="btn small quiet" id="audio-location-choose" data-i18n="audioLocationChoose">Choose folder…</button>
+      <p class="hint" id="audio-location-status" role="status"></p>
+    </div>
     <div class="sect" id="data-sect">
       <h3 data-i18n="dataSection">Your data</h3>
       <div class="btnrow">
@@ -2753,6 +2791,101 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     setupMediumSuggestions(); updateSideEditor(); renumberTracks();
   }
 
+  Object.assign(I18N.en, {
+    "storagePending": "Changes are not saved. Keep PMCO open and retry.",
+    "retrySave": "Retry save",
+    "recoveryHead": "Your collection could not be opened",
+    "recoveryHint": "No changes will be saved or synced until your collection is recovered. Retry opening it, or restore a backup. The unreadable file will be preserved before replacement.",
+    "retryOpen": "Retry opening",
+    "recoveryNew": "Start a new collection…",
+    "recoveryNewAsk": "Start with an empty collection? The current file will be kept separately for recovery.",
+    "recoveryNewYes": "Preserve file and start new",
+    "recoveryFailed": "Recovery failed. The original collection has not been replaced. Check access to the data folder and try again.",
+    "formSaveFailed": "Could not save. Your draft is still open. Choose Save to retry.",
+    "audioLocation": "Audio storage folder",
+    "audioLocationHint": "Choose a folder on this computer. PMCO creates a PMCO Audio subfolder, copies and verifies your existing audio, then uses it for imports and CD extraction. Previous copies stay in the old folder. This setting is not synced.",
+    "audioLocationChoose": "Choose folder…",
+    "audioLocationBusy": "Copying and verifying audio. Keep PMCO open…",
+    "audioLocationDone": "Audio folder changed. Previous copies remain in the old folder.",
+    "audioLocationFailed": "Could not change the audio folder. Use an available, writable folder with an empty PMCO Audio subfolder. Your previous location and files are retained.",
+    "audioLocationUnavailable": "Audio folder unavailable. Reconnect the drive and reopen Settings.",
+    "audioLocationDraft": "Finish or discard the open release draft before changing the audio folder.",
+    "searchPh": "Search your collection",
+    "toastRemoved": "Deleted “{title}”",
+    "toastRemovedN": "Deleted {n} items",
+    "favoriteTally.one": "{n} favorite list",
+    "favoriteTally.other": "{n} favorite lists",
+    "physicalTally.one": "Physical item",
+    "physicalTally.other": "Physical items",
+    "workTally.one": "Work",
+    "workTally.other": "Works",
+    "coverColumn": "Cover",
+    "statsAlbumLabel.one": "Album",
+    "statsAlbumLabel.other": "Albums"
+  });
+  Object.assign(I18N.ja, {
+    "storagePending": "変更はまだ保存されていません。PMCOを閉じずに再試行してください。",
+    "retrySave": "保存を再試行",
+    "recoveryHead": "コレクションを開けませんでした",
+    "recoveryHint": "復旧するまで保存と同期を停止します。再度開くか、バックアップを復元してください。置き換える前に読み取れないファイルを別に保存します。",
+    "retryOpen": "もう一度開く",
+    "recoveryNew": "新しいコレクションを開始…",
+    "recoveryNewAsk": "空のコレクションを開始しますか？現在のファイルは復旧用に別途保存されます。",
+    "recoveryNewYes": "ファイルを保全して開始",
+    "recoveryFailed": "復旧できませんでした。元のコレクションは置き換えていません。データフォルダーへのアクセスを確認して再試行してください。",
+    "formSaveFailed": "保存できませんでした。編集中の内容は残っています。「保存」で再試行できます。",
+    "audioLocation": "音声の保存先",
+    "audioLocationHint": "このコンピューターのフォルダーを選びます。PMCO Audioサブフォルダーを作成し、既存の音声をコピー・検証してから、音声の追加とCD取り込みに使用します。以前のコピーは元の場所に残ります。この設定は同期されません。",
+    "audioLocationChoose": "フォルダーを選択…",
+    "audioLocationBusy": "音声をコピー・検証しています。PMCOを閉じないでください…",
+    "audioLocationDone": "音声の保存先を変更しました。以前のコピーは元の場所に残っています。",
+    "audioLocationFailed": "保存先を変更できませんでした。書き込み可能で、PMCO Audioサブフォルダーが空のフォルダーを選んでください。以前の保存先とファイルは保持されます。",
+    "audioLocationUnavailable": "音声フォルダーを利用できません。ドライブを接続し、設定を開き直してください。",
+    "audioLocationDraft": "保存先を変更する前に、編集中のリリースを保存または破棄してください。",
+    "searchPh": "コレクションを検索",
+    "toastRemoved": "「{title}」を削除しました",
+    "favoriteTally.one": "お気に入りリスト{n}件",
+    "favoriteTally.other": "お気に入りリスト{n}件",
+    "physicalTally.one": "メディア",
+    "physicalTally.other": "メディア",
+    "workTally.one": "作品",
+    "workTally.other": "作品",
+    "coverColumn": "カバー",
+    "statsAlbumLabel.one": "アルバム",
+    "statsAlbumLabel.other": "アルバム"
+  });
+  Object.assign(I18N.zh, {
+    "storagePending": "更改尚未保存。请保持PMCO打开并重试。",
+    "retrySave": "重试保存",
+    "recoveryHead": "无法打开您的收藏",
+    "recoveryHint": "恢复收藏前将暂停保存和同步。请重新打开或恢复备份；替换前会另行保留无法读取的原文件。",
+    "retryOpen": "重新打开",
+    "recoveryNew": "新建空白收藏…",
+    "recoveryNewAsk": "确定从空白收藏开始？当前文件将另行保留以供恢复。",
+    "recoveryNewYes": "保留原文件并新建",
+    "recoveryFailed": "恢复失败，原收藏尚未替换。请检查数据文件夹的访问权限后重试。",
+    "formSaveFailed": "保存失败，编辑内容仍然保留。请点击保存重试。",
+    "audioLocation": "音频保存文件夹",
+    "audioLocationHint": "选择本机文件夹。PMCO将创建PMCO Audio子文件夹，复制并校验现有音频后，用于音频导入和CD提取。旧位置中的副本将保留。此设置不会同步到其他电脑。",
+    "audioLocationChoose": "选择文件夹…",
+    "audioLocationBusy": "正在复制并校验音频，请保持PMCO打开…",
+    "audioLocationDone": "已更改音频保存位置，原位置中的副本仍保留。",
+    "audioLocationFailed": "无法更改音频位置。请选择可访问、可写且PMCO Audio子文件夹为空的位置。原位置和文件仍然保留。",
+    "audioLocationUnavailable": "音频文件夹不可用，请重新连接磁盘并打开设置。",
+    "audioLocationDraft": "更改音频位置前，请先保存或放弃正在编辑的发行。",
+    "searchPh": "搜索收藏",
+    "toastRemoved": "已删除《{title}》",
+    "favoriteTally.one": "{n}个收藏夹",
+    "favoriteTally.other": "{n}个收藏夹",
+    "physicalTally.one": "实体媒介",
+    "physicalTally.other": "实体媒介",
+    "workTally.one": "作品",
+    "workTally.other": "作品",
+    "coverColumn": "封面",
+    "statsAlbumLabel.one": "专辑",
+    "statsAlbumLabel.other": "专辑"
+  });
+
   var LANGS = {
     en: { tag: "en", name: "English" },
     ja: { tag: "ja", name: "日本語" },
@@ -2803,6 +2936,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function tn(base, n) { return t(base + (n === 1 ? ".one" : ".other"), { n: n }); }
   /* Like tn, with more values to fill in; vars.n picks the form. */
   function tnv(base, vars) { return t(base + (Number(vars.n) === 1 ? ".one" : ".other"), vars); }
+
 
   /* ---------- state ---------- */
   var cds = [];
@@ -3092,6 +3226,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function closeWin(id, force) {
     var ov = $("win-" + id);
     if (ov.hidden || ov.classList.contains("is-closing")) return;
+    if (id === "recovery" && !force) return;
+    if (id === "settings" && audioLocationBusy) return;
     if (id === "cd" && CdDrive && CdDrive.busy) { CdDrive.cancel(true, force); return; }
     if (id === "cd" && ((discSession && discSession.saving) || (formAudio && formAudio.saving))) return;
     if (id === "cd" && !force && cdFormDirty()) { openWin("cd-unsaved"); return; }
@@ -3134,6 +3270,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     });
   });
   document.addEventListener("keydown", function (e) {
+    if ((!$("win-recovery").hidden || audioLocationBusy) && (e.ctrlKey || e.metaKey) && ["n", "f", "s"].indexOf(e.key.toLowerCase()) >= 0) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && !$("win-cd").hidden && stack[stack.length-1] === "cd") {
+      e.preventDefault();
+      if (!e.isComposing && !$("submit").disabled && !discEditorBusy()) $("cd-form").requestSubmit($("submit"));
+      return;
+    }
     if (!stack.length) return;
     var id = stack[stack.length - 1];
     if (e.key === "Escape") { e.preventDefault(); closeWin(id); return; }
@@ -4391,12 +4533,17 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function albumsOf(cdId) {
     return meta.albums.filter(function (a) { return a.cdIds.indexOf(cdId) !== -1; });
   }
-  function commitMeta(mutate) {
-    var next = clone(meta);
+  function commitMeta(mutate, strict) {
+    if (window.CDC_DESKTOP && !loaded) return Promise.resolve(false);
+    var before = meta, next = clone(meta);
     mutate(next);
     meta = next;
     renderAll();
-    if (backend) backend.saveMeta();
+    if (backend) return Promise.resolve(backend.saveMeta()).then(function () { return true; }).catch(function () {
+      if (strict && meta === next) { meta = before; renderAll(); }
+      $("storage-notice").hidden = false; return false;
+    });
+    return Promise.resolve(true);
   }
   function setMembership(cdId, albumIds) {
     var changed = false;
@@ -4453,7 +4600,8 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
      Their audio copies are deleted only once Undo is no longer offered. */
   async function removeCds(list) {
     var before = clone(meta);
-    for (var i = 0; i < list.length; i++) await backend.remove(list[i].id);
+    if (backend.saveRelease) await backend.saveRelease([], list.map(function (cd) { return cd.id; }), []);
+    else for (var i = 0; i < list.length; i++) await backend.remove(list[i].id);
     finishDiscRemoval(list, before);
   }
   function finishDiscRemoval(list, before, message) {
@@ -4473,9 +4621,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var msg = message || (list.length === 1 ? t("toastRemoved", { title: list[0].title }) : t("toastRemovedN", { n: list.length }));
     toast(msg, backend.restore ? {
       label: t("undo"),
-      run: async function () {
+      run: async function restoreRemoved() {
         clearTimeout(audioTimer);
-        for (var j = 0; j < copies.length; j++) await undoRemove(copies[j], before, true);
+        var restored = true;
+        for (var j = 0; j < copies.length; j++) if (!await undoRemove(copies[j], before, true)) restored = false;
+        if (!restored) { toast(t("toastSaveFail"), {label:t("retrySave"),run:restoreRemoved}); return; }
         toast(copies.length === 1 ? t("toastRestored", { title: copies[0].title }) : t("toastRestoredN", { n: copies.length }));
       }
     } : null);
@@ -4486,7 +4636,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   /* Undo removing a CD: it comes back, with its places in favorites, playlists and the custom
      orders as they were (`before` is the favorites/playlists data from just before the removal). */
   async function undoRemove(cd, before, quiet) {
-    try { await backend.restore(cd); } catch (e) { toast(t("toastSaveFail")); return; }
+    try { await backend.restore(cd); } catch (e) { toast(t("toastSaveFail")); return false; }
     var id = cd.id;
     /* Each entry of the CD in the old list goes back at its old position (or the end). */
     function putBack(list, old, mine, same) {
@@ -4496,7 +4646,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     }
     var isId = function (x) { return x === id; };
     var sameId = function (a, b) { return a === b; };
-    commitMeta(function (m) {
+    var saved = await commitMeta(function (m) {
       m.albums.forEach(function (a) {
         var old = (before.albums || []).filter(function (b) { return b.id === a.id; })[0];
         if (old) putBack(a.cdIds, old.cdIds, isId, sameId);
@@ -4511,7 +4661,9 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         if (before.order && before.order[k]) putBack(m.order[k], before.order[k], isId, sameId);
       });
     });
+    if (!saved) return false;
     if (!quiet) toast(t("toastRestored", { title: cd.title }));
+    return true;
   }
   function applyMeta(raw) {
     meta = normMeta(raw);
@@ -4679,7 +4831,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function desktopBackend() {
     var items = [];
     var syncInfo = { metaAt: 0, deleted: {} };
-    var saving = false, again = false, savePromise = Promise.resolve();
+    var writes = Promise.resolve(), ready = false, committed = null;
     /* Write covers that are still pictures to files (the CD's updatedAt stays as it is). */
     async function storeCovers() {
       if (!Covers.ready) return;
@@ -4700,26 +4852,22 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         }
       }
     }
-    function persist(fromSync, strict) {
+    async function persist(fromSync) {
+      if (!ready) throw new Error("collection_unreadable");
+      await storeCovers();
+      var doc = clone({ cds: items, meta: meta, sync: syncInfo });
+      await Store.save(doc);
+      committed = doc;
+      $("storage-notice").hidden = true;
       if (!fromSync) Cloud.changed();
-      if (saving) { again = true; return strict ? savePromise.then(function () { return persist(fromSync, true); }) : Promise.resolve(); }
-      saving = true;
-      var failure = null;
-      savePromise = storeCovers().then(function () {
-        return Store.save({ cds: items, meta: meta, sync: syncInfo });
-      }).catch(function (error) {
-        failure = error;
-        toast(t("toastSaveFail"));
-      }).then(function () {
-        saving = false;
-        if (again) { again = false; return persist(true, strict); }
-      }).then(function () { if (strict && failure) throw failure; });
-      return savePromise;
     }
-    return {
+    var api = {
       kind: "desktop",
       start: function () {
-        Store.load().then(async function (d) {
+        return Store.load().then(async function (d) {
+          if (!d || !Array.isArray(d.cds)) throw new Error("collection_unreadable");
+          ready = true;
+          closeWin("recovery", true);
           if (Covers.ready) { try { await Covers.rootDir(); } catch (e) { Covers.ready = false; } }
           items = Array.isArray(d && d.cds) ? d.cds : [];
           if (d && d.user) { acct.name = d.user; acct.loading = false; }
@@ -4730,32 +4878,32 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
             account: (s && s.account) || ""
           };
           meta = normMeta(d && d.meta);
+          committed = clone({ cds: items, meta: meta, sync: syncInfo });
           setCds(items.slice());
           applyMeta(d && d.meta);
           Cloud.start();
           if (Covers.ready) {
             /* Collections saved before covers became files: move the pictures out once. Then cover
                files that neither the collection nor a backup uses any more are deleted. */
-            if (items.some(function (c) { return (c.photo && /^data:image\//.test(c.photo)) || (c.set && c.set.cover && c.set.cover.photo); })) await persist(true);
+            if (items.some(function (c) { return (c.photo && /^data:image\//.test(c.photo)) || (c.set && c.set.cover && c.set.cover.photo); })) {
+              try { await api.retry(); } catch (e) { $("storage-notice").hidden = false; }
+            }
             Covers.call("tidy_covers").catch(function () { /* tidied next time */ });
           }
         }).catch(function () {
-          setCds([]);
-          toast(t("toastSaveFail"));
+          ready = false; loaded = false;
+          showRecovery();
         });
       },
-      add: async function (cd, prospectiveId, strict) {
-        var previous = items;
+      add: async function (cd, prospectiveId) {
         cd.id = prospectiveId || "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
         cd.updatedAt = Date.now();
         items = [cd].concat(items);
+        await persist();
         setCds(items.slice());
-        try { await persist(false, strict); }
-        catch (error) { if (strict) { items = previous; setCds(items.slice()); } throw error; }
         return cd.id;
       },
-      update: async function (id, cd, strict) {
-        var previous = items;
+      update: async function (id, cd) {
         items = items.map(function (i) {
           if (i.id !== id) return i;
           var n = Object.assign({}, cd);
@@ -4763,27 +4911,25 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           n.updatedAt = Date.now();
           return n;
         });
+        await persist();
         setCds(items.slice());
-        try { await persist(false, strict); }
-        catch (error) { if (strict) { items = previous; setCds(items.slice()); } throw error; }
       },
       remove: async function (id) {
         items = items.filter(function (i) { return i.id !== id; });
         syncInfo.deleted[id] = Date.now();
-        setCds(items.slice());
         await persist();
+        setCds(items.slice());
       },
       /* One atomic document save for a release edit, linking or multi-disc import. */
       changeDiscs: async function (changes, removed) {
-        var previous = clone(items), oldDeleted = Object.assign({}, syncInfo.deleted), stamp = Date.now(), byId = {};
+        var stamp = Date.now(), byId = {};
         var gone = removed || [];
         changes.forEach(function (c) { byId[c.id] = Object.assign({}, c, { updatedAt: stamp }); });
         items = items.filter(function (c) { return gone.indexOf(c.id) < 0; }).map(function (c) { var n = byId[c.id]; if (n) delete byId[c.id]; return n || c; });
         gone.forEach(function (id) { delete byId[id]; });
         Object.keys(byId).forEach(function (id) { items.push(byId[id]); });
         gone.forEach(function (id) { syncInfo.deleted[id] = stamp; });
-        try { await persist(false, true); }
-        catch (e) { items = previous; syncInfo.deleted = oldDeleted; setCds(items.slice()); throw e; }
+        await persist();
         setCds(items.slice());
       },
       /* Undo a removal: the CD comes back with its own id, as a newer change than the removal. */
@@ -4793,12 +4939,33 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         delete syncInfo.deleted[c.id];
         items = items.filter(function (i) { return i.id !== c.id; }).concat([c]);
         items.sort(function (a, b) { return (b.addedAt || 0) - (a.addedAt || 0); });
-        setCds(items.slice());
         await persist();
+        setCds(items.slice());
       },
       saveMeta: function () {
         syncInfo.metaAt = Date.now();
-        persist();
+        return persist();
+      },
+      retry: function () { return persist(); },
+      saveRelease: async function (changes, removed, favorites) {
+        var byId = {}, stamp = Date.now();
+        changes.forEach(function (cd) { byId[cd.id] = Object.assign({}, cd, { updatedAt: stamp }); });
+        items = items.filter(function (cd) { return removed.indexOf(cd.id) < 0; }).map(function (cd) { var next = byId[cd.id]; delete byId[cd.id]; return next || cd; });
+        Object.keys(byId).forEach(function (id) { items.push(byId[id]); });
+        removed.forEach(function (id) { syncInfo.deleted[id] = stamp; });
+        var nextMeta = clone(meta);
+        favorites.forEach(function (choice) {
+          nextMeta.albums.forEach(function (album) {
+            var has = album.cdIds.indexOf(choice.id) >= 0, want = choice.ids.indexOf(album.id) >= 0;
+            if (has && !want) album.cdIds = album.cdIds.filter(function (id) { return id !== choice.id; });
+            if (!has && want) album.cdIds.push(choice.id);
+          });
+        });
+        nextMeta.albums.forEach(function (album) { album.cdIds = album.cdIds.filter(function (id) { return removed.indexOf(id) < 0; }); });
+        nextMeta.playlists.forEach(function (pl) { pl.items = pl.items.filter(function (entry) { return removed.indexOf(entry.cdId) < 0; }); });
+        meta = nextMeta; syncInfo.metaAt = stamp;
+        await persist();
+        setCds(items.slice());
       },
       /* Take in CDs and favorites/playlists from a backup or an exported file. replace: the
          collection becomes exactly that (CDs not in it are removed, also from the account when
@@ -4839,20 +5006,22 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         }
         items.sort(function (a, b) { return (b.addedAt || 0) - (a.addedAt || 0); });
         syncInfo.metaAt = now;
+        await persist();
         setCds(items.slice());
         applyMeta(meta);
-        await persist();
         return incoming.length;
       },
       /* For the sync engine: a copy of what is here now, and a way to take in what it found. */
       snapshot: function () {
-        return { items: items.slice(), meta: clone(meta), metaAt: syncInfo.metaAt, deleted: Object.assign({}, syncInfo.deleted), account: syncInfo.account };
+        if (!ready) throw new Error("collection_unreadable");
+        var doc = committed || { cds: [], meta: normMeta(null), sync: { metaAt: 0, deleted: {}, account: "" } };
+        return { items: clone(doc.cds), meta: clone(doc.meta), metaAt: doc.sync.metaAt, deleted: clone(doc.sync.deleted), account: doc.sync.account };
       },
       /* got: CDs from the account (newer than ours, or new to us); gone: ids removed elsewhere;
          sent: removal markers the account now has; remoteMeta: favorites and settings to take in.
          Anything changed here since the snapshot was taken is kept as it is. */
-      applySync: function (snap, got, gone, sent, remoteMeta, account) {
-        var changed = false;
+      applySync: async function (snap, got, gone, sent, remoteMeta, account) {
+        var changed = false, removedHere = [];
         if (syncInfo.account !== account) { syncInfo.account = account; changed = true; }
         var before = {};
         snap.items.forEach(function (c) { before[c.id] = c.updatedAt || c.addedAt || 0; });
@@ -4879,8 +5048,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
             if (drop[c.id] && stillSame(c)) {
               changed = true;
               /* Removed on another computer: its audio copies here go too. */
-              dropEntries(function (e) { return e.cdId === c.id; });
-              if (AudioLib.ready) AudioLib.call("remove_cd_audio", { cdId: c.id }).catch(function () {});
+              removedHere.push(c.id);
               return false;
             }
             return true;
@@ -4893,16 +5061,46 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           meta = normMeta(remoteMeta.data);
           syncInfo.metaAt = remoteMeta.at;
           changed = true;
-          applyMeta(meta);
         }
         if (changed) {
           items.sort(function (a, b) { return (b.addedAt || 0) - (a.addedAt || 0); });
+          await persist(true);
           setCds(items.slice());
-          return persist(true);
+          applyMeta(meta);
+          removedHere.forEach(function (id) {
+            dropEntries(function (e) { return e.cdId === id; });
+            if (AudioLib.ready) AudioLib.call("remove_cd_audio", { cdId: id }).catch(function () {});
+          });
         }
       }
     };
+    // Serialize whole mutations, so a failed write cannot roll back a later successful edit.
+    ["add", "update", "remove", "changeDiscs", "restore", "saveMeta", "saveRelease", "importDoc", "applySync", "retry"].forEach(function (key) {
+      var action = api[key];
+      api[key] = function () {
+        var args = arguments;
+        var result = writes.then(async function () {
+          if (!ready) throw new Error("collection_unreadable");
+          var oldItems = clone(items), oldSync = clone(syncInfo), oldMeta = meta;
+          try { return await action.apply(api, args); }
+          catch (error) {
+            var pendingMetaAt = syncInfo.metaAt;
+            items = oldItems; syncInfo = oldSync;
+            if (key === "saveMeta" || key === "retry") syncInfo.metaAt = pendingMetaAt;
+            if (key === "saveRelease" || key === "importDoc" || key === "applySync") meta = oldMeta;
+            if (key === "saveMeta" || key === "retry") $("storage-notice").hidden = false;
+            setCds(items.slice());
+            if (String(error).indexOf("collection_unreadable") >= 0) { ready = false; loaded = false; showRecovery(); }
+            throw error;
+          }
+        });
+        writes = result.catch(function () {});
+        return result;
+      };
+    });
+    return api;
   }
+
   /* ---------- accounts and sync (Supabase) ----------
      Optional: six-digit email codes are preferred; accept 6–10 during hosted config changes. While signed in, each change is
      sent to their account and changes from their other devices are merged in; for each CD the newer
@@ -5673,7 +5871,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         lab.appendChild(el("span", null, k === "medium" ? mediumCategoryText(v) : k === "type" ? workTypeText(v) : k === "performer" ? JSON.parse(v)[1] : v));
         options.appendChild(lab);
       });
-      if (!visible.length) options.appendChild(el("p", "hint", t(k === "performer" && !filterRole ? "fChooseRole" : "statsNone")));
+      if (!visible.length && !(k === "performer" && !filterRole)) options.appendChild(el("p", "hint", t(k === "performer" && !filterRole ? "fChooseRole" : "statsNone")));
       box.appendChild(options);
       options.scrollTop = scrolls[options.id] || 0;
       if (k === "performer" && filters.performer.length) {
@@ -5744,12 +5942,13 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       d.appendChild(el("b", null, String(value)));
       d.appendChild(el("span", null, label));
       tiles.appendChild(d);
+      return d;
     }
-    tile(albumCountFor(cds), t("statsAlbums"));
-    tile(cds.length, t("statsCds"));
-    tile(works, t("statsWorks"));
+    tile(albumCountFor(cds), tn("statsAlbumLabel", albumCountFor(cds)));
+    tile(cds.length, tn("physicalTally", cds.length));
+    tile(works, tn("workTally", works));
     var mins = Math.max(1, Math.round(secs / 60));
-    tile(!secs ? "—" : mins >= 60 ? t("statsHours", { h: Math.floor(mins / 60), m: mins % 60 }) : t("statsMins", { m: mins }), t("statsTime"));
+    tile(!secs ? "—" : mins >= 60 ? t("statsHours", { h: Math.floor(mins / 60), m: mins % 60 }) : t("statsMins", { m: mins }), t("statsTime")).classList.add("time");
     box.appendChild(tiles);
 
     function count(keysOf) {
@@ -5781,7 +5980,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         li.appendChild(lab);
         var track = el("span", "track");
         var fill = el("span", "fill");
-        fill.style.display = "block";
+        fill.style.display = r[1] > 0 ? "block" : "none";
         fill.style.width = (r[1] / max * 100) + "%";
         track.appendChild(fill);
         li.appendChild(track);
@@ -5884,20 +6083,20 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     renderGrid();
     $("sel-all").focus({ preventScroll: true });
   });
-  $("sel-fav").addEventListener("change", function (e) {
+  $("sel-fav").addEventListener("change", async function (e) {
     var v = e.target.value;
     var ids = Object.keys(selected);
     if (!v || !ids.length) return;
     if (v === "+new") { openAlbumDlg("new", null, "favorite", ids); return; }
     var a = findAlbum(v);
     var added = 0;
-    commitMeta(function (m) {
+    var saved = await commitMeta(function (m) {
       m.albums.forEach(function (x) {
         if (x.id !== v) return;
         ids.forEach(function (id) { if (x.cdIds.indexOf(id) === -1) { x.cdIds.push(id); added++; } });
       });
     });
-    toast(t("selAdded", { n: added, name: a ? a.name : "" }));
+    if (saved) toast(t("selAdded", { n: added, name: a ? a.name : "" }));
     $("sel-fav").focus({ preventScroll: true });
   });
   $("sel-remove").addEventListener("click", function () {
@@ -5975,6 +6174,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var head = el("tr");
     ["", "lTitle", "composer", "performers", "label", "fYear", "lCatalog"].forEach(function (k) {
       var th = el("th", null, k ? t(k) : "");
+      if (!k) th.appendChild(el("span", "sr-only", t("coverColumn")));
       th.scope = "col";
       head.appendChild(th);
     });
@@ -6422,7 +6622,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("acct-note").hidden = signedIn;
     $("set-storage").textContent = !backend ? "" : signedIn ? t("acctStorageCloud") :
       t(backend.kind === "db" ? "acctStorageDb" : backend.kind === "desktop" ? "acctStorageDesktop" : "acctStorageLocal");
-    $("set-stats").textContent = loaded ? t("acctStats", { cds: cds.length, albums: meta.albums.length }) : "";
+    $("set-stats").textContent = loaded ? tn("itemTally", cds.length) + " · " + tn("favoriteTally", meta.albums.length) : "";
     renderCloud();
     if (document.activeElement !== $("card-size")) $("card-size").value = cardWidth();
     renderCardFields();
@@ -6944,6 +7144,78 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     renderGrid();
   });
   initAnimatedSelect("sort", "sort", "sort-label");
+  /* ---------- storage recovery and computer-local audio location ---------- */
+  function recoveryBusy(busy) {
+    qsa("button,select", $("win-recovery")).forEach(function (n) { n.disabled = busy; });
+  }
+  function showRecovery() {
+    $("recovery-error").textContent = "";
+    $("recovery-new").hidden = !IS_TAURI;
+    $("recovery-new-ask").hidden = true;
+    $("recovery-backups").hidden = true;
+    openWin("recovery");
+    if (!IS_TAURI) return;
+    Covers.call("list_backups").then(function (list) {
+      var select = $("recovery-list"); select.textContent = "";
+      list.forEach(function (backup) {
+        var option = el("option", null, tnv(backup.kind === "previous" ? "backupPrevious" : "backupDaily", {date:backup.date,n:backup.cds}));
+        option.value = backup.name; select.appendChild(option);
+      });
+      $("recovery-backups").hidden = !list.length;
+    }).catch(function () {});
+  }
+  async function recoverCollection(backup) {
+    recoveryBusy(true); $("recovery-error").textContent = "";
+    try {
+      await Covers.call("recover_collection", {backup:backup});
+      await backend.start();
+    } catch (e) { $("recovery-error").textContent = t("recoveryFailed"); }
+    finally { recoveryBusy(false); }
+  }
+  $("recovery-retry").addEventListener("click", async function () { recoveryBusy(true); try { await backend.start(); } finally { recoveryBusy(false); } });
+  $("recovery-restore").addEventListener("click", function () { if ($("recovery-list").value) recoverCollection($("recovery-list").value); });
+  $("recovery-new").addEventListener("click", function () { $("recovery-new-ask").hidden = false; $("recovery-new-no").focus(); });
+  $("recovery-new-no").addEventListener("click", function () { $("recovery-new-ask").hidden = true; $("recovery-new").focus(); });
+  $("recovery-new-yes").addEventListener("click", function () { recoverCollection(null); });
+  $("storage-retry").addEventListener("click", async function () {
+    var button = $("storage-retry"); button.disabled = true;
+    try { if (backend && backend.retry) await backend.retry(); else if (backend) await backend.saveMeta(); $("storage-notice").hidden = true; }
+    catch (e) { $("storage-notice").hidden = false; }
+    finally { button.disabled = false; }
+  });
+  window.addEventListener("beforeunload", function (event) {
+    if (audioLocationBusy || !$("storage-notice").hidden || (!$("win-cd").hidden && cdFormDirty())) { event.preventDefault(); event.returnValue = ""; }
+  });
+  var audioLocationBusy = false;
+  async function renderAudioLocation() {
+    $("audio-location-sect").hidden = !IS_TAURI;
+    if (!IS_TAURI) return;
+    $("audio-location-status").textContent = "";
+    try { $("audio-location-path").textContent = await AudioLib.call("audio_root_dir"); }
+    catch (e) { $("audio-location-path").textContent = t("audioLocationUnavailable"); }
+    $("audio-location-choose").disabled = audioLocationBusy || !!discSession;
+    if (discSession) $("audio-location-status").textContent = t("audioLocationDraft");
+  }
+  $("audio-location-choose").addEventListener("click", async function () {
+    if (audioLocationBusy || discSession || !loaded) return;
+    var button = $("audio-location-choose"); audioLocationBusy = true; button.disabled = true;
+    $("audio-location-status").textContent = t("audioLocationBusy");
+    try {
+      var root = await AudioLib.call("choose_audio_location");
+      if (root) {
+        var wasPlaying = !audioEl.paused, position = audioEl.currentTime;
+        audioEl.pause(); AudioLib.root = root;
+        if (currentEntry()) {
+          audioEl.src = AudioLib.url(currentEntry().file);
+          audioEl.addEventListener("loadedmetadata", function resume() { audioEl.currentTime = position; if (wasPlaying) audioEl.play().catch(function () {}); }, {once:true});
+        }
+        $("audio-location-path").textContent = root;
+      }
+      $("audio-location-status").textContent = root ? t("audioLocationDone") : "";
+    } catch (e) { $("audio-location-status").textContent = t("audioLocationFailed"); }
+    finally { audioLocationBusy = false; button.disabled = false; }
+  });
+
   /* ---------- settings window ---------- */
   $("open-settings").addEventListener("click", function () {
     closeAccount();
@@ -6952,6 +7224,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     renderAbout();
     pendingImport = null;
     renderRestore();
+    renderAudioLocation();
     openWin("settings");
   });
 
@@ -7064,7 +7337,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     } else {
       var head = ["cdTitle", "composer", "works", "performers", "label", "issuer", "recYear", "relYear"]
         .concat(DETAIL_FIELDS.map(function (f) { return f === "recordingVenue" ? "venue" : f; }), ["notes", "albumsField"])
-        .map(function (k) { return csvCell(t(k)); }).join(",");
+        .map(function (k) { return csvCell(t(k === "type" ? "cdType" : k)); }).join(",");
       var rows = sortList(cds, "all").map(function (c) {
         return [
           c.title,
@@ -7075,7 +7348,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
           c.issuer,
           c.recordingYear,
           c.releaseYear || c.year
-        ].concat(DETAIL_FIELDS.map(function (f) { return c[f]; }), [
+        ].concat(DETAIL_FIELDS.map(function (f) { return f === "medium" ? mediumText(c) : f === "type" && c.type ? workTypeText(c.type) : c[f]; }), [
           c.notes,
           albumsOf(c.id).map(function (a) { return a.name; }).join("; ")
         ]).map(csvCell).join(",");
@@ -7141,13 +7414,14 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   });
   async function finishImport(replace) {
     var doc = pendingImport;
-    pendingImport = null;
-    $("import-ask").hidden = true;
     if (!doc) return;
+    $("import-merge").disabled = true; $("import-replace").disabled = true;
     try {
       var n = await backend.importDoc(doc.cds, doc.meta, replace);
+      pendingImport = null;
       toast(tn(replace ? "importReplaced" : "importAdded", n));
     } catch (err) { toast(t("toastSaveFail")); }
+    finally { $("import-merge").disabled = false; $("import-replace").disabled = false; }
     renderRestore();
   }
   $("import-merge").addEventListener("click", function () { finishImport(false); });
@@ -7163,14 +7437,15 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   $("backup-no").addEventListener("click", function () { $("backup-ask").hidden = true; $("backup-restore").focus(); });
   $("backup-yes").addEventListener("click", async function () {
     var name = $("backup-list").value;
-    $("backup-ask").hidden = true;
+    $("backup-yes").disabled = true;
     try {
       var doc = readCdcDoc(await Covers.call("read_backup", { name: name }));
       if (!doc) throw new Error("bad");
       await backend.importDoc(doc.cds, doc.meta, true);
       toast(t("backupRestored"));
+      $("backup-ask").hidden = true;
     } catch (err) { toast(t("backupFail")); }
-    renderRestore();
+    finally { $("backup-yes").disabled = false; }
   });
 
   /* ---------- album window ---------- */
@@ -7198,50 +7473,29 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     albumDlg = { mode: "new", id: null, kind: "favorite", items: null };
     $("album-del-ask").hidden = true;
   }
-  $("album-form").addEventListener("submit", function (e) {
+  $("album-form").addEventListener("submit", async function (e) {
     e.preventDefault();
-    var name = $("album-name").value.trim();
-    var pl = albumDlg.kind === "playlist";
+    var button = $("album-save"); if (button.disabled) return;
+    var name = $("album-name").value.trim(), pl = albumDlg.kind === "playlist", creating = albumDlg.mode === "new";
     if (!name) { setErr("album-name", t(pl ? "plNameErr" : "albumNameErr")); $("album-name").focus(); return; }
-    if (pl && albumDlg.mode === "new") {
-      var pid = newPlaylistId();
-      var start = (albumDlg.items || []).map(function (x) { return { cdId: x.cdId, file: x.file }; });
-      commitMeta(function (m) { m.playlists.push({ id: pid, name: name, items: start }); });
-      /* Show the new playlist, unless it was made from a CD's profile (then stay there). */
-      if (!start.length || albumDlg.items.length > 1) {
-        currentAlbum = "pl:" + pid;
-        plOpen = true;
-        try { localStorage.setItem("cdc.plopen", "1"); } catch (err) { /* storage unavailable */ }
-      }
-      closeWin("album");
-      renderAll();
-      toast(t("plCreated", { name: name }));
-      return;
+    var id = creating ? (pl ? newPlaylistId() : newFavoriteId()) : albumDlg.id;
+    var initial = pl ? (albumDlg.items || []).map(function (x) { return { cdId:x.cdId, file:x.file }; }) : (albumDlg.items || []).filter(function (x) { return typeof x === "string"; });
+    button.disabled = true;
+    var saved = await commitMeta(function (m) {
+      var list = pl ? m.playlists : m.albums;
+      if (creating) list.push(pl ? {id:id,name:name,items:initial} : {id:id,name:name,cdIds:initial});
+      else list.forEach(function (item) { if (item.id === id) item.name = name; });
+    }, true);
+    button.disabled = false;
+    if (!saved) { setErr("album-name", t("toastSaveFail")); return; }
+    if (creating && pl && (!initial.length || initial.length > 1)) {
+      currentAlbum = "pl:" + id; plOpen = true;
+      try { localStorage.setItem("cdc.plopen", "1"); } catch (err) {}
+    } else if (creating && !pl) {
+      if (initial.length) endSelect(); currentAlbum = id; favOpen = true;
     }
-    if (pl) {
-      var pTarget = albumDlg.id;
-      changePlaylist(pTarget, function (p) { p.name = name; });
-      closeWin("album");
-      toast(t("plRenamed", { name: name }));
-      return;
-    }
-    if (albumDlg.mode === "new") {
-      var id = "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-      /* A favorite made from selected CDs starts with them. */
-      var firstIds = (albumDlg.items || []).filter(function (x) { return typeof x === "string"; });
-      commitMeta(function (m) { m.albums.push({ id: id, name: name, cdIds: firstIds }); });
-      if (firstIds.length) endSelect();
-      currentAlbum = id;
-      favOpen = true;
-      closeWin("album");
-      renderAll();
-      toast(t("toastAlbumCreated", { name: name }));
-    } else {
-      var target = albumDlg.id;
-      commitMeta(function (m) { m.albums.forEach(function (a) { if (a.id === target) a.name = name; }); });
-      closeWin("album");
-      toast(t("toastAlbumRenamed", { name: name }));
-    }
+    closeWin("album"); renderAll();
+    toast(t(pl ? creating ? "plCreated" : "plRenamed" : creating ? "toastAlbumCreated" : "toastAlbumRenamed", {name:name}));
   });
   $("album-delete").addEventListener("click", function () {
     var pl = albumDlg.kind === "playlist";
@@ -7255,12 +7509,12 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     $("album-del-ask").hidden = true;
     $("album-delete").hidden = false;
   });
-  $("album-del-yes").addEventListener("click", function () {
+  $("album-del-yes").addEventListener("click", async function () {
     if (albumDlg.kind === "playlist") {
       var p = findPlaylist(albumDlg.id);
       if (!p) { closeWin("album"); return; }
       var pName = p.name, pTarget = p.id;
-      commitMeta(function (m) { m.playlists = m.playlists.filter(function (x) { return x.id !== pTarget; }); });
+      if (!await commitMeta(function (m) { m.playlists = m.playlists.filter(function (x) { return x.id !== pTarget; }); }, true)) return;
       if (currentAlbum === "pl:" + pTarget) currentAlbum = "music";
       closeWin("album");
       renderAll();
@@ -7270,7 +7524,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var a = findAlbum(albumDlg.id);
     if (!a) { closeWin("album"); return; }
     var name = a.name, target = a.id;
-    commitMeta(function (m) { m.albums = m.albums.filter(function (x) { return x.id !== target; }); });
+    if (!await commitMeta(function (m) { m.albums = m.albums.filter(function (x) { return x.id !== target; }); }, true)) return;
     if (currentAlbum === target) currentAlbum = "all";
     closeWin("album");
     renderAll();
@@ -7438,12 +7692,11 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
         if (on) formFav.ids.push(a.id);
         renderAlbumChecks();
       },
-      function (name) {
+      async function (name) {
         var id = newFavoriteId();
         formFav.ids.push(id);
         formFav.open = true;
-        commitMeta(function (m) { m.albums.push({ id: id, name: name, cdIds: [] }); });
-        toast(t("toastAlbumCreated", { name: name }));
+        if (await commitMeta(function (m) { m.albums.push({ id: id, name: name, cdIds: [] }); })) toast(t("toastAlbumCreated", { name: name }));
       });
     var row = el("div", "favrow");
     row.appendChild(pk.btn);
@@ -7755,6 +8008,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     showPhoto();
   }
   function clearForm() {
+    $("form-save-error").hidden = true;
     if (CdDrive) CdDrive.reset();
     finishPerformerDrag(false);
     discardFormAudio();
@@ -9563,7 +9817,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     loadTrack(true);
   }
   function changePlaylist(id, change) {
-    commitMeta(function (m) { m.playlists.forEach(function (p) { if (p.id === id) change(p); }); });
+    return commitMeta(function (m) { m.playlists.forEach(function (p) { if (p.id === id) change(p); }); });
   }
   /* Add a track to a playlist (once). */
   function addToPlaylist(id, item) {
@@ -10041,7 +10295,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
   function confirmSetRemoval(host, list, whole) {
     host.textContent = "";
     host.appendChild(el("p", "hint ask", whole ? t("albumDeleteAsk", { n: list.length }) : t("removeAsk")));
-    host.appendChild(setButton("remove", "set-remove-confirm" + (whole ? "" : "-" + list[0].id), async function () { await removeCds(list); if (whole) closeWin("detail"); }, false));
+    host.appendChild(setButton("deleteBtn", "set-remove-confirm" + (whole ? "" : "-" + list[0].id), async function () { await removeCds(list); if (whole) closeWin("detail"); }, false));
     host.appendChild(setButton("keep", "set-remove-cancel" + (whole ? "" : "-" + list[0].id), renderDetail, true));
   }
   var discTip = null, discTipOpenTimer = null, discTipCloseTimer = null;
@@ -10096,16 +10350,19 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       button.setAttribute("aria-expanded", "true"); button.setAttribute("aria-controls", popup.id);
       positionInfoPopup(popup, button, button.closest("summary"), 12, innerWidth-12);
       popup.addEventListener("mouseenter", function () { clearTimeout(discTipCloseTimer); }); popup.addEventListener("mouseleave", hideLater);
-      popup.addEventListener("keydown", function (e) { if (e.key === "Escape" || e.key === "Tab") { e.preventDefault(); e.stopPropagation(); closeDiscTip(true); } });
+      popup.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeDiscTip(true); } else if (e.key === "Tab") { e.preventDefault(); e.stopPropagation(); popup.querySelector("button").focus(); } });
     }
     button.addEventListener("mouseenter", function () { clearTimeout(discTipCloseTimer); discTipOpenTimer = setTimeout(show, 200); });
     button.addEventListener("mouseleave", hideLater);
     button.addEventListener("focus", function () { if (button._skipDiscFocus) { button._skipDiscFocus = false; return; } show(); });
     button.addEventListener("blur", hideLater);
-    button.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); show(); if (discTip) discTip.pinned = true; });
+    button.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); show(); if (discTip) { discTip.pinned = true; if (e.detail === 0) discTip.popup.querySelector("button").focus(); } });
     button.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && (discTip || discTipOpenTimer)) { e.preventDefault(); e.stopPropagation(); closeDiscTip(true); }
-      else if (e.key === "Enter" || e.key === " ") e.stopPropagation();
+      else if (e.key === "Enter" || e.key === " " || e.key === "Tab" && !e.shiftKey && discTip && discTip.button === button) {
+        e.preventDefault(); e.stopPropagation(); show();
+        if (discTip) { discTip.pinned = true; discTip.popup.querySelector("button").focus(); }
+      }
     });
     return button;
   }
@@ -10266,20 +10523,19 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
 
     var pk = favPicker(detailFav, "detail-fav",
       function (id) { var a = findAlbum(id); return !!a && a.cdIds.indexOf(cd.id) !== -1; },
-      function (a, on) {
-        commitMeta(function (m) {
+      async function (a, on) {
+        var saved = await commitMeta(function (m) {
           m.albums.forEach(function (x) {
             if (x.id !== a.id) return;
             x.cdIds = x.cdIds.filter(function (id) { return id !== cd.id; });
             if (on) x.cdIds.push(cd.id);
           });
         });
-        toast(t(on ? "toastAddedToAlbum" : "toastRemovedFromAlbum", { name: a.name }));
+        if (saved) toast(t(on ? "toastAddedToAlbum" : "toastRemovedFromAlbum", { name: a.name }));
       },
-      function (name) {
+      async function (name) {
         detailFav.open = true;
-        commitMeta(function (m) { m.albums.push({ id: newFavoriteId(), name: name, cdIds: [cd.id] }); });
-        toast(t("toastAlbumCreated", { name: name }));
+        if (await commitMeta(function (m) { m.albums.push({ id: newFavoriteId(), name: name, cdIds: [cd.id] }); })) toast(t("toastAlbumCreated", { name: name }));
       });
     if (pk.chips.length) {
       dl.appendChild(el("dt", null, t("albumsField")));
@@ -10327,7 +10583,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     var actions = el("div", "profile-actions");
     if (detailConfirm) {
       actions.appendChild(el("p", "hint ask", t("removeAsk")));
-      var yes = el("button", "btn small danger", t("remove"));
+      var yes = el("button", "btn small danger", t("deleteBtn"));
       yes.type = "button";
       yes.addEventListener("click", async function () {
         yes.disabled = true;
@@ -10348,7 +10604,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var ed = el("button", "btn small", t("editBtn"));
       ed.type = "button";
       ed.addEventListener("click", function () { var c = cd; closeWin("detail"); startEdit(c); });
-      var rm = el("button", "btn small quiet", t("remove"));
+      var rm = el("button", "btn small quiet", t("deleteBtn"));
       rm.type = "button";
       rm.style.color = "var(--danger)";
       rm.addEventListener("click", function () { detailConfirm = true; renderDetail(); });
@@ -10518,13 +10774,15 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
     discSession.saving = true;
     candidates.forEach(function (c) { if (c.audio) c.audio.saving = true; }); renderFormAudio(); renderDiscButtons();
     try {
-      if (removed.length || changes.length > 1 || candidates.some(function (c) { return c.grouped; })) await changeDiscs(changes, removedIds);
-      else if (candidates[0].existing) await backend.update(candidates[0].cd.id, candidates[0].cd, !!candidates[0].audio);
-      else await backend.add(candidates[0].cd, candidates[0].cd.id, !!candidates[0].audio);
+      $("form-save-error").hidden = true;
+      if (backend.saveRelease) await backend.saveRelease(changes, removedIds, candidates.map(function (c) { return { id:c.cd.id, ids:c.favorites }; }));
+      else if (removed.length || changes.length > 1 || candidates.some(function (c) { return c.grouped; })) await changeDiscs(changes, removedIds);
+      else if (candidates[0].existing) await backend.update(candidates[0].cd.id, candidates[0].cd, true);
+      else await backend.add(candidates[0].cd, candidates[0].cd.id, true);
       for (var j = 0; j < candidates.length; j++) {
         await commitFormAudio(candidates[j].audio);
         if (candidates[j].audio) candidates[j].audio.saving = false;
-        setMembership(candidates[j].cd.id, candidates[j].favorites);
+        if (!backend.saveRelease) setMembership(candidates[j].cd.id, candidates[j].favorites);
       }
       discSession.saving = false;
       clearForm();
@@ -10533,6 +10791,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
       var message = t(hadExisting ? "toastSaved" : "toastAdded", { title: title });
       if (removed.length) finishDiscRemoval(removed, beforeMeta, message); else toast(message);
     } catch (err) {
+      $("form-save-error").hidden = false;
       var code = err && err.code;
       candidates.forEach(function (c) { if (c.audio) c.audio.saving = false; });
       if (discSession) discSession.saving = false;

@@ -28,7 +28,7 @@ jobs:
           workspaces: "./src-tauri -> target"
 
       - name: Install Tauri CLI
-        run: npm install
+        run: npm ci
 
       - name: Prepare bundled FLAC encoder
         shell: pwsh
@@ -36,7 +36,7 @@ jobs:
 
       - name: Test native CD importer (isolated devices and files)
         working-directory: src-tauri
-        run: cargo test --lib
+        run: cargo test --locked --lib
 
       # Settings shows which build this is (src/build.js is not in the repository).
       - name: Record the build number

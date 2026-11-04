@@ -199,6 +199,7 @@ fn owned_file(job:&str,file:&str)->bool {
 fn collection_references(data:&Path)->(String,bool) {
     let mut text=String::new();let mut safe=true;
     let mut paths=vec![data.join(super::DATA_FILE),data.join(super::BACKUP_FILE)];
+    match super::preserved_collections(data) { Ok(preserved)=>paths.extend(preserved),Err(_)=>safe=false }
     match fs::read_dir(data.join(super::BACKUPS_DIR)) {
         Ok(entries)=>for entry in entries {match entry{Ok(e)=>{if super::is_daily_backup_name(&e.file_name().to_string_lossy()){paths.push(e.path());}},Err(_)=>safe=false}},
         Err(e)=>if e.kind()!=std::io::ErrorKind::NotFound{safe=false;}
@@ -317,7 +318,9 @@ mod tests {
     }
     #[test] fn invalid_or_unreadable_collection_never_authorizes_draft_deletion(){
         let root=fixture_dir();fs::write(root.join(super::super::DATA_FILE),b"broken json").unwrap();assert!(!collection_references(&root).1);
-        fs::remove_file(root.join(super::super::DATA_FILE)).unwrap();fs::create_dir(root.join(super::super::BACKUP_FILE)).unwrap();assert!(!collection_references(&root).1);cleanup_folder(&root);
+        fs::remove_file(root.join(super::super::DATA_FILE)).unwrap();
+        let preserved=root.join("collection.unreadable-123.json");fs::write(&preserved,b"damaged archive").unwrap();assert!(!collection_references(&root).1);fs::remove_file(preserved).unwrap();
+        fs::create_dir(root.join(super::super::BACKUP_FILE)).unwrap();assert!(!collection_references(&root).1);cleanup_folder(&root);
     }
     #[test] fn crash_manifest_is_retained_when_reference_safety_is_unknown(){
         let root=fixture_dir();let job=root.join("rip-123-abc");fs::create_dir(&job).unwrap();fs::write(job.join("adopted.json"),b"[]").unwrap();assert!(!reap_folder(&job,&root,"",false));assert!(job.exists());fs::write(job.join("adopted.json"),b"broken").unwrap();assert!(!reap_folder(&job,&root,"",true));cleanup_folder(&root);
@@ -332,9 +335,10 @@ mod tests {
 }
 #[tauri::command]
 pub async fn adopt_cd_import(app:AppHandle,state:State<'_,DriveState>,job_id:String,cd_id:String)->Result<Vec<ImportedTrack>>{
+    let _audio_guard=super::AUDIO_IO.lock().map_err(|_|fail("drive_busy"))?;
     super::check_cd_id(&cd_id)?;let job=find_job(&state,&job_id)?;let mut status=job.status.lock().unwrap();
     if status.state!="done"||job.cancel.load(Ordering::SeqCst){return Err(fail("drive_job"));}
-    let dir=super::audio_root(&app)?.join(&cd_id);fs::create_dir_all(&dir).map_err(|_|fail("drive_write"))?;
+    let dir=super::audio_item_dir(&app,&cd_id)?;fs::create_dir_all(&dir).map_err(|_|fail("drive_write"))?;
     let mut entries=fs::read_dir(&job.folder).map_err(|_|fail("drive_write"))?.flatten().filter(|e|e.path().extension().map(|v|v=="wav"||v=="flac").unwrap_or(false)).collect::<Vec<_>>();
     entries.sort_by_key(|e|e.file_name());
     if entries.len()!=status.tracks as usize {return Err(fail("drive_write"));}
@@ -344,7 +348,9 @@ pub async fn adopt_cd_import(app:AppHandle,state:State<'_,DriveState>,job_id:Str
     let mut moved=Vec::new();let mut out=Vec::new();
     for (i,entry) in entries.iter().enumerate(){
         let dest=super::library_path(&app,&files[i])?;
-        if dest.exists()||fs::rename(entry.path(),&dest).is_err(){for path in moved{let _=fs::remove_file(path);}status.state="error".into();cleanup_folder(&job.folder);return Err(fail("drive_write"));}
+        if super::audio_location::copy_file(&entry.path(),&dest).is_err(){for path in moved{let _=fs::remove_file(path);}status.state="error".into();cleanup_folder(&job.folder);return Err(fail("drive_write"));}
+        // The verified, synced library copy is durable even when the library is on another drive.
+        let _=fs::remove_file(entry.path());
         moved.push(dest.clone());out.push(ImportedTrack{file:files[i].clone(),name:format!("Track {:02}.{}",i+1,dest.extension().unwrap().to_string_lossy()),size:fs::metadata(&dest).map(|m|m.len()).unwrap_or(0),track:(i+1) as u32});
     }
     status.state="drafted".into();Ok(out)

@@ -12,6 +12,10 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::DialogExt;
 mod cd_drive;
+mod storage;
+mod audio_location;
+static COLLECTION_IO: std::sync::Mutex<()> = std::sync::Mutex::new(());
+static AUDIO_IO: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 const DATA_FILE: &str = "collection.json";
 /// The collection as it was before the last save.
@@ -22,8 +26,6 @@ const BACKUPS_DIR: &str = "backups";
 const DAILY_BACKUPS: usize = 14;
 /// Cover pictures: <app data dir>/covers/<hash>-<size>.<jpg|png|webp>, named after their content.
 const COVERS_DIR: &str = "covers";
-/// Audio library: <app data dir>/audio/<CD id>/<file>.
-const AUDIO_DIR: &str = "audio";
 /// Formats the app's web view can play.
 const AUDIO_TYPES: [&str; 8] = ["mp3", "flac", "wav", "m4a", "aac", "ogg", "oga", "opus"];
 
@@ -65,15 +67,10 @@ fn user_name() -> String {
 /// Return the saved collection: { cds: [...], meta: {...}, user: "..." }.
 #[tauri::command]
 async fn load_data(app: AppHandle) -> Result<Value, String> {
+    let _guard = COLLECTION_IO.lock().map_err(|_| "Could not load the collection.")?;
     let path = data_dir(&app)?.join(DATA_FILE);
     migrate_trial_data(&app, &path);
-    let mut doc = match fs::read_to_string(&path) {
-        Ok(text) => serde_json::from_str::<Value>(&text).unwrap_or_else(|_| json!({})),
-        Err(_) => json!({}),
-    };
-    if !doc.is_object() {
-        doc = json!({});
-    }
+    let mut doc = storage::read(&path)?;
     doc["user"] = Value::String(user_name());
     Ok(doc)
 }
@@ -82,21 +79,46 @@ async fn load_data(app: AppHandle) -> Result<Value, String> {
 /// to a temporary file first so a crash mid-save cannot leave a half-written collection.
 #[tauri::command]
 async fn save_data(app: AppHandle, data: Value) -> Result<(), String> {
+    let _guard = COLLECTION_IO.lock().map_err(|_| "Could not save the collection.")?;
     let cds_ok = data.get("cds").map(|v| v.is_array()).unwrap_or(false);
     if !data.is_object() || !cds_ok {
         return Err("The collection is not in the expected shape.".into());
     }
     let dir = data_dir(&app)?;
     let path = dir.join(DATA_FILE);
+    // Refuse writes over an unreadable collection, including calls outside the recovery UI.
+    storage::read(&path)?;
     if path.is_file() {
-        let _ = fs::copy(&path, dir.join(BACKUP_FILE));
+        fs::copy(&path, dir.join(BACKUP_FILE)).map_err(|_| "Could not preserve the previous save.")?;
         daily_backup(&dir, &path);
     }
-    let text = serde_json::to_string(&data).map_err(|e| e.to_string())?;
-    let tmp = dir.join("collection.json.tmp");
-    fs::write(&tmp, text).map_err(|e| format!("Could not save: {e}"))?;
-    fs::rename(&tmp, &path).map_err(|e| format!("Could not save: {e}"))?;
-    Ok(())
+    storage::atomic_write(&path, &data)
+}
+
+#[tauri::command]
+async fn recover_collection(app: AppHandle, backup: Option<String>) -> Result<(), String> {
+    let _guard = COLLECTION_IO.lock().map_err(|_| "Could not recover the collection.")?;
+    let dir = data_dir(&app)?;
+    let doc = match backup {
+        Some(name) => {
+            let path = if name == BACKUP_FILE { dir.join(BACKUP_FILE) }
+                else if is_daily_backup_name(&name) { dir.join(BACKUPS_DIR).join(name) }
+                else { return Err("That is not a backup.".into()); };
+            let bytes = fs::read(&path).map_err(|_| "The backup could not be read.")?;
+            storage::validate(serde_json::from_slice(&bytes).map_err(|_| "The backup could not be read.")?)?
+        },
+        None => json!({"cds": [], "meta": {}}),
+    };
+    storage::recover(&dir.join(DATA_FILE), &doc)
+}
+
+fn preserved_collections(dir: &Path) -> Result<Vec<PathBuf>, String> {
+    fs::read_dir(dir).map_err(|_| "Could not inspect preserved collections.")?
+        .map(|entry| entry.map(|e| e.path()).map_err(|_| "Could not inspect preserved collections.".to_string()))
+        .filter(|path| match path {
+            Ok(path) => path.file_name().and_then(|n| n.to_str()).map(|n| n.starts_with("collection.unreadable-") && n.ends_with(".json")).unwrap_or(false),
+            Err(_) => true,
+        }).collect()
 }
 
 /// Year, month and day of a count of days since 1970-01-01 (Howard Hinnant's civil_from_days).
@@ -304,6 +326,13 @@ async fn tidy_covers(app: AppHandle) -> Result<u32, String> {
         return Ok(0);
     }
     let mut texts = vec![main];
+    // A damaged archive can contain the only remaining reference to a cover. Be conservative.
+    let Ok(preserved) = preserved_collections(&dir) else { return Ok(0) };
+    for path in preserved {
+        let Ok(text) = fs::read_to_string(path) else { return Ok(0) };
+        if storage::validate(serde_json::from_str(&text).unwrap_or(Value::Null)).is_err() { return Ok(0); }
+        texts.push(text);
+    }
     if let Ok(t) = fs::read_to_string(dir.join(BACKUP_FILE)) {
         texts.push(t);
     }
@@ -398,8 +427,8 @@ struct AudioFile {
 }
 
 fn audio_root(app: &AppHandle) -> Result<PathBuf, String> {
-    let dir = data_dir(app)?.join(AUDIO_DIR);
-    fs::create_dir_all(&dir).map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
+    let dir = audio_location::root(&data_dir(app)?)?;
+    app.asset_protocol_scope().allow_directory(&dir, true).map_err(|_| "Could not allow the audio folder.")?;
     Ok(dir)
 }
 
@@ -416,7 +445,12 @@ fn library_path(app: &AppHandle, file: &str) -> Result<PathBuf, String> {
     if !plain {
         return Err("That is not a file in the audio library.".into());
     }
-    Ok(audio_root(app)?.join(rel))
+    audio_location::join(&audio_root(app)?, file)
+}
+
+fn audio_item_dir(app: &AppHandle, id: &str) -> Result<PathBuf, String> {
+    check_cd_id(id)?;
+    audio_location::join(&audio_root(app)?, id)
 }
 
 /// A file name that is safe on Windows and not yet used in `dir`.
@@ -444,6 +478,20 @@ fn free_name(dir: &Path, original: &str) -> String {
 #[tauri::command]
 async fn audio_root_dir(app: AppHandle) -> Result<String, String> {
     Ok(audio_root(&app)?.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+async fn choose_audio_location(app: AppHandle) -> Result<Option<String>, String> {
+    let Some(picked) = app.dialog().file().blocking_pick_folder() else { return Ok(None) };
+    let parent = picked.into_path().map_err(|_| "Choose a local folder.")?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = AUDIO_IO.lock().map_err(|_| "Audio storage is busy.")?;
+        let dir = data_dir(&app)?;
+        let target = audio_location::relocate(&dir, &parent, |target| {
+            app.asset_protocol_scope().allow_directory(target, true).map_err(|_| "Could not allow the audio folder.".into())
+        })?;
+        Ok(Some(target.to_string_lossy().into_owned()))
+    }).await.map_err(|_| "Could not change the audio folder.")?
 }
 
 const MAX_FOLDER_AUDIO_FILES: usize = 5000;
@@ -542,8 +590,11 @@ async fn add_audio(app: AppHandle, cd_id: String) -> Result<Vec<AudioFile>, Stri
         let name = source.file_name().and_then(|n| n.to_str()).unwrap_or("audio").to_string();
         Ok((source, name))
     }).collect::<Result<Vec<_>, String>>()?;
-    let dir = audio_root(&app)?.join(&cd_id);
-    tauri::async_runtime::spawn_blocking(move || copy_audio_sources(&sources, &dir, &cd_id)).await.map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = AUDIO_IO.lock().map_err(|_| "Audio storage is busy.")?;
+        let dir = audio_item_dir(&app, &cd_id)?;
+        copy_audio_sources(&sources, &dir, &cd_id)
+    }).await.map_err(|e| e.to_string())?
 }
 
 /// USB/SD and other folder imports use the same isolated draft lifecycle as individual files.
@@ -552,10 +603,11 @@ async fn add_audio_folder(app: AppHandle, cd_id: String) -> Result<Vec<AudioFile
     check_cd_id(&cd_id)?;
     let Some(picked) = app.dialog().file().blocking_pick_folder() else { return Ok(Vec::new()) };
     let source = picked.into_path().map_err(|e| e.to_string())?;
-    let root = audio_root(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
+        let _guard = AUDIO_IO.lock().map_err(|_| "Audio storage is busy.")?;
+        let root = audio_root(&app)?;
         let files = folder_audio_sources(&source, &root)?;
-        copy_audio_sources(&files, &root.join(&cd_id), &cd_id)
+        copy_audio_sources(&files, &audio_location::join(&root, &cd_id)?, &cd_id)
     }).await.map_err(|e| e.to_string())?
 }
 
@@ -624,6 +676,7 @@ async fn audio_present(app: AppHandle, files: Vec<String>) -> Result<Vec<bool>, 
 /// Delete library copies. Files already gone are fine.
 #[tauri::command]
 async fn remove_audio(app: AppHandle, files: Vec<String>) -> Result<(), String> {
+    let _guard = AUDIO_IO.lock().map_err(|_| "Audio storage is busy.")?;
     for f in &files {
         let path = library_path(&app, f)?;
         if let Err(e) = fs::remove_file(&path) {
@@ -641,8 +694,9 @@ async fn remove_audio(app: AppHandle, files: Vec<String>) -> Result<(), String> 
 /// Delete all audio of a removed CD.
 #[tauri::command]
 async fn remove_cd_audio(app: AppHandle, cd_id: String) -> Result<(), String> {
+    let _guard = AUDIO_IO.lock().map_err(|_| "Audio storage is busy.")?;
     check_cd_id(&cd_id)?;
-    let dir = audio_root(&app)?.join(&cd_id);
+    let dir = audio_item_dir(&app, &cd_id)?;
     if dir.is_dir() {
         fs::remove_dir_all(&dir).map_err(|e| format!("Could not remove the audio of that CD: {e}"))?;
     }
@@ -658,6 +712,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             load_data,
             save_data,
+            recover_collection,
+            choose_audio_location,
             fetch_cover,
             audio_root_dir,
             add_audio,
