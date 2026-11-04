@@ -216,19 +216,19 @@ async function main() {
       await page.locator('#more-details').evaluate(n=>n.open=true); await page.locator('#recordSpeed').fill('45');
       assert.equal(await page.locator('#hub').isVisible(),false); assert.equal(await page.locator('#tapeType').isVisible(),false);
       await page.locator('#works-set').evaluate(n=>n.open=true); await page.locator('.w-title').fill('A work spanning sides');
-      await page.locator('.t-title').fill('First part'); await page.locator('.t-position').fill('A1');
-      await page.locator('.work > [data-i18n=addTrack]').click();
-      await page.locator('.t-title').nth(1).fill('Second part'); await page.locator('.t-position').nth(1).fill('B1');
+      await page.locator('.t-title').fill('First part');
+      await page.locator('#vinyl-sides button[data-side=b]').click(); await page.locator('#add-work').click();
+      await page.locator('.work:visible .w-title').fill('Side B work'); await page.locator('.work:visible .t-title').fill('Second part');
       await page.locator('#form-disc-tabs button').first().click(); assert.equal(await page.locator('#medium').inputValue(),'cd');
       await save(page);
       const items=state.doc.cds.filter(c=>c.set?.title==='New mixed set'); assert.equal(items.length,2);
       const vinyl=items.find(c=>c.medium==='vinyl'); assert.equal(vinyl.recordSpeed,'45');
-      assert.deepEqual(vinyl.works[0].tracks.map(t=>t.position),['A1','B1']);
-      assert.deepEqual(await page.evaluate(c=>window.mediaQA.discTracks(c).map(t=>[t.no,t.position]),vinyl),[[1,'A1'],[2,'B1']]);
+      assert.deepEqual(vinyl.works.map(w=>w.side),['a','b']);
+      assert.deepEqual(await page.evaluate(c=>window.mediaQA.discTracks(c).map(t=>[t.no,t.position]),vinyl),[[1,'A · 1'],[2,'B · 1']]);
       await page.reload(); await view(page,'vinyl');
       await page.evaluate(id=>window.mediaQA.openDetail(id),vinyl.id);
       const fold=page.locator('.set-disc').last(); await fold.locator('summary').click();
-      assert.deepEqual(await fold.locator('.ptracks .no').allTextContents(),['A1','B1']);
+      assert.deepEqual(await fold.locator('.ptracks .no').allTextContents(),['1','1']);
     } finally { await f.close(); }
   });
   await test('editing legacy CDs preserves unknown data and editing a mixed set updates one shared release',async()=>{
@@ -246,7 +246,7 @@ async function main() {
       await view(page,'vinyl'); assert((await page.locator('#grid').innerText()).includes('Renamed anthology'));
     } finally { await f.close(); }
   });
-  await test('medium-only and printed-position edits trigger unsaved-form protection',async()=>{
+  await test('medium-only and vinyl-side-name edits trigger unsaved-form protection',async()=>{
     const f=await fixture(),{page}=f;
     try {
       await page.evaluate(c=>window.mediaQA.startEdit(c),seed[0]); await page.locator('#medium').selectOption('cassette'); await page.locator('#close-cd').click();
@@ -254,7 +254,7 @@ async function main() {
       assert.equal(await page.locator('#win-cd').isVisible(),true);
       await page.locator('#cd-unsaved-discard').click();
       await page.evaluate(c=>window.mediaQA.startEdit(c),seed[3]);
-      await page.locator('.t-position').first().fill('A2'); await page.locator('#close-cd').click();
+      await page.locator('#vinyl-side-name').fill('Front'); await page.locator('#close-cd').click();
       await page.locator('#win-cd-unsaved').waitFor();
     } finally { await f.close(); }
   });
@@ -301,7 +301,7 @@ async function main() {
     const unknown={...seed[0],id:'future',title:'Future format',medium:'reel-to-reel'};
     const f=await fixture({extra:[unknown]}),{page,state}=f;
     try {
-      for (const [id,field,value] of [['tape','tapeType','Type IV'],['sacd','audioPrograms','Stereo'],['usb','capacity','32 GB']]) {
+      for (const [id,field,value] of [['tape','tapeType','Type IV'],['sacd','audioPrograms','Stereo'],['usb','spars','Analogue']]) {
         await page.evaluate(c=>mediaQA.startEdit(c),state.doc.cds.find(c=>c.id===id));
         await page.locator('#more-details').evaluate(n=>n.open=true); await page.locator('#'+field).fill(value); await save(page);
         assert.equal(state.doc.cds.find(c=>c.id===id)[field],value);
@@ -310,7 +310,7 @@ async function main() {
       assert.equal(await page.locator('#medium').inputValue(),'other'); assert.equal(await page.locator('#mediumName').inputValue(),'reel-to-reel'); await save(page);
       assert.equal(state.doc.cds.find(c=>c.id==='future').medium,'reel-to-reel');
       assert.deepEqual(state.doc.cds.find(c=>c.id==='future').extra,{keep:true});
-      assert.equal(state.doc.cds.find(c=>c.id==='usb').medium,'usb');
+      assert.equal(state.doc.cds.find(c=>c.id==='usb').medium,'usb'); assert.equal(state.doc.cds.find(c=>c.id==='usb').capacity,'16 GB'); assert.equal(await page.locator('#capacity').count(),0);
       await view(page,'other');
       assert.deepEqual((await page.locator('#grid .card h3').allTextContents()).sort(),['Future format','USB edition']);
     } finally { await f.close(); }
