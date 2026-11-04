@@ -64,6 +64,49 @@ async function save(page) { await page.locator('#submit').click(); await page.lo
 async function main() {
   const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe',playwright.chromium.executablePath()].find(fs.existsSync);
   browser=await playwright.chromium.launch({headless:true,...(executablePath?{executablePath}:{})});
+  await test('medium name accepts continuous keyboard input and keeps caret/selection in standalone and set editors',async()=>{
+    const f=await fixture(),{page,state}=f;
+    try {
+      for(const grouped of [false,true]){
+        await page.locator('#open-add').click(); await page.locator('#title').fill(grouped?'Custom set':'Custom standalone');
+        if(grouped){await page.locator('#set-choice').selectOption('+new');await page.locator('#form-disc-tabs .item-edit').first().click();}
+        await page.locator('#medium').selectOption('other');
+        const input=page.locator('#mediumName'); await input.focus(); await input.pressSequentially('Reel-to-reel',{delay:15});
+        assert.equal(await input.inputValue(),'Reel-to-reel'); assert.equal(await input.evaluate(n=>n===document.activeElement),true);
+        await input.press('Home'); await input.press('ArrowRight'); await input.press('ArrowRight'); await input.press('ArrowRight'); await input.press('ArrowRight');
+        await input.pressSequentially(' tape'); assert.equal(await input.inputValue(),'Reel tape-to-reel');
+        await input.press('Shift+ArrowLeft'); await input.press('Shift+ArrowLeft'); await input.pressSequentially('PE');
+        assert.equal(await input.inputValue(),'Reel taPE-to-reel'); assert.equal(await input.evaluate(n=>n.selectionStart),9);
+        await input.press('Backspace'); await input.press('Delete'); assert.equal(await input.inputValue(),'Reel taPto-reel');
+        assert.equal(await input.evaluate(n=>n===document.activeElement),true);
+        await save(page); const saved=state.doc.cds.find(c=>c.title===(grouped?'Custom set':'Custom standalone')); assert.equal(saved.mediumName,'Reel taPto-reel');
+        await page.evaluate(c=>mediaQA.startEdit(c),saved);
+        if(grouped)await page.locator('#form-disc-tabs .item-edit').first().click();
+        assert.equal(await input.inputValue(),'Reel taPto-reel'); await page.locator('#close-cd').click(); assert.equal(await page.locator('#win-cd-unsaved').isHidden(),true);
+      }
+    } finally {await f.close();}
+  });
+  await test('localized Medium name input retains focus during composition and never reparents on input',async()=>{
+    const f=await fixture(),{page}=f;
+    try {
+      await page.locator('#open-add').click(); await page.locator('#title').fill('Composition'); await page.locator('#set-choice').selectOption('+new'); await page.locator('#form-disc-tabs .item-edit').first().click(); await page.locator('#medium').selectOption('other');
+      for(const [lang,label,value] of [['en','Medium name','Reel-to-reel'],['ja','メディア名','オープンリール'],['zh','媒介名称','开盘带']]){
+        await page.evaluate(l=>mediaQA.setLang(l,false),lang); assert.equal(await page.locator('label[for=mediumName]').textContent(),label);
+        const input=page.locator('#mediumName'); await input.fill(''); await input.focus();
+        const result=await input.evaluate((node,value)=>{
+          const fields=document.querySelector('#medium-fields'), parent=fields.parentNode; let moves=0;
+          const observer=new MutationObserver(records=>{for(const r of records)if([...r.removedNodes,...r.addedNodes].includes(fields))moves++;}); observer.observe(parent,{childList:true});
+          node.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:''}));
+          for(const letter of value){node.value+=letter;node.setSelectionRange(node.value.length,node.value.length);node.dispatchEvent(new CompositionEvent('compositionupdate',{bubbles:true,data:node.value}));node.dispatchEvent(new InputEvent('input',{bubbles:true,data:letter,inputType:'insertCompositionText',isComposing:true}));}
+          node.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true,data:node.value}));
+          for(const r of observer.takeRecords())if([...r.removedNodes,...r.addedNodes].includes(fields))moves++; observer.disconnect();
+          return {value:node.value,focused:node===document.activeElement,caret:node.selectionStart,moves};
+        },value);
+        assert.deepEqual(result,{value,focused:true,caret:value.length,moves:0});
+        assert.equal(await page.locator('#more-details summary').textContent(),lang==='en'?value+' details':lang==='ja'?value+'の詳細':value+'详情');
+      }
+    } finally {await f.close();}
+  });
   await test('standalone has one medium; set item buttons contain their own name and medium editor',async()=>{
     const f=await fixture(),{page,state}=f;
     try {
