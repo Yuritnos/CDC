@@ -2,6 +2,13 @@
 
 Updated: 2026-11-05 (Asia/Shanghai). Read `AGENTS.md` for project rules. Verify git/build state before continuing.
 
+## PMCO email branding and public download instructions
+
+- Updated hosted Supabase project ogpzmnaqybxybybooebi: **Magic link or OTP** and **Confirm sign up** subjects/bodies replace CDC with PMCO; **SMTP sender display name is PMCO**. Reopened both templates and SMTP settings to verify persistence. Both subjects retain `{{ .Token }}` and each body retains its single token placeholder and trilingual expiry wording. Existing sender address, SMTP credentials/provider, OTP length/expiry and account/data policies were not changed. No test code was sent and mailbox delivery was not independently tested. The shared public template body is recorded in supabase/email-templates/sign-in-code.html.
+- README now points directly to the public HTTPS build 46 setup/MSI downloads and https://pmco.pages.dev/#downloads, with byte sizes/checksums and current unsigned status. Both public download links returned HTTP 200 with attachment headers. Corrected the stale build 45 reference; no app build/version change, installer replacement, tag or release.
+- Reviewed the current CD-drive implementation and existing importer notes: it already imports audio only, without online identification or metadata replacement. **15/15 tests/drive-import.cjs checks passed** with mocked devices and isolated collections, covering FLAC/WAV, cancellation/races, save retry/discard, metadata preservation, slot mismatch and replacement protection. No feature addition or app code change was needed. README now uses Audio → Add from CD drive → Read disc → Copy audio → Save and accurately describes supported discs and retained limitations. Owner's earlier hardware success remains the hardware baseline; no real drive/library was used here.
+- Only this task's README, Supabase documentation/template and status milestone are included in its GitHub documentation update. Existing uncommitted website/spreadsheet work and its handoff remain local.
+
 ## Repository rename and AI attribution
 
 - Renamed GitHub repository from Yuritnos/CDC to **Yuritnos/PMCO** on 2026-11-05. Local origin and active app release URLs now use PMCO; older build/source references below retain their historical names. No build, version change, release or installer replacement.

@@ -5,7 +5,7 @@ PMCO's accounts and online sync run on a free Supabase project. Do this once.
 ## 1. Create the project
 
 1. Sign up at <https://supabase.com> and select **New project**.
-2. Give it a name (for example `cdc`), choose a database password (keep it somewhere safe; the app does not need it) and pick the region closest to most of your users.
+2. Give it a name (for example `PMCO`), choose a database password (keep it somewhere safe; the app does not need it) and pick the region closest to most of your users.
 3. Wait a minute or two while the project starts.
 
 ## 2. Create the tables
@@ -35,8 +35,11 @@ Use your own email service under **Authentication** → **Emails** → **SMTP Se
    <p>If you did not try to sign in, you can ignore this email.</p>
    ```
 
-4. Save.
+4. Set the email subject to `PMCO sign-in code / 登录验证码 / サインインコード: {{ .Token }}` and save. Replace any old `CDC` branding in the body with `PMCO`, keeping `{{ .Token }}` and the existing expiry wording.
 5. Do the same for the **Confirm sign up** template. Supabase sends that one instead the first time someone signs in, so it needs the code too. Otherwise new users get a link that can't open PMCO.
+   Under **SMTP Settings**, the sender display name should also be **PMCO**. Keep the existing sender address, SMTP credentials and delivery settings. Changing the repository or project name does not update hosted email templates or the SMTP sender name.
+
+   The deployed trilingual body shared by both templates is kept in [`email-templates/sign-in-code.html`](email-templates/sign-in-code.html). A local copy is only a reference; hosted changes must be saved in Supabase and verified by reloading the settings.
 6. Request a fresh code for an existing user and a first-time user, check that each email contains exactly six digits, and verify sign-in in PMCO. Previously issued eight-digit codes remain accepted by PMCO while the server considers them valid. Keep codes and session tokens out of test reports.
 
 See Supabase's [passwordless email guide](https://supabase.com/docs/guides/auth/auth-email-passwordless) for the `{{ .Token }}` template and email verification flow.
