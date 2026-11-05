@@ -7232,7 +7232,7 @@ body.with-player .toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px))
      Settings → About shows the app's version, and for GitHub builds also the build number and date
      (build.js, written by the build). "Check for a new version" asks GitHub for the newest published
      release; a newer one can be downloaded from the release page. */
-  var RELEASES_API = "https://api.github.com/repos/Yuritnos/CDC/releases/latest";
+  var RELEASES_API = "https://api.github.com/repos/Yuritnos/PMCO/releases/latest";
   var appVersion = "";
   async function renderAbout() {
     if (!appVersion && IS_TAURI && window.__TAURI__.app) {

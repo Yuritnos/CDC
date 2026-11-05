@@ -358,7 +358,7 @@ async fn tidy_covers(app: AppHandle) -> Result<u32, String> {
 /// Open CDC's download page on GitHub in the default browser. Only this fixed address is opened.
 #[tauri::command]
 async fn open_releases() -> Result<(), String> {
-    let url = "https://github.com/Yuritnos/CDC/releases";
+    let url = "https://github.com/Yuritnos/PMCO/releases";
     #[cfg(target_os = "windows")]
     let result = std::process::Command::new("rundll32").args(["url.dll,FileProtocolHandler", url]).spawn();
     #[cfg(target_os = "macos")]
@@ -382,7 +382,7 @@ async fn fetch_cover(url: String) -> Result<tauri::ipc::Response, String> {
         return Err("Only Discogs cover pictures can be downloaded.".into());
     }
     let client = reqwest::Client::builder()
-        .user_agent(concat!("PMCO/", env!("CARGO_PKG_VERSION"), " +https://github.com/Yuritnos/CDC"))
+        .user_agent(concat!("PMCO/", env!("CARGO_PKG_VERSION"), " +https://github.com/Yuritnos/PMCO"))
         .timeout(std::time::Duration::from_secs(20))
         .build()
         .map_err(|e| e.to_string())?;

@@ -2,6 +2,11 @@
 
 Updated: 2026-11-05 (Asia/Shanghai). Read `AGENTS.md` for project rules. Verify git/build state before continuing.
 
+## Repository rename and AI attribution
+
+- Renamed GitHub repository from Yuritnos/CDC to **Yuritnos/PMCO** on 2026-11-05. Local origin and active app release URLs now use PMCO; older build/source references below retain their historical names. No build, version change, release or installer replacement.
+- README credits ChatGPT (OpenAI Codex), alongside Yuritnos and Claude. The documentation/link-update commit includes Codex co-author attribution; GitHub controls automatic contributor-list/account matching. Unrelated local website/spreadsheet work is excluded from this commit.
+
 ## Current milestone: QA fixes and audio-folder setting — build 46 delivered
 
 - Implemented the confirmed QA issues against build 45. All desktop/HTTP explicit collection mutations now reject failed writes and serialize complete operations. Standalone/set saves persist release metadata and Favorites membership together. Failed forms retain drafts with an inline error; pending settings/Favorites edits show a persistent Retry banner. Import/backup confirmations remain available after failure. Failed Undo offers Retry and does not claim restoration. Only successfully persisted snapshots are exposed to sync; failed sync removals retain open drafts and do not delete audio.
