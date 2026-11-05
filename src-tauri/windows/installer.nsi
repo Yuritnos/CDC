@@ -690,6 +690,11 @@ Section Install
   !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
 
   ; Copy main executable
+  ; The application was formerly cdc.exe. Close it before replacing its files
+  ; or removing the registered old binary during an in-place upgrade.
+  !if "${MAINBINARYNAME}" != "cdc"
+    !insertmacro CheckIfAppIsRunning "$INSTDIR\cdc.exe" "${PRODUCTNAME}"
+  !endif
   File "${MAINBINARYSRCPATH}"
 
   ; Copy resources

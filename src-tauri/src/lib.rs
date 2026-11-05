@@ -40,16 +40,34 @@ fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
-/// Bring over a collection saved by the earlier CDC.exe trial (%APPDATA%\CDC\collection.json).
-fn migrate_trial_data(app: &AppHandle, target: &PathBuf) {
-    if target.exists() {
-        return;
-    }
-    if let Ok(roaming) = app.path().data_dir() {
-        let old = roaming.join("CDC").join(DATA_FILE);
-        if old.is_file() {
-            let _ = fs::copy(&old, target);
-        }
+/// Load only this profile's saved collection. A new profile starts empty, even
+/// when an abandoned trial exists beside it; importing that file is explicit.
+fn load_collection_at(dir: &Path) -> Result<Value, String> {
+    storage::read(&dir.join(DATA_FILE))
+}
+
+#[cfg(test)]
+mod startup_tests {
+    use super::*;
+
+    #[test]
+    fn fresh_profile_ignores_trial_and_existing_profile_is_preserved() {
+        let root = std::env::temp_dir().join(format!("pmco-startup-{}-{}", std::process::id(), SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()));
+        let trial = root.join("CDC");
+        let current = root.join("com.cdc.collection");
+        fs::create_dir_all(&trial).unwrap(); fs::create_dir_all(&current).unwrap();
+        let legacy = br#"{"cds":[{"id":"old-fixture","title":"Old trial"}]}"#;
+        fs::write(trial.join(DATA_FILE), legacy).unwrap();
+        assert_eq!(load_collection_at(&current).unwrap()["cds"], json!([]));
+        assert!(!current.join(DATA_FILE).exists());
+        assert_eq!(fs::read(trial.join(DATA_FILE)).unwrap(), legacy);
+        let saved = json!({"cds":[{"id":"keep-fixture","title":"Keep saved music"}],"meta":{"playlists":[]},"sync":{"account":"fixture"},"legacy":{"keep":true}});
+        fs::write(current.join(DATA_FILE), serde_json::to_vec(&saved).unwrap()).unwrap();
+        assert_eq!(load_collection_at(&current).unwrap(), saved);
+        fs::write(current.join(DATA_FILE), b"broken").unwrap();
+        assert!(load_collection_at(&current).is_err());
+        assert_eq!(fs::read(trial.join(DATA_FILE)).unwrap(), legacy);
+        fs::remove_dir_all(root).unwrap();
     }
 }
 
@@ -68,9 +86,7 @@ fn user_name() -> String {
 #[tauri::command]
 async fn load_data(app: AppHandle) -> Result<Value, String> {
     let _guard = COLLECTION_IO.lock().map_err(|_| "Could not load the collection.")?;
-    let path = data_dir(&app)?.join(DATA_FILE);
-    migrate_trial_data(&app, &path);
-    let mut doc = storage::read(&path)?;
+    let mut doc = load_collection_at(&data_dir(&app)?)?;
     doc["user"] = Value::String(user_name());
     Ok(doc)
 }

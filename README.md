@@ -76,7 +76,7 @@ To publish a new version:
 - **Windows:** `%APPDATA%\com.cdc.collection\collection.json`, with the previous save kept as `collection.backup.json`.
 - **macOS:** `~/Library/Application Support/com.cdc.collection/`.
 
-On first launch, a collection saved by the earlier trial `CDC.exe` (`%APPDATA%\CDC\collection.json`) is copied over automatically.
+The installed application is **PMCO.exe**. A new PMCO data folder starts with an empty collection; old trial data is never imported automatically. Reinstalling or upgrading preserves an existing PMCO collection. To bring back an old trial deliberately, import its `%APPDATA%\CDC\collection.json` through PMCO's import controls.
 
 ## Working on it locally
 
