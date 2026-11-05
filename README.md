@@ -8,7 +8,7 @@
 
 Source repository: [Yuritnos/PMCO](https://github.com/Yuritnos/PMCO).
 
-PMCO is an app for cataloguing physical music. It supports CD, vinyl, cassette, SACD, DVD, Blu-ray and Other media with free text (including USB/SD), plus mixed-media sets with one shared cover. You can record works, performers and edition details, group releases into favorites, and use English, Japanese or Simplified Chinese. The current Windows installers are PMCO 0.3.0 build 46.
+PMCO is an app for cataloguing physical music. It supports CD, vinyl, cassette, SACD, DVD, Blu-ray and Other media with free text (including USB/SD), plus mixed-media sets with one shared cover. You can record works, performers and edition details, group releases into favorites, and use English, Japanese or Simplified Chinese. The current Windows installers are PMCO 0.3.0 build 47.
 
 ### Try the physical-media preview
 
@@ -27,17 +27,17 @@ It is built with [Tauri 2](https://tauri.app). The screens are a single web page
 
 ## Getting the Windows installer
 
-Download **PMCO 0.3.0 build 46** for **Windows x64**. No developer tools or GitHub account are needed.
+Download **PMCO 0.3.0 build 47** for **Windows x64**. No developer tools or GitHub account are needed.
 
-- **[Download Windows setup (.exe)](https://pmco.pages.dev/downloads/PMCO_0.3.0_x64-setup.exe)** — recommended; installs for the current user without administrator rights (3,978,318 bytes).
-- **[Download Windows MSI (.msi)](https://pmco.pages.dev/downloads/PMCO_0.3.0_x64_en-US.msi)** — alternative for administrators and managed deployments (4,775,936 bytes).
+- **[Download Windows setup (.exe)](https://pmco.pages.dev/downloads/build-47/PMCO_0.3.0_x64-setup.exe)** — recommended; installs for the current user without administrator rights (3,978,314 bytes).
+- **[Download Windows MSI (.msi)](https://pmco.pages.dev/downloads/build-47/PMCO_0.3.0_x64_en-US.msi)** — alternative for administrators and managed deployments (4,780,032 bytes).
 - **[Visit the PMCO website](https://pmco.pages.dev/#downloads)** — English, Japanese and Simplified Chinese download pages, screenshots and installation guidance.
 
 Run the downloaded installer, follow its prompts, then open PMCO. The packages are currently unsigned, so Windows may show a SmartScreen warning. Check the downloaded file's SHA-256 against these values:
 
 ```text
-Setup: FD9BC8781550B228B7F61A0C65085BF48F441BCB142C22A7492C0DF1008E3703
-MSI:   10561CE4565E3970C333FDFB6E596FA2AD493879E9F794BBE52D45BD3CFB97AD
+Setup: F584025090CD92797F80ED1D0B552CE0E1525978E2676E2475A1EE724FD7A45A
+MSI:   E3681D2CF7B9055B5FB8D4A4AF402117E29D52ABBF4218BDDDBB881383AFE748
 ```
 
 ### Import audio from a CD drive (Windows)
